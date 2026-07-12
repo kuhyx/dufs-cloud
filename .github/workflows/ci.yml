@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    name: web (React SPA)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run coverage # vitest thresholds enforce 100%
+      - run: pnpm run build
+
+  app:
+    name: app (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze --fatal-infos --fatal-warnings
+      - run: flutter test --coverage
+      - name: Enforce 100% line coverage
+        run: |
+          lf=$(awk -F: '/^LF:/{s+=$2} END{print s}' coverage/lcov.info)
+          lh=$(awk -F: '/^LH:/{s+=$2} END{print s}' coverage/lcov.info)
+          echo "Lines covered: $lh / $lf"
+          if [ "$lf" != "$lh" ]; then
+            echo "::error::Flutter line coverage is below 100% ($lh/$lf)"
+            exit 1
+          fi

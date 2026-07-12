@@ -12,13 +12,38 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+/// Builds a [DufsClient] from resolved credentials (injectable for tests).
+typedef ClientFactory = DufsClient Function({
+  required String baseUrl,
+  required String username,
+  required String password,
+});
+
 /// The main screen: browse the cloud, open media, upload, download and delete.
 class BrowserScreen extends StatefulWidget {
-  /// Creates the browser backed by [settings].
-  const BrowserScreen({required this.settings, super.key});
+  /// Creates the browser backed by [settings]. The [clientFactory],
+  /// [pickMedia] and [documentsDir] seams default to real implementations and
+  /// are overridden in tests to avoid platform channels.
+  const BrowserScreen({
+    required this.settings,
+    this.clientFactory,
+    this.pickMedia,
+    this.documentsDir,
+    super.key,
+  });
 
   /// Persisted connection settings.
   final Settings settings;
+
+  /// Overrides how the dufs client is constructed.
+  final ClientFactory? clientFactory;
+
+  /// Overrides the media picker (returns the picked file, or null if
+  /// the user cancelled).
+  final Future<XFile?> Function()? pickMedia;
+
+  /// Overrides where downloads are written.
+  final Future<Directory> Function()? documentsDir;
 
   @override
   State<BrowserScreen> createState() => _BrowserScreenState();
@@ -53,7 +78,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
       return;
     }
     _client?.close();
-    _client = DufsClient(
+    final build = widget.clientFactory ?? DufsClient.new;
+    _client = build(
       baseUrl: widget.settings.baseUrl,
       username: widget.settings.username,
       password: await widget.settings.password(),
@@ -127,7 +153,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
     setState(() => _busy = true);
     try {
       final bytes = await client.download(entry.path);
-      final dir = await getApplicationDocumentsDirectory();
+      final getDir = widget.documentsDir ?? getApplicationDocumentsDirectory;
+      final dir = await getDir();
       final file = File(p.join(dir.path, entry.name));
       await file.writeAsBytes(bytes);
       _snack('Saved ${entry.name} to app storage');
@@ -141,7 +168,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   Future<void> _upload() async {
     final client = _client;
     if (client == null) return;
-    final picked = await ImagePicker().pickMedia();
+    final picked = await (widget.pickMedia ?? ImagePicker().pickMedia)();
     if (picked == null) return;
     setState(() => _busy = true);
     try {

@@ -5,6 +5,13 @@ import 'package:dufs_client/services/dufs_client.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+/// Builds the [VideoPlayerController] for a given [uri]/[httpHeaders].
+/// Injectable so tests can supply a controller backed by a fake platform.
+typedef VideoControllerFactory = VideoPlayerController Function(
+  Uri uri, {
+  Map<String, String> httpHeaders,
+});
+
 /// Full-screen video player streaming over authenticated HTTP (with seeking
 /// via HTTP Range).
 class VideoScreen extends StatefulWidget {
@@ -13,6 +20,7 @@ class VideoScreen extends StatefulWidget {
     required this.client,
     required this.path,
     required this.title,
+    this.controllerFactory,
     super.key,
   });
 
@@ -24,6 +32,9 @@ class VideoScreen extends StatefulWidget {
 
   /// Title shown in the app bar.
   final String title;
+
+  /// Overrides how the player controller is built (tests inject a fake).
+  final VideoControllerFactory? controllerFactory;
 
   @override
   State<VideoScreen> createState() => _VideoScreenState();
@@ -41,7 +52,8 @@ class _VideoScreenState extends State<VideoScreen> {
   }
 
   Future<void> _init() async {
-    final controller = VideoPlayerController.networkUrl(
+    final build = widget.controllerFactory ?? VideoPlayerController.networkUrl;
+    final controller = build(
       widget.client.fileUri(widget.path),
       httpHeaders: widget.client.authHeaders,
     );

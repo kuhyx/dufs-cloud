@@ -2,7 +2,7 @@
 # setup_cloud_gallery.sh — build and deploy the React media-gallery SPA so it
 # becomes the UI of the dufs cloud (served same-origin behind the existing auth).
 #
-# It builds cloud_gallery/ (Vite), copies the static build into the dufs serve
+# It builds web/ (Vite), copies the static build into the dufs serve
 # path, turns on dufs `render-spa`, generates thumbnails, and wires thumbnail
 # regeneration into the Phase-2 media sync. Run on the dufs host (the PC).
 #
@@ -16,8 +16,8 @@ HERE="$(dirname "$(readlink -f "$0")")"
 readonly HERE
 REPO_ROOT="$(git -C "$HERE" rev-parse --show-toplevel)"
 readonly REPO_ROOT
-readonly GALLERY_DIR="$REPO_ROOT/cloud_gallery"
-readonly THUMBS_SCRIPT="$REPO_ROOT/linux_configuration/scripts/single_use/utils/generate_thumbnails.sh"
+readonly GALLERY_DIR="$REPO_ROOT/web"
+readonly THUMBS_SCRIPT="$HERE/generate_thumbnails.sh"
 readonly DUFS_YAML="$HOME/.config/dufs/dufs.yaml"
 
 C() { printf '\033[1;34m[cloud-gallery]\033[0m %s\n' "$*"; }

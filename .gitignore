@@ -1,0 +1,16 @@
+# Node / web
+web/node_modules/
+web/dist/
+web/coverage/
+node_modules/
+
+# Flutter / Dart
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/coverage/
+
+# Editor / OS
+.DS_Store
+*.log
