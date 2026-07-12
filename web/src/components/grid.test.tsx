@@ -18,6 +18,11 @@ function makeClient(): DufsClient {
     remove: vi.fn(),
     readText: vi.fn(),
     writeText: vi.fn(),
+    zipUrl: (p: string) => `${p}?zip`,
+    createDir: vi.fn(),
+    move: vi.fn(),
+    fetchMeta: vi.fn(() => Promise.resolve({})),
+    downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
   };
 }
 

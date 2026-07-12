@@ -22,6 +22,11 @@ function client(over: Partial<DufsClient>): DufsClient {
     remove: vi.fn(),
     readText: vi.fn(() => Promise.resolve("body")),
     writeText: vi.fn(() => Promise.resolve()),
+    zipUrl: (p) => `${p}?zip`,
+    createDir: vi.fn(),
+    move: vi.fn(),
+    fetchMeta: vi.fn(() => Promise.resolve({})),
+    downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
     ...over,
   };
 }

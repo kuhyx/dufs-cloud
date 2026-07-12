@@ -1,4 +1,4 @@
-import type { DirEntry, EntryKind } from "./types.ts";
+import type { DirEntry, EntryKind, MetaIndex } from "./types.ts";
 import { basename, encodePath, joinPath, normalize } from "../lib/paths.ts";
 
 const DAV_NS = "DAV:";
@@ -11,10 +11,20 @@ export interface DufsClient {
   fileUrl(path: string): string;
   /** URL of the generated thumbnail for a media entry (see generate_thumbnails.sh). */
   thumbUrl(path: string): string;
+  /** URL that downloads a directory as a zip (dufs `?zip`). */
+  zipUrl(dirPath: string): string;
   upload(dirPath: string, file: File): Promise<void>;
   remove(path: string): Promise<void>;
+  /** Create a directory at `path` (WebDAV MKCOL). */
+  createDir(path: string): Promise<void>;
+  /** Move `fromPath` into directory `destDir`, keeping its base name (MOVE). */
+  move(fromPath: string, destDir: string): Promise<void>;
   readText(path: string): Promise<string>;
   writeText(path: string, content: string): Promise<void>;
+  /** Fetch the server metadata index; resolves to `{}` when absent. */
+  fetchMeta(): Promise<MetaIndex>;
+  /** Download a file's raw bytes (used to build multi-file zips). */
+  downloadBytes(path: string): Promise<Uint8Array>;
 }
 
 /** Parse a dufs PROPFIND multistatus XML body into entries under `dirPath`. */
@@ -96,11 +106,23 @@ export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
     thumbUrl(path) {
       return encodePath(`/.thumbs${normalize(path)}.jpg`);
     },
+    zipUrl(dirPath) {
+      return `${encodePath(dirPath)}?zip`;
+    },
     async upload(dirPath, file) {
       await request("PUT", joinPath(dirPath, file.name), { body: file });
     },
     async remove(path) {
       await request("DELETE", path);
+    },
+    async createDir(path) {
+      await request("MKCOL", path);
+    },
+    async move(fromPath, destDir) {
+      const dest = joinPath(destDir, basename(fromPath));
+      await request("MOVE", fromPath, {
+        headers: { Destination: encodePath(dest), Overwrite: "F" },
+      });
     },
     async readText(path) {
       return (await request("GET", path)).text();
@@ -108,5 +130,34 @@ export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
     async writeText(path, content) {
       await request("PUT", path, { body: content });
     },
+    async fetchMeta() {
+      const res = await fetchImpl(encodePath("/.meta/index.json"), {
+        credentials: "same-origin",
+      });
+      if (!res.ok) return {};
+      try {
+        const data: unknown = await res.json();
+        return isMetaIndex(data) ? data.entries : {};
+      } catch {
+        return {};
+      }
+    },
+    async downloadBytes(path) {
+      const res = await request("GET", path);
+      return new Uint8Array(await res.arrayBuffer());
+    },
   };
+}
+
+interface MetaFile {
+  readonly entries: MetaIndex;
+}
+
+/** Narrow parsed JSON to the metadata index shape (tolerant of extra fields). */
+function isMetaIndex(data: unknown): data is MetaFile {
+  if (typeof data !== "object" || data === null || !("entries" in data)) {
+    return false;
+  }
+  const { entries } = data;
+  return typeof entries === "object" && entries !== null;
 }
