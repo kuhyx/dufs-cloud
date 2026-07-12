@@ -1,3 +1,5 @@
+import 'package:dufs_client/util/paths.dart' as paths;
+
 /// Whether a cloud entry is a directory or a file.
 enum EntryKind {
   /// A directory.
@@ -7,13 +9,6 @@ enum EntryKind {
   file,
 }
 
-const Set<String> _imageExts = {
-  'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif', 'tiff', 'avif',
-};
-const Set<String> _videoExts = {
-  'mp4', 'mkv', 'mov', 'webm', 'avi', 'm4v', '3gp', 'mpg', 'mpeg', 'wmv', 'flv',
-};
-
 /// One entry from a dufs directory listing (a WebDAV PROPFIND response row).
 class DirEntry {
   /// Creates a [DirEntry].
@@ -22,6 +17,7 @@ class DirEntry {
     required this.path,
     required this.kind,
     required this.size,
+    this.mtimeMs = 0,
   });
 
   /// Base name, e.g. `pic.jpg`.
@@ -36,18 +32,18 @@ class DirEntry {
   /// Size in bytes (0 for directories).
   final int size;
 
+  /// Last-modified time in epoch milliseconds (0 if unknown).
+  final int mtimeMs;
+
   /// Whether this is a directory.
   bool get isDir => kind == EntryKind.dir;
 
   /// Whether this file is a viewable image (by extension).
-  bool get isImage => _hasExt(_imageExts);
+  bool get isImage => paths.isImage(name);
 
   /// Whether this file is a playable video (by extension).
-  bool get isVideo => _hasExt(_videoExts);
+  bool get isVideo => paths.isVideo(name);
 
-  bool _hasExt(Set<String> exts) {
-    final dot = name.lastIndexOf('.');
-    if (dot < 0 || dot == name.length - 1) return false;
-    return exts.contains(name.substring(dot + 1).toLowerCase());
-  }
+  /// Whether this file is an editable text file (by extension).
+  bool get isText => paths.isText(name);
 }
