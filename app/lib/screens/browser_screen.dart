@@ -8,6 +8,8 @@ import 'package:dufs_client/screens/text_editor_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/settings.dart';
+import 'package:dufs_client/util/paths.dart' as paths;
+import 'package:dufs_client/widgets/entry_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -225,6 +227,43 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
+  Future<void> _newFolder() async {
+    final client = _client;
+    if (client == null) return;
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New folder'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Folder name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await client.createDir(paths.joinPath(_path, name));
+      await _load(_path);
+    } on Exception catch (e) {
+      _snack('Create failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _openSettings() async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
@@ -253,6 +292,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
               ),
         title: Text(_path == '/' ? 'Cloud' : _path),
         actions: [
+          if (_client != null)
+            IconButton(
+              icon: const Icon(Icons.create_new_folder),
+              tooltip: 'New folder',
+              onPressed: _busy ? null : _newFolder,
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _openSettings,
@@ -282,43 +327,29 @@ class _BrowserScreenState extends State<BrowserScreen> {
     if (_entries.isEmpty) {
       return const Center(child: Text('This folder is empty.'));
     }
+    final client = _client!;
     return RefreshIndicator(
       onRefresh: () => _load(_path),
-      child: ListView.builder(
+      child: GridView.builder(
+        padding: const EdgeInsets.all(8),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 150,
+          childAspectRatio: 0.82,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+        ),
         itemCount: _entries.length,
         itemBuilder: (context, i) {
           final entry = _entries[i];
-          return ListTile(
-            leading: Icon(_iconFor(entry)),
-            title: Text(entry.name),
-            subtitle: entry.isDir ? null : Text('${entry.size} bytes'),
-            onTap: _busy ? null : () => _open(entry),
-            trailing: entry.isDir
-                ? const Icon(Icons.chevron_right)
-                : PopupMenuButton<String>(
-                    onSelected: (v) {
-                      if (v == 'download') unawaited(_download(entry));
-                      if (v == 'delete') unawaited(_delete(entry));
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'download',
-                        child: Text('Download'),
-                      ),
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
-                  ),
+          return EntryTile(
+            client: client,
+            entry: entry,
+            onTap: () => unawaited(_open(entry)),
+            onDownload: entry.isDir ? null : () => unawaited(_download(entry)),
+            onDelete: () => unawaited(_delete(entry)),
           );
         },
       ),
     );
-  }
-
-  IconData _iconFor(DirEntry entry) {
-    if (entry.isDir) return Icons.folder;
-    if (entry.isImage) return Icons.image;
-    if (entry.isVideo) return Icons.movie;
-    if (entry.isText) return Icons.description;
-    return Icons.insert_drive_file;
   }
 }

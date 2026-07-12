@@ -48,9 +48,12 @@ MockClient _mock({
   bool downloadFail = false,
   bool uploadFail = false,
   bool deleteFail = false,
+  bool mkcolFail = false,
 }) {
   return MockClient((req) async {
     switch (req.method) {
+      case 'MKCOL':
+        return mkcolFail ? http.Response('', 409) : http.Response('', 201);
       case 'PROPFIND':
         if (listFail) return http.Response('', 500);
         if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
@@ -130,10 +133,8 @@ void main() {
     expect(find.text('pic.jpg'), findsOneWidget);
     expect(find.text('clip.mp4'), findsOneWidget);
     expect(find.text('doc.txt'), findsOneWidget);
-    expect(find.text('30 bytes'), findsOneWidget);
+    expect(find.text('30 B'), findsOneWidget);
     expect(find.byIcon(Icons.folder), findsOneWidget);
-    expect(find.byIcon(Icons.image), findsOneWidget);
-    expect(find.byIcon(Icons.movie), findsOneWidget);
     expect(find.byIcon(Icons.insert_drive_file), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
   });
@@ -203,9 +204,10 @@ void main() {
       _browser(settings, _mock(downloadFail: true), docs: _tmpDir),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    // The last tile is a file (folders sort first); open its menu.
+    await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Download').last);
+    await tester.tap(find.text('Download'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Download failed'), findsOneWidget);
   });
@@ -245,6 +247,50 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Delete failed'), findsOneWidget);
+  });
+
+  testWidgets('new folder: create, cancel and error', (tester) async {
+    // Cancel (and empty-name) path: no MKCOL.
+    final methods = <String>[];
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, MockClient((req) async {
+      methods.add(req.method);
+      if (req.method == 'MKCOL') return http.Response('', 201);
+      return http.Response(_listing(_root), 207);
+    })));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.create_new_folder));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(methods, isNot(contains('MKCOL')));
+
+    // Create with a blank name is a no-op too.
+    await tester.tap(find.byIcon(Icons.create_new_folder));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+    await tester.pumpAndSettle();
+    expect(methods, isNot(contains('MKCOL')));
+
+    // Create with a name → MKCOL.
+    await tester.tap(find.byIcon(Icons.create_new_folder));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Trips');
+    await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+    await tester.pumpAndSettle();
+    expect(methods, contains('MKCOL'));
+  });
+
+  testWidgets('new folder surfaces an error', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock(mkcolFail: true)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.create_new_folder));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'X');
+    await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Create failed'), findsOneWidget);
   });
 
   testWidgets('upload a picked file, then a cancelled pick', (tester) async {
