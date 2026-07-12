@@ -14,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart'
+    show ShareParams, ShareResult, ShareResultStatus;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
@@ -51,11 +53,14 @@ MockClient _mock({
   bool uploadFail = false,
   bool deleteFail = false,
   bool mkcolFail = false,
+  bool moveFail = false,
 }) {
   return MockClient((req) async {
     switch (req.method) {
       case 'MKCOL':
         return mkcolFail ? http.Response('', 409) : http.Response('', 201);
+      case 'MOVE':
+        return moveFail ? http.Response('', 409) : http.Response('', 201);
       case 'PROPFIND':
         if (listFail) return http.Response('', 500);
         if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
@@ -87,6 +92,7 @@ Widget _browser(
   http.Client mock, {
   Future<XFile?> Function()? pick,
   Future<Directory> Function()? docs,
+  Future<ShareResult> Function(ShareParams)? share,
 }) {
   return MaterialApp(
     home: BrowserScreen(
@@ -104,6 +110,7 @@ Widget _browser(
       ),
       pickMedia: pick,
       documentsDir: docs,
+      shareSheet: share,
     ),
   );
 }
@@ -472,5 +479,178 @@ void main() {
     await tester.tap(find.text('Images').last);
     await tester.pumpAndSettle();
     expect(find.byType(FilterSheet), findsOneWidget);
+  });
+
+  testWidgets('long-press enters multi-select; tap toggles; close exits',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock()));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('data.bin'));
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.byTooltip('Move'), findsOneWidget);
+
+    // A tile's checkbox toggles it, as does tapping the tile body.
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump();
+    expect(find.text('2 selected'), findsOneWidget);
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
+
+    // Tapping another tile adds it; tapping it again removes it.
+    await tester.tap(find.text('doc.txt'));
+    await tester.pump();
+    expect(find.text('2 selected'), findsOneWidget);
+    await tester.tap(find.text('doc.txt'));
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
+
+    // Close returns to the normal browse bar (the search field reappears).
+    await tester.tap(find.byTooltip('Cancel selection'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 selected'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('bulk delete: confirm deletes each item; cancel does not',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    final methods = <String>[];
+    final mock = MockClient((req) async {
+      methods.add(req.method);
+      if (req.method == 'DELETE') return http.Response('', 204);
+      return http.Response(_listing(_root), 207);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('data.bin'));
+    await tester.pump();
+    await tester.tap(find.text('doc.txt'));
+    await tester.pump();
+
+    // Cancel the confirmation: no DELETE.
+    await tester.tap(find.byTooltip('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete 2 items?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(methods.where((m) => m == 'DELETE'), isEmpty);
+
+    // Confirm: one DELETE per selected item.
+    await tester.tap(find.byTooltip('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+    expect(methods.where((m) => m == 'DELETE').length, 2);
+    expect(find.text('2 selected'), findsNothing); // selection cleared
+  });
+
+  testWidgets('bulk delete surfaces a failure count', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock(deleteFail: true)));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('data.bin'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('could not be deleted'), findsOneWidget);
+  });
+
+  testWidgets('bulk move: pick a folder, cancel, and a no-op into the same dir',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    final methods = <String>[];
+    final mock = MockClient((req) async {
+      methods.add(req.method);
+      if (req.method == 'MOVE') return http.Response('', 201);
+      if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
+      return http.Response(_listing(_root), 207);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+
+    Future<void> startMove() async {
+      await tester.longPress(find.text('data.bin'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Move'));
+      await tester.pumpAndSettle();
+    }
+
+    // Cancel the picker (system back): no MOVE.
+    await startMove();
+    expect(find.text('Move 1 item to…'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(methods.where((m) => m == 'MOVE'), isEmpty);
+
+    // "Move here" at the starting folder is a no-op (dest == current path).
+    await startMove();
+    await tester.tap(find.widgetWithText(FilledButton, 'Move here'));
+    await tester.pumpAndSettle();
+    expect(methods.where((m) => m == 'MOVE'), isEmpty);
+
+    // Descend into /Sub and move there: one MOVE.
+    await startMove();
+    await tester.tap(find.text('Sub'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Move here'));
+    await tester.pumpAndSettle();
+    expect(methods.where((m) => m == 'MOVE').length, 1);
+  });
+
+  testWidgets('download selected as a zip hands a file to the share sheet',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    final shared = <ShareParams>[];
+    await tester.pumpWidget(_browser(
+      settings,
+      _mock(),
+      docs: _tmpDir,
+      share: (params) async {
+        shared.add(params);
+        return const ShareResult('ok', ShareResultStatus.success);
+      },
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('data.bin'));
+    await tester.pump();
+    // Real file I/O (download + temp write), so drive it in the real zone and
+    // pump manually afterwards (pumpAndSettle would hang on the async gap).
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Download zip'));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    });
+    await tester.pump();
+    expect(shared, hasLength(1));
+    expect(shared.first.files!.single.name, 'dufs-selection.zip');
+    expect(find.text('1 selected'), findsNothing); // selection cleared
+  });
+
+  testWidgets('a zip build failure shows a snackbar', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(
+      settings,
+      _mock(downloadFail: true),
+      docs: _tmpDir,
+      share: (params) async =>
+          const ShareResult('ok', ShareResultStatus.success),
+    ));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('data.bin'));
+    await tester.pump();
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Download zip'));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    expect(find.textContaining('Zip failed'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5)); // drain the snackbar timer
   });
 }

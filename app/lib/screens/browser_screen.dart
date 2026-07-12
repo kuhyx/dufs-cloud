@@ -8,6 +8,7 @@ import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/screens/text_editor_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/cloud_index.dart';
+import 'package:dufs_client/services/download_zip.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:dufs_client/util/cloud_stats.dart';
@@ -15,10 +16,12 @@ import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/entry_tile.dart';
 import 'package:dufs_client/widgets/filter_sheet.dart';
+import 'package:dufs_client/widgets/folder_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Builds a [DufsClient] from resolved credentials (injectable for tests).
 typedef ClientFactory = DufsClient Function({
@@ -26,6 +29,10 @@ typedef ClientFactory = DufsClient Function({
   required String username,
   required String password,
 });
+
+/// Opens the platform share sheet for [params]; injectable so tests avoid the
+/// share_plus platform channel.
+typedef ShareFn = Future<ShareResult> Function(ShareParams params);
 
 /// The main screen: browse the cloud, open media, upload, download and delete.
 class BrowserScreen extends StatefulWidget {
@@ -37,6 +44,7 @@ class BrowserScreen extends StatefulWidget {
     this.clientFactory,
     this.pickMedia,
     this.documentsDir,
+    this.shareSheet,
     super.key,
   });
 
@@ -52,6 +60,9 @@ class BrowserScreen extends StatefulWidget {
 
   /// Overrides where downloads are written.
   final Future<Directory> Function()? documentsDir;
+
+  /// Overrides the share sheet (defaults to [SharePlus]).
+  final ShareFn? shareSheet;
 
   @override
   State<BrowserScreen> createState() => _BrowserScreenState();
@@ -75,6 +86,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
   List<DirEntry>? _index;
   bool _indexing = false;
   final Set<String> _collapsed = <String>{};
+
+  // Multi-select mode (long-press to enter). Scoped to the current folder's
+  // grid only: bulk move/zip assume every selection is a direct child of
+  // [_path], which the whole-cloud filter view would violate.
+  bool _selecting = false;
+  final Set<String> _selected = <String>{};
 
   @override
   void initState() {
@@ -355,6 +372,121 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
+  // Long-press enters multi-select with the pressed entry already selected.
+  void _enterSelect(DirEntry entry) {
+    setState(() {
+      _selecting = true;
+      _selected
+        ..clear()
+        ..add(entry.path);
+    });
+  }
+
+  void _toggleSelect(DirEntry entry) {
+    setState(() {
+      if (!_selected.remove(entry.path)) _selected.add(entry.path);
+    });
+  }
+
+  void _exitSelect() {
+    setState(() {
+      _selecting = false;
+      _selected.clear();
+    });
+  }
+
+  // The current-folder entries whose paths are selected.
+  List<DirEntry> get _selectedEntries =>
+      _entries.where((e) => _selected.contains(e.path)).toList();
+
+  // Runs [op] over every selected entry, collecting failures so one bad item
+  // does not abort the batch; returns the number that failed.
+  Future<int> _batch(Future<void> Function(DirEntry) op) async {
+    var failed = 0;
+    for (final entry in _selectedEntries) {
+      try {
+        await op(entry);
+      } on Exception {
+        failed++;
+      }
+    }
+    return failed;
+  }
+
+  Future<void> _moveSelected() async {
+    final client = _client;
+    if (client == null || _selected.isEmpty) return;
+    final dest = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => FolderPicker(
+          client: client,
+          initialPath: _path,
+          count: _selected.length,
+        ),
+      ),
+    );
+    // Cancelled, or a no-op move into the folder the items already live in.
+    if (dest == null || dest == _path) return;
+    setState(() => _busy = true);
+    final failed = await _batch((e) => client.move(e.path, dest));
+    if (failed > 0) _snack('$failed item(s) could not be moved');
+    _index = null;
+    _exitSelect();
+    await _load(_path);
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _downloadSelectedZip() async {
+    final client = _client;
+    if (client == null || _selected.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await buildSelectionZip(client, _path, _selectedEntries);
+      final getDir = widget.documentsDir ?? getApplicationDocumentsDirectory;
+      final dir = await getDir();
+      final file = File(p.join(dir.path, 'dufs-selection.zip'));
+      await file.writeAsBytes(bytes);
+      final share = widget.shareSheet ?? SharePlus.instance.share;
+      await share(ShareParams(files: [XFile(file.path)]));
+      _exitSelect();
+    } on Exception catch (e) {
+      _snack('Zip failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _deleteSelected() async {
+    final client = _client;
+    if (client == null || _selected.isEmpty) return;
+    final n = _selected.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete $n item${n == 1 ? '' : 's'}?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _busy = true);
+    final failed = await _batch((e) => client.delete(e.path));
+    if (failed > 0) _snack('$failed item(s) could not be deleted');
+    _index = null;
+    _exitSelect();
+    await _load(_path);
+    if (mounted) setState(() => _busy = false);
+  }
+
   Future<void> _openSettings() async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
@@ -373,52 +505,85 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: _path == '/'
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.arrow_upward),
-                tooltip: 'Up',
-                onPressed: () => _navigate(_parent),
-              ),
-        title: _client == null
-            ? const Text('Cloud')
-            : TextField(
-                controller: _search,
-                decoration: const InputDecoration(
-                  hintText: 'Filter by name…',
-                  border: InputBorder.none,
-                ),
-                onChanged: (t) => _setFilter(_filter.copyWith(query: t)),
-              ),
-        actions: [
-          if (_client != null)
-            IconButton(
-              icon: Icon(
-                _filterActive ? Icons.filter_alt : Icons.filter_alt_outlined,
-              ),
-              tooltip: 'Filters',
-              onPressed: _openFilterSheet,
-            ),
-          if (_client != null)
-            IconButton(
-              icon: const Icon(Icons.create_new_folder),
-              tooltip: 'New folder',
-              onPressed: _busy ? null : _newFolder,
-            ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _openSettings,
-          ),
-        ],
-      ),
-      floatingActionButton: _client == null
+      appBar: _selecting ? _selectAppBar() : _browseAppBar(),
+      floatingActionButton: _client == null || _selecting
           ? null
           : FloatingActionButton(
               onPressed: _busy ? null : _upload,
               child: const Icon(Icons.upload),
             ),
       body: _buildBody(),
+    );
+  }
+
+  AppBar _browseAppBar() {
+    return AppBar(
+      leading: _path == '/'
+          ? null
+          : IconButton(
+              icon: const Icon(Icons.arrow_upward),
+              tooltip: 'Up',
+              onPressed: () => _navigate(_parent),
+            ),
+      title: _client == null
+          ? const Text('Cloud')
+          : TextField(
+              controller: _search,
+              decoration: const InputDecoration(
+                hintText: 'Filter by name…',
+                border: InputBorder.none,
+              ),
+              onChanged: (t) => _setFilter(_filter.copyWith(query: t)),
+            ),
+      actions: [
+        if (_client != null)
+          IconButton(
+            icon: Icon(
+              _filterActive ? Icons.filter_alt : Icons.filter_alt_outlined,
+            ),
+            tooltip: 'Filters',
+            onPressed: _openFilterSheet,
+          ),
+        if (_client != null)
+          IconButton(
+            icon: const Icon(Icons.create_new_folder),
+            tooltip: 'New folder',
+            onPressed: _busy ? null : _newFolder,
+          ),
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: _openSettings,
+        ),
+      ],
+    );
+  }
+
+  // Contextual action bar shown while items are selected.
+  AppBar _selectAppBar() {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        tooltip: 'Cancel selection',
+        onPressed: _exitSelect,
+      ),
+      title: Text('${_selected.length} selected'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.drive_file_move),
+          tooltip: 'Move',
+          onPressed: _busy ? null : _moveSelected,
+        ),
+        IconButton(
+          icon: const Icon(Icons.download),
+          tooltip: 'Download zip',
+          onPressed: _busy ? null : _downloadSelectedZip,
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete),
+          tooltip: 'Delete',
+          onPressed: _busy ? null : _deleteSelected,
+        ),
+      ],
     );
   }
 
@@ -456,7 +621,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
     return RefreshIndicator(
       onRefresh: () => _load(_path),
-      child: _grid(_entries),
+      child: _grid(_entries, selectable: true),
     );
   }
 
@@ -494,7 +659,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  Widget _grid(List<DirEntry> entries, {bool shrinkWrap = false}) {
+  Widget _grid(
+    List<DirEntry> entries, {
+    bool shrinkWrap = false,
+    bool selectable = false,
+  }) {
     final client = _client!;
     return GridView.builder(
       shrinkWrap: shrinkWrap,
@@ -509,10 +678,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
       itemCount: entries.length,
       itemBuilder: (context, i) {
         final entry = entries[i];
+        // While selecting, a tap toggles the item instead of opening it.
         return EntryTile(
           client: client,
           entry: entry,
-          onTap: () => unawaited(_open(entry)),
+          onTap: () => selectable && _selecting
+              ? _toggleSelect(entry)
+              : unawaited(_open(entry)),
+          onLongPress: selectable ? () => _enterSelect(entry) : null,
+          selected: selectable && _selecting
+              ? _selected.contains(entry.path)
+              : null,
+          onToggleSelect: selectable ? () => _toggleSelect(entry) : null,
           onDownload: entry.isDir ? null : () => unawaited(_download(entry)),
           onDelete: () => unawaited(_delete(entry)),
         );

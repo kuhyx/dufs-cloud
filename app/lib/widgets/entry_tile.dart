@@ -12,6 +12,7 @@ class EntryTile extends StatelessWidget {
     required this.client,
     required this.entry,
     required this.onTap,
+    this.onLongPress,
     this.onDownload,
     this.onDelete,
     this.selected,
@@ -27,6 +28,10 @@ class EntryTile extends StatelessWidget {
 
   /// Called when the tile body is tapped.
   final VoidCallback onTap;
+
+  /// Called on a long-press of the tile body (enters multi-select); null
+  /// disables the gesture.
+  final VoidCallback? onLongPress;
 
   /// Called to download the file (files only; null hides the menu item).
   final VoidCallback? onDownload;
@@ -48,6 +53,7 @@ class EntryTile extends StatelessWidget {
         children: [
           InkWell(
             onTap: onTap,
+            onLongPress: onLongPress,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
