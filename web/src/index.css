@@ -102,6 +102,315 @@ button.primary:disabled {
   cursor: default;
 }
 
+button.ghost,
+.tools button:not(.primary),
+.selbar button {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+}
+
+/* filter bar */
+.filterbar {
+  position: sticky;
+  top: 3.1rem;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.filterbar input,
+.filterbar select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+}
+.filter-query {
+  /* Fixed basis with no grow/shrink so the box stays a constant width as
+     sibling controls (extension picker, duration filter) appear and disappear.
+     The bar wraps rather than resizing this input. */
+  flex: 0 0 22rem;
+  max-width: 100%;
+}
+.filter-ext {
+  width: 5rem;
+}
+.filter-size {
+  width: 6rem;
+}
+.filter-dir {
+  width: 2.2rem;
+  text-align: center;
+}
+.filter-clear {
+  color: var(--accent);
+  background: none;
+  border: none;
+}
+
+/* size range (numeric inputs + dual slider) */
+.sizerange {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.slider {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 9rem;
+  height: 1.2rem;
+  cursor: pointer;
+  touch-action: none;
+  vertical-align: middle;
+}
+.slider-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  background: var(--border);
+  border-radius: 2px;
+}
+.slider-fill {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  background: var(--accent);
+  border-radius: 2px;
+}
+.slider-thumb {
+  position: absolute;
+  top: 50%;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-left: -0.45rem;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.slider-note {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  /* Fixed width + tabular figures so digit changes while dragging don't shove
+     the controls to the right. */
+  min-width: 8.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.filter-size {
+  font-variant-numeric: tabular-nums;
+}
+
+/* extension multi-select picker */
+.extpicker {
+  position: relative;
+  display: inline-flex;
+}
+.extpicker-btn {
+  font: inherit;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.extpicker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  background: none;
+  border: none;
+}
+.extpicker-menu {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  z-index: 10;
+  min-width: 11rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.extpicker-hint {
+  padding: 0.1rem 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
+}
+.extpicker-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: none;
+  background: none;
+  color: inherit;
+  border-radius: 6px;
+  text-align: left;
+  font: inherit;
+}
+.extpicker-opt:hover {
+  background: var(--card);
+}
+.ext-glyph {
+  width: 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+.ext-include .ext-glyph {
+  color: var(--accent);
+}
+.ext-exclude .ext-glyph {
+  color: var(--danger);
+}
+.ext-exclude {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.extpicker-empty {
+  padding: 0.3rem;
+  font-size: 0.82rem;
+}
+
+/* global (whole-cloud) filter results, grouped by folder */
+.result-group {
+  margin-bottom: 1.2rem;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.1rem 0.5rem;
+}
+.group-toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 0 0.2rem;
+  width: 1.2rem;
+}
+.group-path {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.85rem;
+  padding: 0;
+}
+.group-path:hover {
+  text-decoration: underline;
+}
+.group-count {
+  font-size: 0.72rem;
+}
+
+.duration-filter {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* selection bar */
+.selbar {
+  position: sticky;
+  top: 3.1rem;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  border-bottom: 1px solid var(--border);
+}
+.sel-count {
+  font-size: 0.9rem;
+  margin-right: auto;
+}
+
+/* selection checkbox on each tile */
+.tile-select {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tile-select input {
+  cursor: pointer;
+  margin: 0;
+}
+.tile-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* folder picker */
+.picker-path {
+  font-size: 0.82rem;
+  word-break: break-all;
+  margin: 0 0 0.5rem;
+}
+.picker-list {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.picker-list li {
+  padding: 0.1rem 0.4rem;
+}
+.picker-row {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+}
+.picker-row:hover {
+  background: var(--card);
+}
+.prompt-input {
+  width: 100%;
+  font: inherit;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-top: 0.6rem;
+}
+
 .content {
   flex: 1 1 auto;
   padding: 1rem;

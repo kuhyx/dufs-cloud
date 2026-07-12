@@ -82,6 +82,28 @@ export function crumbs(path: string): readonly { name: string; path: string }[] 
   return out;
 }
 
+/** True when `path` is `base` itself or lives anywhere beneath it. Root ("/")
+ * contains everything. Matches on a "/"-terminated prefix so "/Media/07" does
+ * NOT swallow "/Media/0700". */
+export function underPath(path: string, base: string): boolean {
+  if (base === "/") return true;
+  return path === base || path.startsWith(`${base}/`);
+}
+
+/** Human-readable duration, split into h/m/s (e.g. 5073000 ms → "1h 24m 33s").
+ * Trailing zero units are dropped; "0s" for a zero (or sub-second) duration. */
+export function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${String(h)}h`);
+  if (m > 0) parts.push(`${String(m)}m`);
+  if (s > 0 || parts.length === 0) parts.push(`${String(s)}s`);
+  return parts.join(" ");
+}
+
 /** Human-readable byte size. */
 export function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

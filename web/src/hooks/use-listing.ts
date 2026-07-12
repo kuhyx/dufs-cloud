@@ -10,6 +10,7 @@ const APP_FILES = new Set([
   "vite.svg",
   ".thumbs",
   "_thumbs",
+  ".meta",
 ]);
 
 export interface Listing {

@@ -3,6 +3,8 @@ import {
   basename,
   crumbs,
   encodePath,
+  formatDuration,
+  underPath,
   extname,
   humanSize,
   isImage,
@@ -68,6 +70,30 @@ describe("crumbs", () => {
       { name: "Media", path: "/Media" },
       { name: "2026", path: "/Media/2026" },
     ]);
+  });
+});
+
+describe("underPath", () => {
+  it("root contains everything", () => {
+    expect(underPath("/Media/x.jpg", "/")).toBe(true);
+  });
+  it("matches the folder itself and its descendants", () => {
+    expect(underPath("/Media/2026/07", "/Media/2026/07")).toBe(true);
+    expect(underPath("/Media/2026/07/pic.jpg", "/Media/2026/07")).toBe(true);
+  });
+  it("does not let a prefix swallow a sibling with a longer name", () => {
+    expect(underPath("/Media/0700/x.jpg", "/Media/07")).toBe(false);
+    expect(underPath("/Other/x.jpg", "/Media")).toBe(false);
+  });
+});
+
+describe("formatDuration", () => {
+  it("splits ms into h/m/s and drops trailing zero units", () => {
+    expect(formatDuration(5_073_000)).toBe("1h 24m 33s");
+    expect(formatDuration(90_000)).toBe("1m 30s");
+    expect(formatDuration(3_600_000)).toBe("1h");
+    expect(formatDuration(45_000)).toBe("45s");
+    expect(formatDuration(0)).toBe("0s");
   });
 });
 

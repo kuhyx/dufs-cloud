@@ -38,6 +38,8 @@ function renderGrid(over: Partial<Parameters<typeof Grid>[0]> = {}) {
   const props = {
     client: makeClient(),
     entries,
+    selected: new Set<string>(),
+    onToggleSelect: vi.fn(),
     onOpenDir: vi.fn(),
     onOpenMedia: vi.fn(),
     onEditText: vi.fn(),
@@ -71,6 +73,18 @@ describe("Grid", () => {
     expect(download).toHaveAttribute("href", "/pic.jpg");
     await userEvent.click(screen.getByLabelText("Delete pic.jpg"));
     expect(onDelete).toHaveBeenCalledWith(entries[1]);
+  });
+
+  it("toggles selection and marks selected tiles", async () => {
+    const onToggleSelect = vi.fn();
+    renderGrid({ selected: new Set(["/pic.jpg"]), onToggleSelect });
+    // A selected entry reports checked and carries the highlight class.
+    const picBox = screen.getByLabelText<HTMLInputElement>("Select pic.jpg");
+    expect(picBox.checked).toBe(true);
+    expect(picBox.closest(".tile")).toHaveClass("tile-selected");
+    // Clicking another tile's checkbox reports it back to the parent.
+    await userEvent.click(screen.getByLabelText("Select Media"));
+    expect(onToggleSelect).toHaveBeenCalledWith(entries[0]);
   });
 
   it("falls back to an icon when a thumbnail fails to load", () => {

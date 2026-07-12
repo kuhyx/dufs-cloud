@@ -6,6 +6,8 @@ import { humanSize, isImage, isText, isVideo } from "../lib/paths.ts";
 interface GridProps {
   readonly client: DufsClient;
   readonly entries: readonly DirEntry[];
+  readonly selected: ReadonlySet<string>;
+  readonly onToggleSelect: (entry: DirEntry) => void;
   readonly onOpenDir: (path: string) => void;
   readonly onOpenMedia: (entry: DirEntry) => void;
   readonly onEditText: (entry: DirEntry) => void;
@@ -39,6 +41,8 @@ function Thumb({
 export function Grid({
   client,
   entries,
+  selected,
+  onToggleSelect,
   onOpenDir,
   onOpenMedia,
   onEditText,
@@ -48,13 +52,27 @@ export function Grid({
     <ul className="grid">
       {entries.map((entry) => {
         const media = isImage(entry.name) || isVideo(entry.name);
+        const isSel = selected.has(entry.path);
         const activate = (): void => {
           if (entry.kind === "dir") onOpenDir(entry.path);
           else if (media) onOpenMedia(entry);
           else if (isText(entry.name)) onEditText(entry);
         };
         return (
-          <li key={entry.path} className={`tile tile-${entry.kind}`}>
+          <li
+            key={entry.path}
+            className={`tile tile-${entry.kind}${isSel ? " tile-selected" : ""}`}
+          >
+            <label className="tile-select">
+              <input
+                type="checkbox"
+                checked={isSel}
+                aria-label={`Select ${entry.name}`}
+                onChange={() => {
+                  onToggleSelect(entry);
+                }}
+              />
+            </label>
             <button type="button" className="tile-main" onClick={activate}>
               <span className="tile-preview">
                 {entry.kind === "dir" ? (

@@ -100,5 +100,12 @@ describe("dufs-client operations", () => {
       );
       expect(await createDufsClient(fetchImpl).fetchMeta()).toEqual({});
     });
+
+    it("returns {} when the network fetch itself rejects (offline)", async () => {
+      const fetchImpl = vi.fn<typeof fetch>(() =>
+        Promise.reject(new Error("offline")),
+      );
+      expect(await createDufsClient(fetchImpl).fetchMeta()).toEqual({});
+    });
   });
 });

@@ -1,17 +1,45 @@
 import { useMemo, useRef, useState } from "react";
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
-import { crumbs, isImage, isVideo } from "../lib/paths.ts";
+import {
+  basename,
+  crumbs,
+  isImage,
+  isVideo,
+  joinPath,
+  underPath,
+} from "../lib/paths.ts";
+import {
+  applyFilterSort,
+  DEFAULT_FILTER,
+  DEFAULT_SORT,
+  isFilterActive,
+  type FilterState,
+  type SortState,
+} from "../lib/filter-sort.ts";
+import {
+  availableExtensions,
+  durationValues,
+  groupByFolder,
+  sizeValues,
+} from "../lib/cloud-stats.ts";
+import { buildSelectionZip, saveBytes } from "../lib/download.ts";
 import { useHashPath } from "../lib/use-hash-path.ts";
 import { useListing } from "../hooks/use-listing.ts";
+import { useMeta } from "../hooks/use-meta.ts";
+import { useCloudIndex } from "../hooks/use-cloud-index.ts";
 import { Grid } from "./grid.tsx";
+import { FilterBar } from "./filter-bar.tsx";
 import { MediaViewer } from "./media-viewer.tsx";
 import { TextEditor } from "./text-editor.tsx";
 import { ConfirmDialog } from "./confirm-dialog.tsx";
+import { PromptDialog } from "./prompt-dialog.tsx";
+import { FolderPicker } from "./folder-picker.tsx";
 
 export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.Element {
   const [path, navigate] = useHashPath();
   const { entries, loading, error, reload } = useListing(client, path);
+  const meta = useMeta(client);
   // -1 means "no viewer open" (avoids a null branch in step()).
   const [viewerIndex, setViewerIndex] = useState(-1);
   const [editEntry, setEditEntry] = useState<DirEntry | null>(null);
@@ -19,10 +47,99 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
   const [busy, setBusy] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const media = useMemo(
-    () => entries.filter((e) => isImage(e.name) || isVideo(e.name)),
-    [entries],
+  const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [showMove, setShowMove] = useState(false);
+  // Folder groups the user has collapsed in the global-results view.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  // The whole-cloud index powers global filtering; it is walked lazily the first
+  // time the filter bar is touched, then cached (see useCloudIndex).
+  const [indexEnabled, setIndexEnabled] = useState(false);
+  const cloudIndex = useCloudIndex(client, indexEnabled);
+
+  const filterActive = isFilterActive(filter);
+  // Global mode: an active filter searches the whole cloud (once indexed),
+  // rather than just the current folder.
+  const globalMode = filterActive && cloudIndex.ready && cloudIndex.error === null;
+
+  // Scope the index to the current folder's subtree: filtering in /Media/2026/07
+  // searches only there; filtering at the root searches everything.
+  const scoped = useMemo(
+    () => cloudIndex.entries.filter((e) => underPath(e.path, path)),
+    [cloudIndex.entries, path],
   );
+  const extensions = useMemo(() => availableExtensions(scoped), [scoped]);
+  const sizeVals = useMemo(() => sizeValues(scoped), [scoped]);
+  const durVals = useMemo(() => durationValues(scoped, meta), [scoped, meta]);
+
+  // Current-folder view (browsing + sorting, no cross-folder search).
+  const visible = useMemo(
+    () => applyFilterSort(entries, meta, filter, sort),
+    [entries, meta, filter, sort],
+  );
+  // Scoped search results when filtering, grouped under their folders. The type
+  // filter chooses the pool: folders when Folders is selected, files otherwise.
+  const globalResults = useMemo(() => {
+    if (!globalMode) return [];
+    const wantFolders = filter.type === "folder";
+    const pool = scoped.filter((e) =>
+      wantFolders ? e.kind === "dir" : e.kind === "file",
+    );
+    return applyFilterSort(pool, meta, filter, sort);
+  }, [globalMode, scoped, meta, filter, sort]);
+  const groups = useMemo(() => groupByFolder(globalResults), [globalResults]);
+
+  // What is on screen right now — the source of truth for selection and the
+  // media viewer, so both work identically in folder and global mode.
+  const displayed = globalMode ? globalResults : visible;
+  const media = useMemo(
+    () => displayed.filter((e) => isImage(e.name) || isVideo(e.name)),
+    [displayed],
+  );
+  const selectedEntries = useMemo(
+    () => displayed.filter((e) => selected.has(e.path)),
+    [displayed, selected],
+  );
+
+  function clearSelection(): void {
+    setSelected(new Set());
+  }
+
+  // Reload the current folder and invalidate the whole-cloud index so a later
+  // filter re-walks the changed tree (lazy: it does not re-walk immediately).
+  function refreshAll(): void {
+    reload();
+    cloudIndex.reload();
+  }
+
+  // Navigation exits any active search and drops the selection: both belong to
+  // the view we're leaving. Global (filtered) results are path-independent, so
+  // "going" to a folder only makes sense once the filter is cleared.
+  function go(dest: string): void {
+    clearSelection();
+    setFilter(DEFAULT_FILTER);
+    navigate(dest);
+  }
+
+  function toggleCollapsed(folder: string): void {
+    setCollapsed((cur) => {
+      const next = new Set(cur);
+      if (next.has(folder)) next.delete(folder);
+      else next.add(folder);
+      return next;
+    });
+  }
+
+  function toggleSelect(entry: DirEntry): void {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(entry.path)) next.delete(entry.path);
+      else next.add(entry.path);
+      return next;
+    });
+  }
 
   // Grid only calls this for media entries, so the entry is always in `media`.
   function openMedia(entry: DirEntry): void {
@@ -41,7 +158,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
         for (const file of Array.from(files)) {
           await client.upload(path, file);
         }
-        reload();
+        refreshAll();
       } catch (err: unknown) {
         setBusy(err instanceof Error ? err.message : String(err));
         return;
@@ -57,14 +174,69 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
       .remove(entry.path)
       .then(() => {
         setBusy(null);
-        reload();
+        refreshAll();
       })
       .catch((err: unknown) => {
         setBusy(err instanceof Error ? err.message : String(err));
       });
   }
 
-  const viewerEntry = viewerIndex >= 0 ? media[viewerIndex] : null;
+  function createFolder(name: string): void {
+    setShowNewFolder(false);
+    setBusy(`Creating ${name}…`);
+    client
+      .createDir(joinPath(path, name))
+      .then(() => {
+        setBusy(null);
+        refreshAll();
+      })
+      .catch((err: unknown) => {
+        setBusy(err instanceof Error ? err.message : String(err));
+      });
+  }
+
+  function moveSelected(destDir: string): void {
+    setShowMove(false);
+    setBusy(`Moving ${selectedEntries.length} item(s)…`);
+    void (async () => {
+      try {
+        for (const entry of selectedEntries) {
+          await client.move(entry.path, destDir);
+        }
+      } catch (err: unknown) {
+        setBusy(err instanceof Error ? err.message : String(err));
+        return;
+      }
+      setBusy(null);
+      clearSelection();
+      refreshAll();
+    })();
+  }
+
+  function downloadSelected(): void {
+    setBusy(`Preparing ${selectedEntries.length} item(s)…`);
+    // Global results span folders, so their archive paths are relative to the
+    // cloud root; a folder view zips relative to the folder itself.
+    const zipBase = globalMode ? "/" : path;
+    void (async () => {
+      try {
+        // Folders are gathered recursively and zipped in the browser: dufs's
+        // server ?zip 404s for subfolders under render-spa (the prod config).
+        const bytes = await buildSelectionZip(client, zipBase, selectedEntries);
+        const base = basename(zipBase);
+        saveBytes(bytes, `${base === "/" ? "cloud" : base}.zip`);
+      } catch (err: unknown) {
+        setBusy(err instanceof Error ? err.message : String(err));
+        return;
+      }
+      setBusy(null);
+      clearSelection();
+    })();
+  }
+
+  const viewerEntry =
+    viewerIndex >= 0 && viewerIndex < media.length ? media[viewerIndex] : null;
+  const showListing = !loading && error === null;
 
   return (
     <div className="gallery">
@@ -76,7 +248,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
                 type="button"
                 className="crumb"
                 onClick={() => {
-                  navigate(c.path);
+                  go(c.path);
                 }}
               >
                 {c.name}
@@ -87,6 +259,14 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
         </nav>
         <div className="tools">
           {busy !== null && <span className="busy">{busy}</span>}
+          <button
+            type="button"
+            onClick={() => {
+              setShowNewFolder(true);
+            }}
+          >
+            New folder
+          </button>
           <button
             type="button"
             className="primary"
@@ -109,17 +289,117 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
         </div>
       </header>
 
+      {showListing && (
+        <FilterBar
+          filter={filter}
+          sort={sort}
+          onFilter={setFilter}
+          onSort={setSort}
+          extensions={extensions}
+          sizeValues={sizeVals}
+          durationValues={durVals}
+          indexing={filterActive && cloudIndex.loading}
+          onActivate={() => {
+            setIndexEnabled(true);
+          }}
+        />
+      )}
+
+      {selectedEntries.length > 0 && (
+        <div className="selbar">
+          <span className="sel-count">{selectedEntries.length} selected</span>
+          <button
+            type="button"
+            onClick={() => {
+              setShowMove(true);
+            }}
+          >
+            Move
+          </button>
+          <button type="button" onClick={downloadSelected}>
+            Download
+          </button>
+          <button type="button" onClick={clearSelection}>
+            Clear
+          </button>
+        </div>
+      )}
+
       <main className="content">
         {loading && <p className="muted">Loading…</p>}
         {error !== null && <p className="error">Could not load: {error}</p>}
-        {!loading && error === null && entries.length === 0 && (
+
+        {/* Global (whole-cloud) search: an active filter, once indexed. */}
+        {showListing && filterActive && !cloudIndex.ready && (
+          <p className="muted">Indexing the whole cloud…</p>
+        )}
+        {showListing && filterActive && cloudIndex.ready && cloudIndex.error !== null && (
+          <p className="error">Could not index the cloud: {cloudIndex.error}</p>
+        )}
+        {globalMode && groups.length === 0 && (
+          <p className="muted">Nothing on the cloud matches your filters.</p>
+        )}
+        {globalMode &&
+          groups.map((group) => {
+            const isCollapsed = collapsed.has(group.folder);
+            return (
+              <section key={group.folder} className="result-group">
+                <div className="group-head">
+                  <button
+                    type="button"
+                    className="group-toggle"
+                    aria-label={
+                      isCollapsed
+                        ? `Expand ${group.folder}`
+                        : `Collapse ${group.folder}`
+                    }
+                    aria-expanded={!isCollapsed}
+                    onClick={() => {
+                      toggleCollapsed(group.folder);
+                    }}
+                  >
+                    {isCollapsed ? "▸" : "▾"}
+                  </button>
+                  <button
+                    type="button"
+                    className="group-path"
+                    onClick={() => {
+                      go(group.folder);
+                    }}
+                  >
+                    📁 {group.folder}
+                  </button>
+                  <span className="group-count muted">
+                    {group.entries.length}
+                  </span>
+                </div>
+                {!isCollapsed && (
+                  <Grid
+                    client={client}
+                    entries={group.entries}
+                    selected={selected}
+                    onToggleSelect={toggleSelect}
+                    onOpenDir={go}
+                    onOpenMedia={openMedia}
+                    onEditText={setEditEntry}
+                    onDelete={setDeleteEntry}
+                  />
+                )}
+              </section>
+            );
+          })}
+
+        {/* Folder browsing: no active filter. */}
+        {showListing && !filterActive && entries.length === 0 && (
           <p className="muted">This folder is empty.</p>
         )}
-        {!loading && error === null && entries.length > 0 && (
+        {showListing && !filterActive && entries.length > 0 && (
           <Grid
             client={client}
-            entries={entries}
-            onOpenDir={navigate}
+            entries={visible}
+            selected={selected}
+            onToggleSelect={toggleSelect}
+            onOpenDir={go}
             onOpenMedia={openMedia}
             onEditText={setEditEntry}
             onDelete={setDeleteEntry}
@@ -162,6 +442,28 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           }}
           onCancel={() => {
             setDeleteEntry(null);
+          }}
+        />
+      )}
+      {showNewFolder && (
+        <PromptDialog
+          title="New folder name"
+          placeholder="Folder name"
+          confirmLabel="Create"
+          onConfirm={createFolder}
+          onCancel={() => {
+            setShowNewFolder(false);
+          }}
+        />
+      )}
+      {showMove && (
+        <FolderPicker
+          client={client}
+          initialPath={path}
+          count={selectedEntries.length}
+          onPick={moveSelected}
+          onCancel={() => {
+            setShowMove(false);
           }}
         />
       )}

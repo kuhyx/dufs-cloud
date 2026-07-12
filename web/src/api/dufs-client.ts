@@ -131,11 +131,14 @@ export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
       await request("PUT", path, { body: content });
     },
     async fetchMeta() {
-      const res = await fetchImpl(encodePath("/.meta/index.json"), {
-        credentials: "same-origin",
-      });
-      if (!res.ok) return {};
+      // Tolerant by contract: a missing index, a non-ok status, a network
+      // failure (offline), or malformed JSON all resolve to {} — the index is
+      // an optional enrichment, never a hard dependency of the listing.
       try {
+        const res = await fetchImpl(encodePath("/.meta/index.json"), {
+          credentials: "same-origin",
+        });
+        if (!res.ok) return {};
         const data: unknown = await res.json();
         return isMetaIndex(data) ? data.entries : {};
       } catch {

@@ -61,7 +61,8 @@ describe("isFilterActive", () => {
     expect(isFilterActive(DEFAULT_FILTER)).toBe(false);
     expect(isFilterActive(filter({ query: "x" }))).toBe(true);
     expect(isFilterActive(filter({ type: "image" }))).toBe(true);
-    expect(isFilterActive(filter({ extension: "jpg" }))).toBe(true);
+    expect(isFilterActive(filter({ extIncludes: ["jpg"] }))).toBe(true);
+    expect(isFilterActive(filter({ extExcludes: ["jpg"] }))).toBe(true);
     expect(isFilterActive(filter({ minSize: 1 }))).toBe(true);
     expect(isFilterActive(filter({ maxSize: 1 }))).toBe(true);
     expect(isFilterActive(filter({ minDurationMs: 1 }))).toBe(true);
@@ -104,14 +105,36 @@ describe("applyFilterSort — filtering", () => {
     expect(names(out)).toEqual(["Album"]);
   });
 
-  it("extension filter (folders pass through)", () => {
+  it("include-extension filter keeps matching files (folders pass through)", () => {
     const out = applyFilterSort(
       entries,
       meta,
-      filter({ extension: "mp4" }),
+      filter({ extIncludes: ["mp4"] }),
       sort(),
     );
     expect(names(out)).toEqual(["Album", "long.mp4", "short.mp4"]);
+  });
+
+  it("include multiple extensions (webp + png style)", () => {
+    const out = applyFilterSort(
+      entries,
+      meta,
+      filter({ extIncludes: ["jpg", "txt"] }),
+      sort(),
+    );
+    expect(names(out)).toEqual(["Album", "notes.txt", "photo.jpg"]);
+  });
+
+  it("exclude-extension filter drops matching files, keeps extensionless", () => {
+    const out = applyFilterSort(
+      [...entries, file("README", 1, 1)],
+      meta,
+      filter({ extExcludes: ["mp4"] }),
+      sort(),
+    );
+    // mp4 files dropped; README (no extension) counts as "not mp4".
+    // (name sort is case-insensitive, so README trails photo.jpg.)
+    expect(names(out)).toEqual(["Album", "notes.txt", "photo.jpg", "README"]);
   });
 
   it("size range excludes files outside the bounds", () => {

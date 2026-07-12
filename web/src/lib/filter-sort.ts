@@ -27,8 +27,10 @@ export interface FilterState {
   /** Fuzzy (subsequence) filename query; empty matches everything. */
   readonly query: string;
   readonly type: TypeFilter;
-  /** Lower-cased extension without the dot; "" means any. */
-  readonly extension: string;
+  /** Extensions (no dot) to keep — an allowlist; empty means "any". */
+  readonly extIncludes: readonly string[];
+  /** Extensions (no dot) to drop — a denylist, applied after the allowlist. */
+  readonly extExcludes: readonly string[];
   readonly minSize: number | null;
   readonly maxSize: number | null;
   readonly minDurationMs: number | null;
@@ -43,7 +45,8 @@ export interface SortState {
 export const DEFAULT_FILTER: FilterState = {
   query: "",
   type: "all",
-  extension: "",
+  extIncludes: [],
+  extExcludes: [],
   minSize: null,
   maxSize: null,
   minDurationMs: null,
@@ -57,7 +60,8 @@ export function isFilterActive(f: FilterState): boolean {
   return (
     f.query !== "" ||
     f.type !== "all" ||
-    f.extension !== "" ||
+    f.extIncludes.length > 0 ||
+    f.extExcludes.length > 0 ||
     f.minSize !== null ||
     f.maxSize !== null ||
     f.minDurationMs !== null ||
@@ -108,7 +112,11 @@ function passesFilters(
   if (f.type !== "all" && categoryOf(entry) !== f.type) return false;
   // Folders are navigation aids: they skip the file-only filters below.
   if (entry.kind === "dir") return true;
-  if (f.extension !== "" && extname(entry.name) !== f.extension) return false;
+  const ext = extname(entry.name);
+  // Allowlist (if any) then denylist. Extensionless files ("") fail an
+  // allowlist but pass a denylist — i.e. they count as "not <ext>".
+  if (f.extIncludes.length > 0 && !f.extIncludes.includes(ext)) return false;
+  if (f.extExcludes.includes(ext)) return false;
   if (f.minSize !== null && entry.size < f.minSize) return false;
   if (f.maxSize !== null && entry.size > f.maxSize) return false;
   const dur = durationOf(entry, meta);
