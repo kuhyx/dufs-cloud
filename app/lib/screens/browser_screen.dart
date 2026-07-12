@@ -2,14 +2,19 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dufs_client/models/dir_entry.dart';
+import 'package:dufs_client/models/media_meta.dart';
 import 'package:dufs_client/screens/image_screen.dart';
 import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/screens/text_editor_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
+import 'package:dufs_client/services/cloud_index.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/settings.dart';
+import 'package:dufs_client/util/cloud_stats.dart';
+import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/entry_tile.dart';
+import 'package:dufs_client/widgets/filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -60,6 +65,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
   String? _error;
   bool _busy = false;
 
+  MetaIndex _meta = <String, MediaMeta>{};
+  FilterState _filter = defaultFilter;
+  SortState _sort = defaultSort;
+  final TextEditingController _search = TextEditingController();
+
+  // Whole-cloud index for scoped global filtering: built lazily on first filter
+  // use, cached, invalidated (set null) on mutations.
+  List<DirEntry>? _index;
+  bool _indexing = false;
+  final Set<String> _collapsed = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +84,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   @override
   void dispose() {
+    _search.dispose();
     _client?.close();
     super.dispose();
   }
@@ -87,6 +104,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       username: widget.settings.username,
       password: await widget.settings.password(),
     );
+    _meta = await _client!.fetchMeta();
     await _load('/');
   }
 
@@ -120,11 +138,81 @@ class _BrowserScreenState extends State<BrowserScreen> {
     return cut.isEmpty ? '/' : cut;
   }
 
+  // The cloud index restricted to the current folder's subtree.
+  List<DirEntry> get _scoped => (_index ?? const <DirEntry>[])
+      .where((e) => paths.underPath(e.path, _path))
+      .toList();
+
+  bool get _filterActive => isFilterActive(_filter);
+
+  // Global search mode: an active filter, once the index is built.
+  bool get _globalMode => _filterActive && _index != null;
+
+  List<FolderGroup> get _groups {
+    if (!_globalMode) return const [];
+    final wantFolders = _filter.type == TypeFilter.folder;
+    final pool =
+        _scoped.where((e) => wantFolders ? e.isDir : !e.isDir).toList();
+    return groupByFolder(applyFilterSort(pool, _meta, _filter, _sort));
+  }
+
+  Future<void> _ensureIndex() async {
+    final client = _client;
+    if (_index != null || _indexing || client == null) return;
+    setState(() => _indexing = true);
+    final index = await buildCloudIndex(client);
+    if (!mounted) return;
+    setState(() {
+      _index = index;
+      _indexing = false;
+    });
+  }
+
+  void _setFilter(FilterState f) {
+    setState(() => _filter = f);
+    unawaited(_ensureIndex());
+  }
+
+  // Navigation exits any active search (its results are path-independent).
+  void _navigate(String path) {
+    _search.clear();
+    setState(() {
+      _filter = defaultFilter;
+      _collapsed.clear();
+    });
+    unawaited(_load(path));
+  }
+
+  void _openFilterSheet() {
+    unawaited(_ensureIndex());
+    unawaited(showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(
+        builder: (_, setSheet) => FilterSheet(
+          filter: _filter,
+          sort: _sort,
+          extensions: availableExtensions(_scoped),
+          sizeValues: sizeValues(_scoped),
+          durationValues: durationValues(_scoped, _meta),
+          onFilter: (f) {
+            _setFilter(f);
+            setSheet(() {});
+          },
+          onSort: (s) {
+            setState(() => _sort = s);
+            setSheet(() {});
+          },
+        ),
+      ),
+    ));
+  }
+
   Future<void> _open(DirEntry entry) async {
     final client = _client;
     if (client == null) return;
     if (entry.isDir) {
-      await _load(entry.path);
+      _navigate(entry.path);
     } else if (entry.isImage) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -187,6 +275,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     try {
       await client.upload(_path, picked.name, await picked.readAsBytes());
       _snack('Uploaded ${picked.name}');
+      _index = null;
       await _load(_path);
     } on Exception catch (e) {
       _snack('Upload failed: $e');
@@ -219,6 +308,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     setState(() => _busy = true);
     try {
       await client.delete(entry.path);
+      _index = null;
       await _load(_path);
     } on Exception catch (e) {
       _snack('Delete failed: $e');
@@ -256,6 +346,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     setState(() => _busy = true);
     try {
       await client.createDir(paths.joinPath(_path, name));
+      _index = null;
       await _load(_path);
     } on Exception catch (e) {
       _snack('Create failed: $e');
@@ -288,10 +379,27 @@ class _BrowserScreenState extends State<BrowserScreen> {
             : IconButton(
                 icon: const Icon(Icons.arrow_upward),
                 tooltip: 'Up',
-                onPressed: () => _load(_parent),
+                onPressed: () => _navigate(_parent),
               ),
-        title: Text(_path == '/' ? 'Cloud' : _path),
+        title: _client == null
+            ? const Text('Cloud')
+            : TextField(
+                controller: _search,
+                decoration: const InputDecoration(
+                  hintText: 'Filter by name…',
+                  border: InputBorder.none,
+                ),
+                onChanged: (t) => _setFilter(_filter.copyWith(query: t)),
+              ),
         actions: [
+          if (_client != null)
+            IconButton(
+              icon: Icon(
+                _filterActive ? Icons.filter_alt : Icons.filter_alt_outlined,
+              ),
+              tooltip: 'Filters',
+              onPressed: _openFilterSheet,
+            ),
           if (_client != null)
             IconButton(
               icon: const Icon(Icons.create_new_folder),
@@ -324,32 +432,91 @@ class _BrowserScreenState extends State<BrowserScreen> {
         ),
       );
     }
+    if (_filterActive) {
+      if (_index == null) {
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 12),
+              Text('Indexing the cloud…'),
+            ],
+          ),
+        );
+      }
+      final groups = _groups;
+      if (groups.isEmpty) {
+        return const Center(child: Text('Nothing matches your filters.'));
+      }
+      return _buildGroups(groups);
+    }
     if (_entries.isEmpty) {
       return const Center(child: Text('This folder is empty.'));
     }
-    final client = _client!;
     return RefreshIndicator(
       onRefresh: () => _load(_path),
-      child: GridView.builder(
-        padding: const EdgeInsets.all(8),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 150,
-          childAspectRatio: 0.82,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: _entries.length,
-        itemBuilder: (context, i) {
-          final entry = _entries[i];
-          return EntryTile(
-            client: client,
-            entry: entry,
-            onTap: () => unawaited(_open(entry)),
-            onDownload: entry.isDir ? null : () => unawaited(_download(entry)),
-            onDelete: () => unawaited(_delete(entry)),
-          );
-        },
+      child: _grid(_entries),
+    );
+  }
+
+  Widget _buildGroups(List<FolderGroup> groups) {
+    return ListView(
+      children: [
+        for (final g in groups) ...[
+          InkWell(
+            onTap: () => setState(() {
+              if (!_collapsed.remove(g.folder)) _collapsed.add(g.folder);
+            }),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Row(
+                children: [
+                  Icon(
+                    _collapsed.contains(g.folder)
+                        ? Icons.chevron_right
+                        : Icons.expand_more,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(g.folder, overflow: TextOverflow.ellipsis),
+                  ),
+                  Text('${g.entries.length}'),
+                ],
+              ),
+            ),
+          ),
+          if (!_collapsed.contains(g.folder))
+            _grid(g.entries, shrinkWrap: true),
+        ],
+      ],
+    );
+  }
+
+  Widget _grid(List<DirEntry> entries, {bool shrinkWrap = false}) {
+    final client = _client!;
+    return GridView.builder(
+      shrinkWrap: shrinkWrap,
+      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+      padding: const EdgeInsets.all(8),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 150,
+        childAspectRatio: 0.82,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
       ),
+      itemCount: entries.length,
+      itemBuilder: (context, i) {
+        final entry = entries[i];
+        return EntryTile(
+          client: client,
+          entry: entry,
+          onTap: () => unawaited(_open(entry)),
+          onDownload: entry.isDir ? null : () => unawaited(_download(entry)),
+          onDelete: () => unawaited(_delete(entry)),
+        );
+      },
     );
   }
 }

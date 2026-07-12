@@ -7,6 +7,8 @@ import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/settings.dart';
+import 'package:dufs_client/util/filter_sort.dart';
+import 'package:dufs_client/widgets/filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -275,7 +277,12 @@ void main() {
     // Create with a name → MKCOL.
     await tester.tap(find.byIcon(Icons.create_new_folder));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Trips');
+    await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Trips');
     await tester.tap(find.widgetWithText(FilledButton, 'Create'));
     await tester.pumpAndSettle();
     expect(methods, contains('MKCOL'));
@@ -287,7 +294,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.create_new_folder));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'X');
+    await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'X');
     await tester.tap(find.widgetWithText(FilledButton, 'Create'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Create failed'), findsOneWidget);
@@ -379,5 +391,86 @@ void main() {
     await tester.fling(find.text('pic.jpg'), const Offset(0, 300), 1000);
     await tester.pumpAndSettle();
     expect(find.text('pic.jpg'), findsOneWidget);
+  });
+
+  testWidgets('searching filters the whole cloud into a collapsible group',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock()));
+    await tester.pumpAndSettle();
+
+    // Typing in the AppBar search box activates the filter, which lazily
+    // indexes the cloud and re-renders matches grouped by their folder.
+    await tester.enterText(find.byType(TextField), 'pic');
+    await tester.pumpAndSettle();
+    expect(find.text('pic.jpg'), findsOneWidget);
+    expect(find.text('clip.mp4'), findsNothing); // filtered out by the query
+    // The single match lives at the root, so one '/' group header appears.
+    expect(find.text('/'), findsOneWidget);
+
+    // Collapsing the group header hides its grid; expanding restores it.
+    await tester.tap(find.text('/'));
+    await tester.pumpAndSettle();
+    expect(find.text('pic.jpg'), findsNothing);
+    await tester.tap(find.text('/'));
+    await tester.pumpAndSettle();
+    expect(find.text('pic.jpg'), findsOneWidget);
+  });
+
+  testWidgets('shows an indexing state while the cloud is walked',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    // A deliberately slow PROPFIND keeps the index build pending long enough
+    // to observe the intermediate "Indexing…" frame before it resolves.
+    final mock = MockClient((req) async {
+      switch (req.method) {
+        case 'PROPFIND':
+          await Future<void>.delayed(const Duration(milliseconds: 40));
+          if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
+          return http.Response(_listing(_root), 207);
+        default:
+          return http.Response.bytes([1, 2, 3], 200);
+      }
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'pic');
+    await tester.pump(); // one frame: filter active, index still building
+    expect(find.text('Indexing the cloud…'), findsOneWidget);
+    await tester.pumpAndSettle(); // drain the delayed walk
+    expect(find.text('pic.jpg'), findsOneWidget);
+  });
+
+  testWidgets('a query with no matches shows the empty-filter message',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock()));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'zzzzz');
+    await tester.pumpAndSettle();
+    expect(find.text('Nothing matches your filters.'), findsOneWidget);
+  });
+
+  testWidgets('the filter sheet edits type and sort', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Filters'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FilterSheet), findsOneWidget);
+
+    // Toggling sort direction routes through the sheet's onSort callback.
+    await tester.tap(find.byTooltip('Ascending'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Descending'), findsOneWidget);
+
+    // Choosing a type from the dropdown routes through onFilter.
+    await tester.tap(find.byType(DropdownButton<TypeFilter>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Images').last);
+    await tester.pumpAndSettle();
+    expect(find.byType(FilterSheet), findsOneWidget);
   });
 }
