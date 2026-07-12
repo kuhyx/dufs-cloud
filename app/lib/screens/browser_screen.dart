@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/screens/image_screen.dart';
 import 'package:dufs_client/screens/settings_screen.dart';
+import 'package:dufs_client/screens/text_editor_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/settings.dart';
@@ -136,6 +137,16 @@ class _BrowserScreenState extends State<BrowserScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => VideoScreen(
+            client: client,
+            path: entry.path,
+            title: entry.name,
+          ),
+        ),
+      );
+    } else if (entry.isText) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TextEditorScreen(
             client: client,
             path: entry.path,
             title: entry.name,
@@ -307,6 +318,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     if (entry.isDir) return Icons.folder;
     if (entry.isImage) return Icons.image;
     if (entry.isVideo) return Icons.movie;
+    if (entry.isText) return Icons.description;
     return Icons.insert_drive_file;
   }
 }

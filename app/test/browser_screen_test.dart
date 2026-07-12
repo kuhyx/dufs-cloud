@@ -40,6 +40,7 @@ const _root = [
   ('/pic.jpg', false, 10),
   ('/clip.mp4', false, 20),
   ('/doc.txt', false, 30),
+  ('/data.bin', false, 40),
 ];
 
 MockClient _mock({
@@ -170,18 +171,29 @@ void main() {
     expect(find.byType(VideoScreen), findsOneWidget);
   });
 
-  testWidgets('tapping a non-media file downloads it', (tester) async {
+  testWidgets('tapping a non-media, non-text file downloads it',
+      (tester) async {
     final settings = await _settings(configured: true);
     await tester.pumpWidget(_browser(settings, _mock(), docs: _tmpDir));
     await tester.pumpAndSettle();
     // The download does real temp-file I/O, so drive it in the real zone.
     await tester.runAsync(() async {
-      await tester.tap(find.text('doc.txt'));
+      await tester.tap(find.text('data.bin'));
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    expect(find.textContaining('Saved doc.txt'), findsOneWidget);
+    expect(find.textContaining('Saved data.bin'), findsOneWidget);
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('tapping a text file opens the editor', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('doc.txt'));
+    await tester.pumpAndSettle();
+    // The editor screen shows a Save action.
+    expect(find.byTooltip('Save'), findsOneWidget);
   });
 
   testWidgets('download via the popup menu, and a download error',
