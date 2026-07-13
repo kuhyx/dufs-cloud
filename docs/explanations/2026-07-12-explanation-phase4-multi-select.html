@@ -1,0 +1,434 @@
+<title>Phase 4 — Multi-select (move / zip-share / delete)</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1c20; --muted: #5b6472; --card: #f5f7fa;
+    --border: #dfe4ea; --accent: #4a63d6; --accent-soft: #e7ebfb;
+    --good: #1c7c4a; --good-soft: #dcf3e6; --bad: #b0223a; --bad-soft: #fbe3e7;
+    --code-bg: #f2f4f7; --add: #1c7c4a; --del: #b0223a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e6e9ef; --muted: #9aa4b2; --card: #1d2026;
+      --border: #2c313a; --accent: #8ea2ff; --accent-soft: #232a45;
+      --good: #6fdca0; --good-soft: #16301f; --bad: #ff8ea0; --bad-soft: #35171d;
+      --code-bg: #1a1d23; --add: #6fdca0; --del: #ff8ea0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65; font-size: 17px;
+  }
+  main { max-width: min(48rem, 92vw); margin: 0 auto; padding: 2rem 0 5rem; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: .2rem 0 .4rem; }
+  h2 { font-size: 1.4rem; margin: 2.6rem 0 .8rem; padding-top: .6rem; border-top: 1px solid var(--border); }
+  h3 { font-size: 1.08rem; margin: 1.6rem 0 .5rem; }
+  p { margin: .7rem 0; }
+  a { color: var(--accent); }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; font-size: .88em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .lede { color: var(--muted); font-size: 1.06rem; }
+  .toc {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem 1.2rem; margin: 1.6rem 0;
+  }
+  .toc strong { display:block; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:.4rem;}
+  .toc ol { margin: 0; padding-left: 1.2rem; }
+  .toc li { margin: .15rem 0; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .82rem; line-height: 1.5;
+  }
+  pre .add { color: var(--add); }
+  pre .del { color: var(--del); }
+  pre .cmt { color: var(--muted); font-style: italic; }
+  .note { background: var(--accent-soft); border-left: 4px solid var(--accent);
+    padding: .7rem 1rem; border-radius: 0 8px 8px 0; margin: 1.2rem 0; font-size: .95rem; }
+  /* ---- phone mock diagram ---- */
+  .stage { display:flex; gap:1.2rem; flex-wrap:wrap; justify-content:center; margin:1.4rem 0; }
+  .phone { width: 230px; border: 2px solid var(--border); border-radius: 20px; overflow:hidden;
+    background: var(--bg); box-shadow: 0 6px 22px rgba(0,0,0,.12); }
+  .bar { display:flex; align-items:center; gap:.5rem; padding:.55rem .7rem; font-size:.82rem;
+    background: var(--card); border-bottom:1px solid var(--border); }
+  .bar.ctx { background: var(--accent-soft); color: var(--fg); font-weight:600; }
+  .bar .grow { flex:1; }
+  .bar .ic { font-size:1rem; opacity:.85; }
+  .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:.35rem; padding:.45rem; }
+  .tile { position:relative; aspect-ratio: .82; background: var(--card); border:1px solid var(--border);
+    border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:.62rem; color:var(--muted); gap:.15rem; }
+  .tile .fic { font-size:1.3rem; }
+  .tile.sel { outline: 2px solid var(--accent); background: var(--accent-soft); }
+  .tile .cb { position:absolute; top:3px; left:3px; width:13px; height:13px; border:1.5px solid var(--muted);
+    border-radius:3px; background:var(--bg); font-size:9px; line-height:11px; text-align:center; color:#fff; }
+  .tile.sel .cb { background: var(--accent); border-color: var(--accent); }
+  .cap { text-align:center; font-size:.8rem; color:var(--muted); margin-top:.3rem; }
+  .col { display:flex; flex-direction:column; align-items:center; }
+  /* ---- flow diagram ---- */
+  .flow { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; justify-content:center;
+    margin:1.2rem 0; font-size:.86rem; }
+  .flow .step { background:var(--card); border:1px solid var(--border); border-radius:9px; padding:.5rem .8rem; text-align:center; }
+  .flow .step small { display:block; color:var(--muted); font-size:.74rem; }
+  .flow .arr { color: var(--muted); font-size:1.2rem; }
+  .flow .step.warn { border-color: var(--accent); background: var(--accent-soft); }
+  /* ---- micro-world ---- */
+  .mw { background: var(--card); border:1px solid var(--border); border-radius:14px; padding:1.1rem; margin:1.4rem 0; }
+  .mw h3 { margin-top:0; }
+  .mw-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:.5rem; margin:.7rem 0; }
+  .mw-tile { position:relative; aspect-ratio:1.05; border:1px solid var(--border); border-radius:9px;
+    background: var(--bg); cursor:pointer; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:.2rem; font-size:.72rem; color:var(--fg); user-select:none; transition: all .12s; }
+  .mw-tile .fic { font-size:1.5rem; }
+  .mw-tile.sel { outline:2px solid var(--accent); background: var(--accent-soft); }
+  .mw-tile .cb { position:absolute; top:5px; left:5px; width:16px; height:16px; border:2px solid var(--muted);
+    border-radius:4px; background:var(--bg); color:#fff; font-size:11px; line-height:13px; text-align:center; }
+  .mw-tile.sel .cb { background: var(--accent); border-color: var(--accent); }
+  .mw-tile.failing { border-color: var(--bad); }
+  .mw-ctx { display:flex; align-items:center; gap:.5rem; padding:.5rem .7rem; border-radius:9px;
+    background: var(--accent-soft); font-weight:600; font-size:.9rem; min-height: 2.4rem; }
+  .mw-ctx .grow { flex:1; }
+  .mw-ctx button, .mw-controls button { cursor:pointer; }
+  .btn { border:1px solid var(--border); background:var(--bg); color:var(--fg); border-radius:8px;
+    padding:.35rem .7rem; font-size:.82rem; cursor:pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color:#fff; border-color: var(--accent); }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .mw-controls { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin:.7rem 0; font-size:.84rem; }
+  .mw-controls label { display:flex; align-items:center; gap:.3rem; color:var(--muted); }
+  .mw-log { font-family: ui-monospace, Menlo, monospace; font-size:.8rem; background: var(--code-bg);
+    border-radius:8px; padding:.6rem .8rem; min-height:2.6rem; border:1px solid var(--border); }
+  .mw-log .ok { color: var(--good); }
+  .mw-log .err { color: var(--bad); }
+  select { background:var(--bg); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:.25rem .4rem; font-size:.82rem; }
+  /* ---- quiz ---- */
+  .quiz .q { background: var(--card); border:1px solid var(--border); border-radius:12px; padding:1rem 1.2rem; margin:1rem 0; }
+  .quiz .q p.stem { font-weight:600; margin:.2rem 0 .7rem; }
+  .quiz .opt { display:block; width:100%; text-align:left; border:1px solid var(--border);
+    background: var(--bg); color:var(--fg); border-radius:9px; padding:.55rem .8rem; margin:.35rem 0;
+    cursor:pointer; font-size:.92rem; transition: all .12s; }
+  .quiz .opt:hover { border-color: var(--accent); }
+  .quiz .opt.correct { background: var(--good-soft); border-color: var(--good); }
+  .quiz .opt.wrong { background: var(--bad-soft); border-color: var(--bad); }
+  .quiz .rat { font-size:.86rem; color:var(--muted); margin:.5rem 0 0; padding:.5rem .7rem;
+    background: var(--bg); border-radius:8px; border:1px dashed var(--border); display:none; }
+  .quiz .rat.show { display:block; }
+  .score { position: sticky; bottom: 0; background: var(--accent); color:#fff; text-align:center;
+    padding:.6rem; border-radius:10px; margin-top:1.2rem; font-weight:600; }
+  .foot { color: var(--muted); font-size:.82rem; margin-top:3rem; border-top:1px solid var(--border); padding-top:1rem; }
+</style>
+
+<main>
+  <h1>Phase 4 — Multi-select: bulk move, zip-share &amp; delete</h1>
+  <p class="lede">A walkthrough of commit <code>4977776</code> in the <code>dufs-cloud</code> Flutter app: how long-pressing a file tile turns the browser into a multi-select tool, and the small design decisions that keep it correct and 100&nbsp;% covered.</p>
+
+  <nav class="toc">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#background">Background — what the browser screen is</a></li>
+      <li><a href="#intuition">Intuition — one mode flag, one set of paths</a></li>
+      <li><a href="#code">Code — the change, grouped by concern</a></li>
+      <li><a href="#playground">Playground — drive the selection logic</a></li>
+      <li><a href="#quiz">Quiz — check your understanding</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="background">1 · Background</h2>
+  <p><code>BrowserScreen</code> is the app's home: it lists one cloud folder as a grid of tiles (<code>EntryTile</code>), each showing a thumbnail or type icon, a name, and a size. Tapping a folder navigates into it; tapping a file opens or downloads it. An overflow menu on each file tile already offered single-item <em>Download</em> and <em>Delete</em>.</p>
+  <p>The screen also carries the search/filter system added in Phase 3: an AppBar search box and a "Filters" sheet drive a lazily-built <strong>whole-cloud index</strong> (<code>_index</code>), and when a filter is active the grid switches from "the current folder" to "matches across the whole cloud, grouped by their folder". That index is a cache — it's rebuilt on first filter use and thrown away (<code>_index = null</code>) whenever something changes on the server.</p>
+  <p>Before this change there was <strong>no way to act on more than one item at a time</strong>. Moving five photos to an album meant five trips through a menu. <code>EntryTile</code> already had dormant <code>selected</code> / <code>onToggleSelect</code> parameters (a checkbox that showed only when <code>selected != null</code>), but nothing in <code>BrowserScreen</code> ever passed them. Phase 4 wires that up.</p>
+
+  <h2 id="intuition">2 · Intuition</h2>
+  <p>The whole feature rests on <strong>two pieces of state</strong> added to the screen:</p>
+  <pre><span class="add">bool _selecting = false;          </span><span class="cmt">// are we in selection mode?</span>
+<span class="add">final Set&lt;String&gt; _selected = {};  </span><span class="cmt">// which entry paths are ticked</span></pre>
+  <p>A <strong>long-press</strong> on any tile flips <code>_selecting</code> to <code>true</code> and drops that tile's path into the set. While selecting, the normal AppBar (search box, filter, settings) is swapped for a <em>contextual</em> AppBar: a close button, a live count, and three actions. Tapping tiles now toggles their membership in the set instead of opening them.</p>
+
+  <div class="stage">
+    <div class="col">
+      <div class="phone" aria-hidden="true">
+        <div class="bar"><span class="ic">🔍</span><span class="grow" style="color:var(--muted)">Filter by name…</span><span class="ic">⚙</span></div>
+        <div class="grid">
+          <div class="tile"><span class="fic">📁</span>Media</div>
+          <div class="tile"><span class="fic">🖼</span>pic.jpg</div>
+          <div class="tile"><span class="fic">🎬</span>clip.mp4</div>
+          <div class="tile"><span class="fic">📄</span>doc.txt</div>
+          <div class="tile"><span class="fic">📦</span>data.bin</div>
+          <div class="tile" style="opacity:.4"><span class="fic">＋</span></div>
+        </div>
+      </div>
+      <div class="cap">Normal browse mode</div>
+    </div>
+    <div class="col" style="align-self:center;font-size:1.6rem;color:var(--muted)">→<div class="cap" style="margin-top:0">long-press<br>data.bin</div></div>
+    <div class="col">
+      <div class="phone" aria-hidden="true">
+        <div class="bar ctx"><span class="ic">✕</span><span class="grow">2&nbsp;selected</span><span class="ic">📂→</span><span class="ic">⬇</span><span class="ic">🗑</span></div>
+        <div class="grid">
+          <div class="tile"><span class="cb"></span><span class="fic">📁</span>Media</div>
+          <div class="tile"><span class="cb"></span><span class="fic">🖼</span>pic.jpg</div>
+          <div class="tile"><span class="cb"></span><span class="fic">🎬</span>clip.mp4</div>
+          <div class="tile sel"><span class="cb">✓</span><span class="fic">📄</span>doc.txt</div>
+          <div class="tile sel"><span class="cb">✓</span><span class="fic">📦</span>data.bin</div>
+          <div class="tile" style="opacity:.25"><span class="fic">＋</span></div>
+        </div>
+      </div>
+      <div class="cap">Selection mode · contextual bar</div>
+    </div>
+  </div>
+
+  <p>The three contextual actions all follow the same shape — <strong>resolve the selected paths to entries, do something to each, then leave selection mode and refresh</strong>:</p>
+
+  <div class="flow">
+    <div class="step">Selected paths<br><small>Set&lt;String&gt;</small></div>
+    <span class="arr">→</span>
+    <div class="step">Resolve to entries<br><small>_selectedEntries</small></div>
+    <span class="arr">→</span>
+    <div class="step warn">Batch op<br><small>move / delete / zip</small></div>
+    <span class="arr">→</span>
+    <div class="step">Invalidate index<br><small>_index = null</small></div>
+    <span class="arr">→</span>
+    <div class="step">Exit + reload</div>
+  </div>
+
+  <p>Two correctness details are worth their own sentences:</p>
+  <ul>
+    <li><strong>A partial failure is not fatal.</strong> The batch helper <code>_batch</code> runs the op on every selected entry inside a <code>try/catch</code>, counting failures rather than throwing. Five deletes where one 500s ⇒ four gone, one reported in a snackbar — not an all-or-nothing abort.</li>
+    <li><strong>Selection is scoped to the plain browse grid, not the filtered group view.</strong> Bulk zip and move assume every selected item shares one parent folder (the current <code>_path</code>) — the zip's archive paths and the move's destination are computed relative to it. Cross-folder filter results would break that assumption, so only the unfiltered grid is <code>selectable</code>.</li>
+  </ul>
+
+  <h2 id="code">3 · Code</h2>
+
+  <h3>a. Entering &amp; tracking selection</h3>
+  <p>A long-press seam is added to <code>EntryTile</code> (it just forwards to the body <code>InkWell</code>'s <code>onLongPress</code>), and the screen gains the enter/toggle/exit helpers. Note that a tap while selecting <em>toggles</em> rather than opens:</p>
+  <pre><span class="add">void _enterSelect(DirEntry e) =&gt; setState(() { _selecting = true; _selected..clear()..add(e.path); });</span>
+<span class="add">void _toggleSelect(DirEntry e) =&gt; setState(() { if (!_selected.remove(e.path)) _selected.add(e.path); });</span>
+<span class="add">void _exitSelect()   =&gt; setState(() { _selecting = false; _selected.clear(); });</span>
+
+<span class="cmt">// in _grid(), only when selectable:</span>
+onTap: () =&gt; selectable &amp;&amp; _selecting ? _toggleSelect(e) : unawaited(_open(e)),
+onLongPress: selectable ? () =&gt; _enterSelect(e) : null,
+selected: selectable &amp;&amp; _selecting ? _selected.contains(e.path) : null,</pre>
+
+  <h3>b. The failure-tolerant batch runner</h3>
+  <p>Move and delete share one helper. It returns how many items failed so the caller can surface a count instead of a stack trace:</p>
+  <pre><span class="add">Future&lt;int&gt; _batch(Future&lt;void&gt; Function(DirEntry) op) async {
+  var failed = 0;
+  for (final e in _selectedEntries) {
+    try { await op(e); } on Exception { failed++; }
+  }
+  return failed;
+}</span></pre>
+
+  <h3>c. Move — with a no-op guard</h3>
+  <p>Move pushes the existing <code>FolderPicker</code>, then MOVEs each item. If the user picks the folder the items already live in (<code>dest == _path</code>) — or cancels — nothing is sent:</p>
+  <pre>final dest = await Navigator.of(context).push&lt;String&gt;(… FolderPicker(initialPath: _path, count: …) …);
+<span class="add">if (dest == null || dest == _path) return;  </span><span class="cmt">// cancelled, or a pointless self-move</span>
+final failed = await _batch((e) =&gt; client.move(e.path, dest));
+<span class="add">_index = null; _exitSelect(); await _load(_path);</span></pre>
+
+  <h3>d. Download-as-zip — and the coverage trick</h3>
+  <p>The zip path builds a STORE archive of the selection, writes it to a temp file, and hands it to the platform share sheet. The share call is <strong>injectable</strong> so tests never touch the <code>share_plus</code> platform channel — and the default is placed on the right of a <code>??</code> so an injected stub keeps it from ever being evaluated (identical trick to the pre-existing <code>documentsDir</code> / <code>pickMedia</code> seams). That is what lets the line count as covered without running native code:</p>
+  <pre>final bytes = await buildSelectionZip(client, _path, _selectedEntries);
+final file  = File(p.join((await getDir()).path, 'dufs-selection.zip'));
+await file.writeAsBytes(bytes);
+<span class="add">final share = widget.shareSheet ?? SharePlus.instance.share;  </span><span class="cmt">// RHS never runs in tests</span>
+await share(ShareParams(files: [XFile(file.path)]));</pre>
+
+  <h3>e. The contextual AppBar</h3>
+  <p><code>build()</code> now chooses between two AppBars, and hides the upload FAB while selecting:</p>
+  <pre>appBar: <span class="add">_selecting ? _selectAppBar() : _browseAppBar()</span>,
+floatingActionButton: _client == null <span class="add">|| _selecting</span> ? null : FloatingActionButton(…),</pre>
+
+  <div class="note">Every mutating action — move, delete, zip's siblings upload/mkcol — sets <code>_index = null</code>. Because the Phase 3 filter reads from that cached whole-cloud index, forgetting to invalidate it would show stale search results after a bulk move. This is the seam where the two phases meet.</div>
+
+  <h2 id="playground">4 · Playground</h2>
+  <p>This mirrors the real logic: a tap toggles set membership; "Move here" into the current folder is a no-op; and marking an item as failing shows how <code>_batch</code> counts rather than aborts. Try selecting a few, flip a failure, and run an action.</p>
+
+  <div class="mw" id="mw">
+    <div class="mw-ctx" id="mw-ctx"><span class="grow" id="mw-count">Long-press… (click a tile to start)</span></div>
+    <div class="mw-grid" id="mw-tiles"></div>
+    <div class="mw-controls">
+      <label><input type="checkbox" id="mw-fail"> simulate 1 item failing</label>
+      <span>Move to:</span>
+      <select id="mw-dest">
+        <option value="/trip">/trip (current)</option>
+        <option value="/archive">/archive</option>
+        <option value="/trip/best">/trip/best</option>
+      </select>
+      <button class="btn" id="mw-move" disabled>📂→ Move</button>
+      <button class="btn" id="mw-zip" disabled>⬇ Zip</button>
+      <button class="btn" id="mw-del" disabled>🗑 Delete</button>
+    </div>
+    <div class="mw-log" id="mw-log">Nothing selected yet. Current folder is <code>/trip</code>.</div>
+  </div>
+
+  <h2 id="quiz">5 · Quiz</h2>
+  <div class="quiz" id="quiz-list"></div>
+  <div class="score" id="score">Score: 0 / 5</div>
+
+  <p class="foot">Generated for commit <code>4977776</code> · dufs-cloud · Phase 4 multi-select. The companion commit <code>1e8db99</code> (add <code>INTERNET</code> permission to the release manifest) is what made this feature actually reachable on-device.</p>
+</main>
+
+<script>
+// ---------- micro-world ----------
+(function () {
+  const items = [
+    { name: 'pic.jpg',  ic: '🖼' },
+    { name: 'clip.mp4', ic: '🎬' },
+    { name: 'doc.txt',  ic: '📄' },
+    { name: 'note.md',  ic: '📝' },
+    { name: 'data.bin', ic: '📦' },
+    { name: 'song.ogg', ic: '🎵' },
+  ];
+  const sel = new Set();
+  const tilesEl = document.getElementById('mw-tiles');
+  const countEl = document.getElementById('mw-count');
+  const logEl = document.getElementById('mw-log');
+  const failEl = document.getElementById('mw-fail');
+  const destEl = document.getElementById('mw-dest');
+  const btns = ['mw-move', 'mw-zip', 'mw-del'].map(id => document.getElementById(id));
+
+  function firstFailing() {
+    // Mirror _batch: if "fail" is on, the alphabetically-first selected item fails.
+    if (!failEl.checked || sel.size === 0) return null;
+    return [...sel].sort()[0];
+  }
+  function render() {
+    tilesEl.innerHTML = '';
+    const failing = firstFailing();
+    items.forEach(it => {
+      const d = document.createElement('div');
+      d.className = 'mw-tile' + (sel.has(it.name) ? ' sel' : '') +
+                    (sel.has(it.name) && it.name === failing ? ' failing' : '');
+      d.innerHTML = `<span class="cb">${sel.has(it.name) ? '✓' : ''}</span>` +
+                    `<span class="fic">${it.ic}</span>${it.name}`;
+      d.onclick = () => { sel.has(it.name) ? sel.delete(it.name) : sel.add(it.name); render(); };
+      tilesEl.appendChild(d);
+    });
+    const n = sel.size;
+    countEl.innerHTML = n === 0 ? 'Long-press… (click a tile to start)'
+      : `✕ &nbsp; ${n} selected`;
+    btns.forEach(b => b.disabled = n === 0);
+  }
+  function done(msg, cls) {
+    logEl.innerHTML = `<span class="${cls}">${msg}</span>`;
+    sel.clear(); render();               // real code calls _exitSelect() after each action
+  }
+  document.getElementById('mw-move').onclick = () => {
+    const n = sel.size, dest = destEl.value;
+    if (dest === '/trip') { logEl.innerHTML = `<span class="err">No-op: destination is the current folder — 0 MOVE requests sent.</span>`; return; }
+    const fail = firstFailing() ? 1 : 0;
+    done(`Moved ${n - fail} of ${n} to ${dest}` + (fail ? ` — 1 could not be moved (kept where it was).` : '.'), fail ? 'err' : 'ok');
+  };
+  document.getElementById('mw-del').onclick = () => {
+    const n = sel.size, fail = firstFailing() ? 1 : 0;
+    done(`Deleted ${n - fail} of ${n}` + (fail ? ` — 1 could not be deleted.` : '.'), fail ? 'err' : 'ok');
+  };
+  document.getElementById('mw-zip').onclick = () => {
+    const n = sel.size;
+    done(`Zipped ${n} file${n === 1 ? '' : 's'} → shared dufs-selection.zip (read-only, never fails a batch).`, 'ok');
+  };
+  failEl.onchange = render;
+  render();
+})();
+
+// ---------- quiz ----------
+(function () {
+  const questions = [
+    {
+      stem: "Why is multi-select wired only into the plain browse grid, not the Phase 3 filtered group view?",
+      options: [
+        "Bulk zip and move assume every selected item shares one parent folder.",
+        "The filtered group view rebuilds too often for checkbox state to persist.",
+        "Long-press is already reserved for collapsing and expanding filter groups.",
+        "Checkboxes cannot be rendered inside a shrink-wrapped grid view widget."
+      ],
+      correct: 0,
+      rat: "Zip archive paths and the move destination are computed relative to the current folder; cross-folder filter results would violate that single-parent assumption."
+    },
+    {
+      stem: "One item in a five-item bulk delete returns a server error. What does the code do?",
+      options: [
+        "The whole batch aborts at the first error and rolls prior items back.",
+        "It keeps going, counts the failures, and shows them in a snackbar.",
+        "The failed item is retried on a loop until the server accepts it.",
+        "The error is swallowed silently and the user sees no feedback at all."
+      ],
+      correct: 1,
+      rat: "_batch wraps each op in try/catch and increments a failure counter; the caller shows that count. Four succeed, one is reported."
+    },
+    {
+      stem: "How does the share (zip) path stay at 100% line coverage without invoking the share_plus platform channel in tests?",
+      options: [
+        "Tests replace SharePlatform.instance before the singleton is first read.",
+        "The share call carries a `// coverage:ignore` with a written reason.",
+        "Its default sits on the right of `??`, so an injected stub skips it.",
+        "A custom lcov filter drops the share method from the coverage report."
+      ],
+      correct: 2,
+      rat: "widget.shareSheet ?? SharePlus.instance.share — when the test injects shareSheet, the right side is never evaluated, yet the line still counts as executed."
+    },
+    {
+      stem: "You select an item and choose “Move here” inside the folder it already lives in. What happens?",
+      options: [
+        "It issues a MOVE request that the server rejects with a 409 conflict status.",
+        "It moves the item into a freshly created copy of the same folder.",
+        "It exits selection mode but still reloads the current folder listing.",
+        "It returns early as a no-op, leaving every item where it already was."
+      ],
+      correct: 3,
+      rat: "The guard `if (dest == null || dest == _path) return;` catches both cancel and a self-move, so no MOVE request is sent."
+    },
+    {
+      stem: "Why does every bulk mutation set `_index = null` before reloading?",
+      options: [
+        "It clears the current selection set after the bulk action finishes.",
+        "It resets the name filter search field back to an empty string.",
+        "It forces every grid tile to rebuild and refetch its thumbnail.",
+        "It invalidates the cached whole-cloud index so stale hits vanish."
+      ],
+      correct: 3,
+      rat: "The Phase 3 filter reads from that cached index; after moving/deleting files it would show stale search results unless invalidated."
+    }
+  ];
+
+  const quizEl = document.getElementById('quiz-list');
+  const scoreEl = document.getElementById('score');
+  let score = 0, answered = 0;
+
+  questions.forEach((q, qi) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'q';
+    const stem = document.createElement('p');
+    stem.className = 'stem';
+    stem.textContent = (qi + 1) + '. ' + q.stem;
+    wrap.appendChild(stem);
+    const rat = document.createElement('p');
+    rat.className = 'rat';
+    rat.textContent = q.rat;
+    let locked = false;
+    q.options.forEach((opt, oi) => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = opt;
+      b.onclick = () => {
+        if (locked) return;
+        locked = true;
+        answered++;
+        if (oi === q.correct) { b.classList.add('correct'); score++; }
+        else {
+          b.classList.add('wrong');
+          wrap.querySelectorAll('.opt')[q.correct].classList.add('correct');
+        }
+        rat.classList.add('show');
+        scoreEl.textContent = `Score: ${score} / ${questions.length}` +
+          (answered === questions.length ? '  ✓ all answered' : '');
+      };
+      wrap.appendChild(b);
+    });
+    wrap.appendChild(rat);
+    quizEl.appendChild(wrap);
+  });
+})();
+</script>
