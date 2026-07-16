@@ -18,6 +18,7 @@ REPO_ROOT="$(git -C "$HERE" rev-parse --show-toplevel)"
 readonly REPO_ROOT
 readonly GALLERY_DIR="$REPO_ROOT/web"
 readonly THUMBS_SCRIPT="$HERE/generate_thumbnails.sh"
+readonly INDEX_SCRIPT="$HERE/build_media_index.sh"
 readonly DUFS_YAML="$HOME/.config/dufs/dufs.yaml"
 
 C() { printf '\033[1;34m[cloud-gallery]\033[0m %s\n' "$*"; }
@@ -83,6 +84,7 @@ enable_render_spa() {
 wire_thumbnails() {
 	C "Generating thumbnails + wiring into media sync"
 	bash "$THUMBS_SCRIPT" || WARN "initial thumbnail pass reported problems (continuing)"
+	bash "$INDEX_SCRIPT" || WARN "initial media-index pass reported problems (continuing)"
 	# Regenerate thumbnails after each Phase-2 media sync (best-effort).
 	if systemctl is-enabled media-cloud-sync.timer >/dev/null 2>&1 \
 		|| systemctl is-active media-cloud-sync.path >/dev/null 2>&1; then
@@ -90,6 +92,7 @@ wire_thumbnails() {
 		sudo tee /etc/systemd/system/media-cloud-sync.service.d/10-thumbnails.conf >/dev/null <<EOF
 [Service]
 ExecStartPost=-$THUMBS_SCRIPT
+ExecStartPost=-$INDEX_SCRIPT
 EOF
 		sudo systemctl daemon-reload
 		OK "thumbnails will refresh after each media sync"
