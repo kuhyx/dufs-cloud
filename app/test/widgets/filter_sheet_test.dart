@@ -16,6 +16,7 @@ void main() {
     required void Function(FilterState) onFilter,
     required void Function(SortState) onSort,
     List<int>? durationValues,
+    List<int>? resolutionValues,
   }) =>
       tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -25,6 +26,7 @@ void main() {
             extensions: const ['jpg', 'png'],
             sizeValues: sizes,
             durationValues: durationValues ?? const [],
+            resolutionValues: resolutionValues ?? const [],
             onFilter: onFilter,
             onSort: onSort,
           ),
@@ -97,5 +99,34 @@ void main() {
     expect(f?.minDurationMs, isNotNull);
     // Descending render covers the down-arrow branch.
     expect(find.byTooltip('Descending'), findsOneWidget);
+  });
+
+  testWidgets('shows a resolution slider for images and sorts by it',
+      (tester) async {
+    FilterState? f;
+    SortState? s;
+    await pump(tester,
+        filter: defaultFilter.copyWith(type: TypeFilter.image),
+        sort: defaultSort,
+        resolutionValues: [for (var i = 0; i <= 100; i++) i * 1000000],
+        onFilter: (v) => f = v,
+        onSort: (v) => s = v);
+    // size (0) then resolution (1); no duration for images.
+    final sliders = tester.widgetList<QuantileRangeSlider>(
+        find.byType(QuantileRangeSlider));
+    expect(sliders.length, 2);
+    tester
+        .widgetList<RangeSlider>(find.byType(RangeSlider))
+        .elementAt(1)
+        .onChanged
+        ?.call(const RangeValues(0.2, 0.9));
+    expect(f?.minPixels, isNotNull);
+    // The megapixel label formatter renders.
+    expect(find.textContaining('MP'), findsWidgets);
+    // The resolution sort key is selectable.
+    final sortDd = tester
+        .widget<DropdownButton<SortKey>>(find.byType(DropdownButton<SortKey>));
+    sortDd.onChanged?.call(SortKey.resolution);
+    expect(s?.key, SortKey.resolution);
   });
 }

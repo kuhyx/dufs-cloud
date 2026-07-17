@@ -10,7 +10,8 @@ export type TypeFilter =
   | "text"
   | "other";
 
-/** Sort keys the UI exposes. `created`/`uploaded`/`duration` need the index. */
+/** Sort keys the UI exposes. `created`/`uploaded`/`duration`/`resolution` need
+ * the index. `resolution` is total pixels (width × height). */
 export type SortKey =
   | "name"
   | "size"
@@ -18,6 +19,7 @@ export type SortKey =
   | "created"
   | "uploaded"
   | "duration"
+  | "resolution"
   | "type"
   | "extension";
 
@@ -35,6 +37,9 @@ export interface FilterState {
   readonly maxSize: number | null;
   readonly minDurationMs: number | null;
   readonly maxDurationMs: number | null;
+  /** Resolution bounds in total pixels (width × height); needs the index. */
+  readonly minPixels: number | null;
+  readonly maxPixels: number | null;
 }
 
 export interface SortState {
@@ -51,6 +56,8 @@ export const DEFAULT_FILTER: FilterState = {
   maxSize: null,
   minDurationMs: null,
   maxDurationMs: null,
+  minPixels: null,
+  maxPixels: null,
 };
 
 export const DEFAULT_SORT: SortState = { key: "name", dir: "asc" };
@@ -65,7 +72,9 @@ export function isFilterActive(f: FilterState): boolean {
     f.minSize !== null ||
     f.maxSize !== null ||
     f.minDurationMs !== null ||
-    f.maxDurationMs !== null
+    f.maxDurationMs !== null ||
+    f.minPixels !== null ||
+    f.maxPixels !== null
   );
 }
 
@@ -103,6 +112,13 @@ function durationOf(entry: DirEntry, meta: MetaIndex): number | null {
   return meta[entry.path]?.durationMs ?? null;
 }
 
+/** Total pixels (width × height), or null when either dimension is unknown. */
+function pixelsOf(entry: DirEntry, meta: MetaIndex): number | null {
+  const m = meta[entry.path];
+  if (m?.width == null || m.height == null) return null;
+  return m.width * m.height;
+}
+
 function passesFilters(
   entry: DirEntry,
   meta: MetaIndex,
@@ -126,6 +142,9 @@ function passesFilters(
   if (f.maxDurationMs !== null && (dur === null || dur > f.maxDurationMs)) {
     return false;
   }
+  const px = pixelsOf(entry, meta);
+  if (f.minPixels !== null && (px === null || px < f.minPixels)) return false;
+  if (f.maxPixels !== null && (px === null || px > f.maxPixels)) return false;
   return true;
 }
 
@@ -152,6 +171,8 @@ function sortValue(
       return m?.uploadedMs ?? 0;
     case "duration":
       return m?.durationMs ?? 0;
+    case "resolution":
+      return pixelsOf(entry, meta) ?? 0;
   }
 }
 

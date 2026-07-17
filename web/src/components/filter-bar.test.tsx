@@ -130,4 +130,33 @@ describe("FilterBar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(active.onFilter).toHaveBeenCalledWith(DEFAULT_FILTER);
   });
+
+  it("selects the resolution sort", () => {
+    const { onSort } = renderBar();
+    fireEvent.change(screen.getByLabelText("Sort by"), {
+      target: { value: "resolution" },
+    });
+    expect(onSort).toHaveBeenCalledWith({ ...DEFAULT_SORT, key: "resolution" });
+  });
+
+  it("shows the resolution filter for images/videos and reports edits", () => {
+    const { onFilter } = renderBar({
+      filter: { ...DEFAULT_FILTER, type: "image" },
+    });
+    fireEvent.change(screen.getByLabelText("Minimum resolution in megapixels"), {
+      target: { value: "2" },
+    });
+    expect(onFilter).toHaveBeenLastCalledWith({
+      ...DEFAULT_FILTER,
+      type: "image",
+      minPixels: 2_000_000,
+    });
+  });
+
+  it("hides the resolution filter for non-media types", () => {
+    renderBar({ filter: { ...DEFAULT_FILTER, type: "text" } });
+    expect(
+      screen.queryByLabelText("Minimum resolution in megapixels"),
+    ).toBeNull();
+  });
 });

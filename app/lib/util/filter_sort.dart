@@ -43,6 +43,9 @@ enum SortKey {
   /// By video duration (from the index).
   duration,
 
+  /// By total resolution, width × height (from the index).
+  resolution,
+
   /// By coarse category.
   type,
 
@@ -83,6 +86,8 @@ class FilterState {
     this.maxSize,
     this.minDurationMs,
     this.maxDurationMs,
+    this.minPixels,
+    this.maxPixels,
   });
 
   /// Fuzzy (subsequence) filename query; empty matches everything.
@@ -109,6 +114,12 @@ class FilterState {
   /// Maximum video duration in ms, or null.
   final int? maxDurationMs;
 
+  /// Minimum resolution in total pixels (width × height), or null.
+  final int? minPixels;
+
+  /// Maximum resolution in total pixels (width × height), or null.
+  final int? maxPixels;
+
   /// Returns a copy with the given fields replaced. Pass `null` explicitly to
   /// clear a nullable numeric bound; omit it to keep the current value.
   FilterState copyWith({
@@ -120,6 +131,8 @@ class FilterState {
     Object? maxSize = _keep,
     Object? minDurationMs = _keep,
     Object? maxDurationMs = _keep,
+    Object? minPixels = _keep,
+    Object? maxPixels = _keep,
   }) =>
       FilterState(
         query: query ?? this.query,
@@ -132,6 +145,8 @@ class FilterState {
             minDurationMs == _keep ? this.minDurationMs : minDurationMs as int?,
         maxDurationMs:
             maxDurationMs == _keep ? this.maxDurationMs : maxDurationMs as int?,
+        minPixels: minPixels == _keep ? this.minPixels : minPixels as int?,
+        maxPixels: maxPixels == _keep ? this.maxPixels : maxPixels as int?,
       );
 }
 
@@ -166,7 +181,9 @@ bool isFilterActive(FilterState f) =>
     f.minSize != null ||
     f.maxSize != null ||
     f.minDurationMs != null ||
-    f.maxDurationMs != null;
+    f.maxDurationMs != null ||
+    f.minPixels != null ||
+    f.maxPixels != null;
 
 /// The coarse category of [entry].
 TypeFilter categoryOf(DirEntry entry) {
@@ -209,7 +226,20 @@ bool _passes(DirEntry entry, MetaIndex meta, FilterState f) {
   if (f.maxDurationMs != null && (dur == null || dur > f.maxDurationMs!)) {
     return false;
   }
+  final px = _pixels(entry, meta);
+  if (f.minPixels != null && (px == null || px < f.minPixels!)) return false;
+  if (f.maxPixels != null && (px == null || px > f.maxPixels!)) return false;
   return true;
+}
+
+/// Total pixels (width × height) for [entry], or null when either dimension is
+/// unknown.
+int? _pixels(DirEntry entry, MetaIndex meta) {
+  final m = meta[entry.path];
+  final w = m?.width;
+  final h = m?.height;
+  if (w == null || h == null) return null;
+  return w * h;
 }
 
 int _compare(DirEntry a, DirEntry b, MetaIndex meta, SortState sort) {
@@ -238,6 +268,8 @@ int _compare(DirEntry a, DirEntry b, MetaIndex meta, SortState sort) {
     case SortKey.duration:
       c = (meta[a.path]?.durationMs ?? 0)
           .compareTo(meta[b.path]?.durationMs ?? 0);
+    case SortKey.resolution:
+      c = (_pixels(a, meta) ?? 0).compareTo(_pixels(b, meta) ?? 0);
   }
   if (c == 0) c = a.name.toLowerCase().compareTo(b.name.toLowerCase());
   return sort.dir == SortDir.asc ? c : -c;

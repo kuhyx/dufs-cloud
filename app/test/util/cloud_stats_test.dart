@@ -53,6 +53,28 @@ void main() {
     });
   });
 
+  group('resolutionValues', () {
+    final meta = <String, MediaMeta>{
+      '/a.jpg': const MediaMeta(width: 100, height: 100), // 10k
+      '/b.jpg': const MediaMeta(width: 200, height: 100), // 20k
+      '/c.jpg': const MediaMeta(width: 50, height: 50), // 2.5k
+      '/half.jpg': const MediaMeta(width: 100), // height null → skipped
+    };
+    test('ascending known pixel counts, skipping partial/unindexed', () {
+      final es = [
+        _file('/a.jpg'),
+        _file('/b.jpg'),
+        _file('/c.jpg'),
+        _file('/half.jpg'),
+        _file('/x.jpg'),
+      ];
+      expect(resolutionValues(es, meta), [2500, 10000, 20000]);
+    });
+    test('empty when no dimensions indexed', () {
+      expect(resolutionValues([_file('/x.jpg')], meta), isEmpty);
+    });
+  });
+
   group('groupByFolder', () {
     test('groups by folder, sorted by path, order preserved within', () {
       final groups = groupByFolder([

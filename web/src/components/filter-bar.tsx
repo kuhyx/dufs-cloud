@@ -8,6 +8,7 @@ import {
 } from "../lib/filter-sort.ts";
 import { SizeRange } from "./size-range.tsx";
 import { DurationRange } from "./duration-range.tsx";
+import { ResolutionRange } from "./resolution-range.tsx";
 import { ExtensionPicker } from "./extension-picker.tsx";
 
 interface FilterBarProps {
@@ -43,6 +44,7 @@ const SORT_OPTIONS: readonly { value: SortKey; label: string }[] = [
   { value: "created", label: "Created" },
   { value: "uploaded", label: "Uploaded" },
   { value: "duration", label: "Duration" },
+  { value: "resolution", label: "Resolution" },
   { value: "type", label: "Type" },
   { value: "extension", label: "Extension" },
 ];
@@ -117,6 +119,15 @@ export function FilterBar({
           maxMs={filter.maxDurationMs}
           onChange={(minDurationMs, maxDurationMs) => {
             onFilter({ ...filter, minDurationMs, maxDurationMs });
+          }}
+        />
+      )}
+      {(filter.type === "image" || filter.type === "video") && (
+        <ResolutionRange
+          minPixels={filter.minPixels}
+          maxPixels={filter.maxPixels}
+          onChange={(minPixels, maxPixels) => {
+            onFilter({ ...filter, minPixels, maxPixels });
           }}
         />
       )}

@@ -35,6 +35,20 @@ List<int> durationValues(List<DirEntry> entries, MetaIndex meta) {
   return out..sort();
 }
 
+/// All known resolutions (total pixels, width × height) in [entries],
+/// ascending, read from [meta]. Feeds the quantile-scaled resolution slider;
+/// empty when no dimensions are indexed.
+List<int> resolutionValues(List<DirEntry> entries, MetaIndex meta) {
+  final out = <int>[];
+  for (final entry in entries) {
+    final m = meta[entry.path];
+    final w = m?.width;
+    final h = m?.height;
+    if (w != null && h != null) out.add(w * h);
+  }
+  return out..sort();
+}
+
 /// A group of entries that share a containing folder.
 class FolderGroup {
   /// Creates a [FolderGroup].

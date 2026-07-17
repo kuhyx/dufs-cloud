@@ -212,6 +212,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           extensions: availableExtensions(_scoped),
           sizeValues: sizeValues(_scoped),
           durationValues: durationValues(_scoped, _meta),
+          resolutionValues: resolutionValues(_scoped, _meta),
           onFilter: (f) {
             _setFilter(f);
             setSheet(() {});

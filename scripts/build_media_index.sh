@@ -45,6 +45,7 @@ require_tools() {
     command -v ffprobe >/dev/null || missing+=(ffmpeg)
     command -v jq >/dev/null || missing+=(jq)
     command -v fd >/dev/null || missing+=(fd)
+    command -v identify >/dev/null || missing+=(imagemagick)
     if ((${#missing[@]} > 0)); then
         command -v pacman >/dev/null ||
             die "missing: ${missing[*]} (install them and re-run)"
@@ -102,6 +103,15 @@ main() {
                     <<<"$probe" 2>/dev/null || echo null)"
                 width="$(jq -r '(.streams[0].width // "null")' <<<"$probe" 2>/dev/null || echo null)"
                 height="$(jq -r '(.streams[0].height // "null")' <<<"$probe" 2>/dev/null || echo null)"
+            fi
+        elif [[ "$kind" == "image" ]]; then
+            # ImageMagick is authoritative for image dimensions (ffprobe is
+            # unreliable on stills); [0] takes the first frame of multi-frame
+            # images (e.g. GIFs) so the geometry is a single "W H".
+            local dims; dims="$(identify -format '%w %h' "${abs}[0]" 2>/dev/null || true)"
+            if [[ "$dims" =~ ^([0-9]+)\ ([0-9]+)$ ]]; then
+                width="${BASH_REMATCH[1]}"
+                height="${BASH_REMATCH[2]}"
             fi
         fi
 

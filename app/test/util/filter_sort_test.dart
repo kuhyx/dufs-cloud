@@ -60,6 +60,8 @@ void main() {
       expect(isFilterActive(defaultFilter.copyWith(maxSize: 1)), isTrue);
       expect(isFilterActive(defaultFilter.copyWith(minDurationMs: 1)), isTrue);
       expect(isFilterActive(defaultFilter.copyWith(maxDurationMs: 1)), isTrue);
+      expect(isFilterActive(defaultFilter.copyWith(minPixels: 1)), isTrue);
+      expect(isFilterActive(defaultFilter.copyWith(maxPixels: 1)), isTrue);
     });
   });
 
@@ -67,17 +69,38 @@ void main() {
     test('keeps nullable bounds by default, sets them when passed (incl null)',
         () {
       const base = FilterState(
-          minSize: 5, maxSize: 6, minDurationMs: 7, maxDurationMs: 8);
+          minSize: 5,
+          maxSize: 6,
+          minDurationMs: 7,
+          maxDurationMs: 8,
+          minPixels: 9,
+          maxPixels: 10);
       // keep branch: nothing passed → all bounds retained.
       final kept = base.copyWith(query: 'q');
-      expect(
-          [kept.minSize, kept.maxSize, kept.minDurationMs, kept.maxDurationMs],
-          [5, 6, 7, 8]);
+      expect([
+        kept.minSize,
+        kept.maxSize,
+        kept.minDurationMs,
+        kept.maxDurationMs,
+        kept.minPixels,
+        kept.maxPixels,
+      ], [5, 6, 7, 8, 9, 10]);
       // set branch: pass explicit values including null.
       final set = base.copyWith(
-          minSize: 1, maxSize: null, minDurationMs: 2, maxDurationMs: null);
-      expect([set.minSize, set.maxSize, set.minDurationMs, set.maxDurationMs],
-          [1, null, 2, null]);
+          minSize: 1,
+          maxSize: null,
+          minDurationMs: 2,
+          maxDurationMs: null,
+          minPixels: 3,
+          maxPixels: null);
+      expect([
+        set.minSize,
+        set.maxSize,
+        set.minDurationMs,
+        set.maxDurationMs,
+        set.minPixels,
+        set.maxPixels,
+      ], [1, null, 2, null, 3, null]);
     });
     test('SortState copyWith', () {
       const s = SortState(key: SortKey.size, dir: SortDir.desc);
@@ -168,6 +191,35 @@ void main() {
       final byDur = applyFilterSort(
           entries, meta, defaultFilter, const SortState(key: SortKey.duration));
       expect(idx(byDur, 'short.mp4'), lessThan(idx(byDur, 'long.mp4')));
+    });
+  });
+
+  group('resolution', () {
+    const meta = <String, MediaMeta>{
+      '/big.jpg': MediaMeta(width: 4000, height: 3000), // 12 MP
+      '/small.jpg': MediaMeta(width: 640, height: 480), // ~0.3 MP
+    };
+    final entries = [_file('big.jpg'), _file('small.jpg'), _file('none.jpg')];
+    int idx(List<DirEntry> es, String n) => es.indexWhere((e) => e.name == n);
+
+    test('min/max pixel filter; unknown dimensions excluded', () {
+      expect(
+          applyFilterSort(entries, meta,
+                  const FilterState(minPixels: 1000000), defaultSort)
+              .map((e) => e.name),
+          ['big.jpg']);
+      expect(
+          applyFilterSort(entries, meta,
+                  const FilterState(maxPixels: 1000000), defaultSort)
+              .map((e) => e.name),
+          ['small.jpg']);
+    });
+
+    test('sorts by resolution (unknown counts as 0)', () {
+      final byRes = applyFilterSort(entries, meta, defaultFilter,
+          const SortState(key: SortKey.resolution));
+      expect(idx(byRes, 'none.jpg'), lessThan(idx(byRes, 'small.jpg')));
+      expect(idx(byRes, 'small.jpg'), lessThan(idx(byRes, 'big.jpg')));
     });
   });
 }

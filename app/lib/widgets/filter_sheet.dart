@@ -20,9 +20,12 @@ String _sortLabel(SortKey k) => switch (k) {
       SortKey.created => 'Created',
       SortKey.uploaded => 'Uploaded',
       SortKey.duration => 'Duration',
+      SortKey.resolution => 'Resolution',
       SortKey.type => 'Type',
       SortKey.extension => 'Extension',
     };
+
+String _megapixels(int pixels) => '${(pixels / 1000000).toStringAsFixed(1)} MP';
 
 bool _hasRange(List<int> v) => v.length > 1 && v.first < v.last;
 
@@ -38,6 +41,7 @@ class FilterSheet extends StatelessWidget {
     required this.extensions,
     required this.sizeValues,
     required this.durationValues,
+    required this.resolutionValues,
     required this.onFilter,
     required this.onSort,
     super.key,
@@ -57,6 +61,9 @@ class FilterSheet extends StatelessWidget {
 
   /// Ascending video durations (ms) in scope (for the duration slider).
   final List<int> durationValues;
+
+  /// Ascending resolutions (total pixels) in scope (for the resolution slider).
+  final List<int> resolutionValues;
 
   /// Reports a filter edit.
   final void Function(FilterState) onFilter;
@@ -111,6 +118,20 @@ class FilterSheet extends StatelessWidget {
                 onChanged: (lo, hi) => onFilter(
                   filter.copyWith(minDurationMs: lo, maxDurationMs: hi),
                 ),
+              ),
+            ],
+            if ((filter.type == TypeFilter.image ||
+                    filter.type == TypeFilter.video) &&
+                _hasRange(resolutionValues)) ...[
+              const SizedBox(height: 12),
+              const Text('Resolution'),
+              QuantileRangeSlider(
+                values: resolutionValues,
+                lo: filter.minPixels,
+                hi: filter.maxPixels,
+                labelOf: _megapixels,
+                onChanged: (lo, hi) =>
+                    onFilter(filter.copyWith(minPixels: lo, maxPixels: hi)),
               ),
             ],
             const SizedBox(height: 12),

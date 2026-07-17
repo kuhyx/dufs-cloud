@@ -67,6 +67,8 @@ describe("isFilterActive", () => {
     expect(isFilterActive(filter({ maxSize: 1 }))).toBe(true);
     expect(isFilterActive(filter({ minDurationMs: 1 }))).toBe(true);
     expect(isFilterActive(filter({ maxDurationMs: 1 }))).toBe(true);
+    expect(isFilterActive(filter({ minPixels: 1 }))).toBe(true);
+    expect(isFilterActive(filter({ maxPixels: 1 }))).toBe(true);
   });
 });
 
@@ -164,6 +166,24 @@ describe("applyFilterSort — filtering", () => {
     expect(names(capped)).toEqual(["Album", "short.mp4"]);
   });
 
+  it("resolution range needs the index; unknown dimensions are excluded", () => {
+    // short.mp4 = 1920×1080 (2.07 MP), long.mp4 = 1280×720 (0.92 MP).
+    const hi = applyFilterSort(
+      entries,
+      meta,
+      filter({ minPixels: 1_000_000 }),
+      sort(),
+    );
+    expect(names(hi)).toEqual(["Album", "short.mp4"]);
+    const lo = applyFilterSort(
+      entries,
+      meta,
+      filter({ maxPixels: 1_000_000 }),
+      sort(),
+    );
+    expect(names(lo)).toEqual(["Album", "long.mp4"]);
+  });
+
   it("fuzzy query narrows folders and files", () => {
     const out = applyFilterSort(entries, meta, filter({ query: "no" }), sort());
     expect(names(out)).toEqual(["notes.txt"]);
@@ -173,15 +193,15 @@ describe("applyFilterSort — filtering", () => {
 describe("applyFilterSort — sorting", () => {
   const meta: MetaIndex = {
     "/a.mp4": {
-      width: null,
-      height: null,
+      width: 100,
+      height: 100,
       durationMs: 3000,
       createdMs: 300,
       uploadedMs: 10,
     },
     "/b.mp4": {
-      width: null,
-      height: null,
+      width: 200,
+      height: 100,
       durationMs: 1000,
       createdMs: 100,
       uploadedMs: 20,
@@ -219,6 +239,9 @@ describe("applyFilterSort — sorting", () => {
     expect(names(byUploaded).slice(2)).toEqual(["c.txt", "a.mp4", "b.mp4"]);
     const byDur = applyFilterSort(entries, meta, DEFAULT_FILTER, sort({ key: "duration" }));
     expect(names(byDur).slice(2)).toEqual(["c.txt", "b.mp4", "a.mp4"]);
+    // a=100×100 (10k px), b=200×100 (20k px), c has no dimensions (0).
+    const byRes = applyFilterSort(entries, meta, DEFAULT_FILTER, sort({ key: "resolution" }));
+    expect(names(byRes).slice(2)).toEqual(["c.txt", "a.mp4", "b.mp4"]);
   });
 
   it("sorts by extension and type", () => {
