@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dufs-cloud — range select &amp; drag and drop</title>
+<style>
+  :root{--bg:#fbfbfd;--fg:#1a1a1f;--muted:#5b5b6b;--card:#fff;--line:#e4e4ec;
+    --accent:#6b4fd6;--accent-soft:#efeaff;--ok:#1a7f4b;--ok-soft:#e6f6ec;
+    --bad:#b3261e;--bad-soft:#fdeceb;--code:#f4f4f8;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.05);}
+  @media (prefers-color-scheme:dark){:root{--bg:#131318;--fg:#e9e9f0;--muted:#a2a2b4;--card:#1c1c24;
+    --line:#2c2c38;--accent:#a78bfa;--accent-soft:#241f38;--ok:#6ee7a8;--ok-soft:#12291d;
+    --bad:#ff9a91;--bad-soft:#2c1616;--code:#1a1a22;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{width:min(48rem,92vw);margin:0 auto;padding:2.6rem 0 5rem}
+  .kicker{color:var(--accent);font-weight:700;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase}
+  h1{font-size:1.85rem;margin:.35rem 0 .5rem;line-height:1.25}
+  h2{font-size:1.3rem;margin:2.8rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+  h3{font-size:1.02rem;margin:1.8rem 0 .5rem}
+  .lead{color:var(--muted);margin:0 0 1.4rem}
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:.9rem 1.1rem;box-shadow:var(--shadow);margin:1.6rem 0 .5rem}
+  nav.toc ol{margin:.3rem 0 0;padding-left:1.2rem}
+  nav.toc li{margin:.18rem 0}
+  a{color:var(--accent)}
+  code{background:var(--code);padding:.12em .38em;border-radius:5px;font-size:.9em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;
+    padding:.85rem 1rem;overflow-x:auto;margin:.7rem 0}
+  pre code{background:none;padding:0;white-space:pre-wrap;word-break:break-word;font-size:.85em;line-height:1.55}
+  .note{background:var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:.75rem 1rem;margin:1rem 0}
+  .note p:first-child{margin-top:0}.note p:last-child{margin-bottom:0}
+  figure{margin:1.4rem 0;padding:0}
+  figcaption{color:var(--muted);font-size:.85rem;margin-top:.55rem;text-align:center}
+  .diagram{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:1.1rem;box-shadow:var(--shadow);overflow-x:auto}
+  .row{display:flex;gap:.55rem;flex-wrap:wrap}
+  .tile{flex:1 1 5.5rem;min-width:5rem;border:1px solid var(--line);border-radius:10px;
+    background:var(--bg);padding:.6rem .5rem;text-align:center;font-size:.82rem;position:relative}
+  .tile .ic{font-size:1.5rem;display:block;line-height:1.4}
+  .tile.sel{outline:2px solid var(--accent);outline-offset:-2px}
+  .tile.drop{outline:2px dashed var(--accent);outline-offset:-2px;background:var(--accent-soft)}
+  .tile.dim{opacity:.42}
+  .badge{position:absolute;top:.3rem;left:.35rem;width:1.05rem;height:1.05rem;border-radius:4px;
+    border:1.5px solid var(--muted);font-size:.7rem;line-height:.95rem;text-align:center}
+  .badge.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .anchor-tag{position:absolute;bottom:-.55rem;left:50%;transform:translateX(-50%);
+    background:var(--accent);color:#fff;font-size:.6rem;padding:.05rem .35rem;border-radius:99px;white-space:nowrap}
+  .flow{display:flex;align-items:stretch;gap:.5rem;flex-wrap:wrap}
+  .step{flex:1 1 8rem;min-width:7.5rem;background:var(--bg);border:1px solid var(--line);
+    border-radius:10px;padding:.6rem .7rem;font-size:.82rem}
+  .step b{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .arrow{align-self:center;color:var(--muted);font-size:1.2rem}
+  .verdict{margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;font-size:.9rem}
+  .verdict.ok{background:var(--ok-soft);color:var(--ok)}
+  .verdict.bad{background:var(--bad-soft);color:var(--bad)}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);padding:.4rem .8rem}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  select{font:inherit;padding:.35rem .5rem;border-radius:8px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);max-width:100%}
+  .controls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.8rem 0}
+  .controls label{font-size:.85rem;color:var(--muted)}
+  .status{font-size:.86rem;color:var(--muted);margin-top:.6rem}
+  .q{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:1rem 1.1rem;margin:1rem 0;box-shadow:var(--shadow)}
+  .q p.stem{margin:.1rem 0 .8rem;font-weight:600}
+  .opt{display:block;width:100%;text-align:left;margin:.35rem 0;padding:.55rem .7rem;line-height:1.45}
+  .opt.correct{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+  .opt.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+  .why{font-size:.87rem;color:var(--muted);margin:.55rem 0 0;display:none}
+  .why.show{display:block}
+  .score{position:sticky;bottom:.7rem;background:var(--card);border:1px solid var(--line);
+    border-radius:99px;padding:.45rem .95rem;box-shadow:var(--shadow);display:inline-block;font-size:.88rem}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0}
+  th,td{border:1px solid var(--line);padding:.42rem .6rem;text-align:left;vertical-align:top}
+  th{background:var(--code)}
+  .wrapscroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="kicker">dufs-cloud · change explanation</p>
+<h1>Selecting many files at once, and dragging them somewhere</h1>
+<p class="lead">Three commits: shift-click / tap-range selection, drag-and-drop moves and
+uploads, and a test that had been quietly covering nothing. Along the way, a React bug
+that a 100%-covered test suite happily waved through.</p>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#background">Background — what this code is</a></li>
+    <li><a href="#intuition">Intuition — what changed and why</a></li>
+    <li><a href="#code">Code — the walkthrough</a></li>
+    <li><a href="#playground">Playground — try the rules</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+  </ol>
+</nav>
+
+<h2 id="background">Background — what this code is</h2>
+
+<p>dufs-cloud is a personal file cloud. A <a href="https://github.com/sigoden/dufs">dufs</a>
+server exposes a directory over WebDAV, and two clients browse it: a React single-page app
+in <code>web/</code>, and a Flutter app in <code>app/</code>. Both show the same thing — a grid of
+tiles, one per file or folder — and both talk to the server through a small client wrapper
+with methods like <code>list</code>, <code>upload</code>, <code>remove</code>, and
+<code>move(fromPath, destDir)</code>.</p>
+
+<p>Both apps already had multi-select before this change. On the web you tick a checkbox on
+a tile; on mobile you long-press a tile to enter a selection mode, after which taps toggle
+items instead of opening them. Once things are selected, a toolbar offers move, download-as-zip,
+and delete. Selection lives in one place per app: a set of paths — <code>selected</code> in the
+React <code>Gallery</code> component, <code>_selected</code> in the Flutter
+<code>_BrowserScreenState</code>.</p>
+
+<p>Two details from that existing design matter later:</p>
+
+<ul>
+  <li><strong>The listing can change underneath the selection.</strong> Both apps reload the
+  current folder after an operation, and the mobile app keeps a pull-to-refresh gesture live
+  <em>while</em> you are selecting. Reloading replaces the entries list but does not clear the
+  selection.</li>
+  <li><strong>The mobile app renders two different grids.</strong> The normal folder grid is
+  selectable; the grouped results shown while a search filter is active are not.</li>
+</ul>
+
+<p>There is also a PDF viewer on mobile, <code>PdfScreen</code>. It writes the PDF into a temp
+directory, binds a loopback <code>HttpServer</code> to serve a bundled pdf.js viewer, and points
+a WebView at it. It appears here only because its test turned out to be broken, and that is
+what was keeping CI red.</p>
+
+<h2 id="intuition">Intuition — what changed and why</h2>
+
+<h3>1. Selecting a range instead of one tile at a time</h3>
+
+<p>Selecting twelve consecutive files meant twelve clicks. The fix is the convention every file
+manager uses: click one item, then <em>shift</em>-click another, and everything between them —
+in the order currently on screen — becomes selected. The first item is the <em>anchor</em>.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="row">
+      <div class="tile sel"><span class="ic">📁</span>dest<span class="anchor-tag">anchor</span></div>
+      <div class="tile sel"><span class="ic">📄</span>a.txt</div>
+      <div class="tile sel"><span class="ic">📄</span>b.txt</div>
+      <div class="tile sel"><span class="ic">📄</span>c.txt<span class="anchor-tag">shift-click</span></div>
+      <div class="tile"><span class="ic">📄</span>d.txt</div>
+    </div>
+  </div>
+  <figcaption>Click <code>dest</code>, then shift-click <code>c.txt</code>: the four tiles between
+  them inclusive are selected. <code>d.txt</code>, past the target, is untouched.</figcaption>
+</figure>
+
+<p>A phone has no shift key. Rather than overload long-press — already spoken for, since it is
+what <em>enters</em> selection mode — the mobile app grows an explicit two-step gesture: a
+"Select range" button in the action bar arms the mode, the next tap extends from the anchor, and
+the mode disarms itself. The button tints with the theme accent while armed, so the state is
+visible rather than remembered.</p>
+
+<h3>2. The anchor can go missing</h3>
+
+<p>An anchor is just a path, remembered across renders. But the listing it points into can be
+replaced. On mobile, pull-to-refresh works during selection and does not clear it, so this is
+reachable: select a file, someone deletes it server-side, you refresh, and now the anchor names
+a file that is no longer in the list.</p>
+
+<p>The range code looks the anchor up by index. A missing anchor yields index <code>-1</code>, and
+slicing a list from <code>-1</code> throws. So both apps check, and fall back to treating the
+interaction as a plain toggle. This guard is genuinely reachable — an earlier reading of the code
+concluded it was dead and nearly deleted it. The test that proves otherwise drives a refresh
+whose second listing omits the anchor's file.</p>
+
+<h3>3. Dragging things around</h3>
+
+<p>On the web, tiles became draggable and folder tiles became drop targets, which buys two
+gestures at once: drag entries onto a folder to <em>move</em> them, and drag files in from the
+operating system to <em>upload</em>. Dropping on empty grid space uploads into the folder you are
+looking at; dropping onto a folder tile uploads into that folder instead. Dragging an item that
+is part of a selection carries the whole selection; dragging an unselected item carries just it.</p>
+
+<p>Mobile gets the move half only — there is no OS drag source — and only inside selection mode,
+where long-press is free to mean "start dragging".</p>
+
+<h3>4. Two drops that must not happen</h3>
+
+<p>A folder dropped into itself, or into its own descendant, has no sensible answer: the subtree
+would have to become its own parent. And an item dropped into the folder it already lives in is
+a no-op worth skipping rather than issuing a pointless request for.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="flow">
+      <div class="step"><b>dragging</b><code>/Media</code></div>
+      <div class="arrow">→</div>
+      <div class="step"><b>onto</b><code>/Media/2026/07</code></div>
+      <div class="arrow">→</div>
+      <div class="step" style="background:var(--bad-soft);color:var(--bad)">
+        <b>refused</b>the target lives <em>inside</em> what you are dragging</div>
+    </div>
+    <div class="flow" style="margin-top:.7rem">
+      <div class="step"><b>dragging</b><code>/Media/pic.jpg</code></div>
+      <div class="arrow">→</div>
+      <div class="step"><b>onto</b><code>/Media</code></div>
+      <div class="arrow">→</div>
+      <div class="step" style="background:var(--bad-soft);color:var(--bad)">
+        <b>skipped</b>already lives there — nothing to do</div>
+    </div>
+  </div>
+  <figcaption>Both apps share one rule, implemented twice: <code>movableInto()</code> in
+  TypeScript and in Dart.</figcaption>
+</figure>
+
+<p>On mobile the same predicate also gates the drop target itself, so an illegal drag never even
+lights the folder up — the refusal is visible before you let go, not after.</p>
+
+<h3>5. The bug the tests missed</h3>
+
+<p>This is the part worth remembering. To read the shift key, the first implementation cancelled
+the checkbox's click and did the toggle by hand:</p>
+
+<pre><code>onChange={() =&gt; {}}
+onClick={(e) =&gt; { e.preventDefault(); onToggleSelect(entry, e.shiftKey); }}</code></pre>
+
+<p>That works right up until you look at the box you clicked. React keeps a <em>value tracker</em>
+per controlled input so it can tell real changes from echoes of its own render. The browser
+toggles the checkbox before any handler runs, the tracker records the new value, and only then does
+<code>preventDefault()</code> put the DOM back. On the next render React compares its prop against
+the tracker, sees agreement, and writes nothing.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="flow">
+      <div class="step"><b>1 · browser</b>toggles the box to <code>true</code></div>
+      <div class="arrow">→</div>
+      <div class="step"><b>2 · react tracker</b>records <code>true</code></div>
+      <div class="arrow">→</div>
+      <div class="step"><b>3 · preventDefault</b>DOM reverts to <code>false</code></div>
+      <div class="arrow">→</div>
+      <div class="step" style="background:var(--bad-soft);color:var(--bad)">
+        <b>4 · render</b>prop <code>true</code> = tracker <code>true</code> → no write</div>
+    </div>
+    <p style="margin:.9rem 0 .3rem;font-size:.86rem;color:var(--muted)">Result on screen —
+      "1 selected", but the box you clicked looks empty:</p>
+    <div class="row">
+      <div class="tile sel"><span class="badge">&nbsp;</span><span class="ic">📁</span>.proxies</div>
+      <div class="tile"><span class="badge">&nbsp;</span><span class="ic">📁</span>gdrive_backups</div>
+      <div class="tile"><span class="badge">&nbsp;</span><span class="ic">📁</span>Keepass</div>
+    </div>
+  </div>
+  <figcaption>Observed live against the real server: the tile carried the selected outline and the
+  toolbar counted it, while its checkbox reported <code>checked === false</code>.</figcaption>
+</figure>
+
+<p>Every <em>other</em> checkbox updated correctly, because their props changed without a click and
+React wrote them normally. Only the clicked one went stale — and unticking it stuck for the same
+reason. The suite was at 100% coverage and did not notice, because the assertions checked the
+selection count and the <em>neighbours'</em> rendered state, never the clicked box's own.</p>
+
+<div class="note">
+  <p><strong>The fix is to stop fighting the browser.</strong> For checkboxes React routes the change
+  event through the click, so the modifier keys are already on the native event. Do the toggle in a
+  plain <code>onChange</code>, read <code>e.nativeEvent.shiftKey</code>, cancel nothing — and the
+  controlled-input contract holds.</p>
+</div>
+
+<h3>6. A test that asserted nothing</h3>
+
+<p>The same shape of bug — <em>a test that passes whether or not the code under test runs</em> —
+was already sitting in <code>pdf_screen_test.dart</code>, and it was why CI was red at
+1328/1329 lines.</p>
+
+<p>The test meant to cover this window in <code>PdfScreen._init()</code>: between binding the
+loopback server and storing it in <code>_server</code>, the widget can be disposed. Because
+<code>dispose()</code> closes <code>_server</code> and <code>_server</code> is still null at that
+moment, nothing would ever close that server — one leaked loopback server, and its file-serving
+loop, per aborted PDF open.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="flow">
+      <div class="step"><b>init</b>download the pdf…</div>
+      <div class="arrow">→</div>
+      <div class="step" style="background:var(--accent-soft)"><b>window</b>server bound,
+        <code>_server</code> still null</div>
+      <div class="arrow">→</div>
+      <div class="step"><b>init</b><code>_server = server</code></div>
+    </div>
+    <p style="margin:.9rem 0 .3rem;font-size:.86rem;color:var(--muted)">If you hit back during the
+      highlighted window, <code>dispose()</code> runs with nothing to close — so
+      <code>_init</code> itself must close the server it just bound.</p>
+  </div>
+  <figcaption>The branch is load-bearing production code. What was broken was its test.</figcaption>
+</figure>
+
+<p>The test never got near it. <code>_init()</code> was still unpacking the pdf.js viewer, blocked
+in an asset-bundle load that only resolves while the test binding is <em>pumped</em> — and the test
+only slept. So the gated download never resumed, the bind never happened, and the lone assertion
+("no WebView is showing") was true either way. Seeding the extraction marker lets
+<code>_init()</code> skip straight to the download; the test now also asserts the PDF file was
+written, which is the step immediately before the bind, so it fails loudly if the flow ever stalls
+early again.</p>
+
+<div class="note">
+  <p><strong>Two traps worth knowing, both hit while fixing this.</strong> Real I/O futures never
+  complete in flutter_test's fake-async zone, so an <code>await Directory(...).create()</code>
+  outside <code>runAsync</code> hangs the test outright — use the <code>…Sync</code> variants. And a
+  future gated inside <code>runAsync</code> only resumes once control leaves it, so the waiting has
+  to happen in a second <code>runAsync</code>.</p>
+</div>
+
+<h2 id="code">Code — the walkthrough</h2>
+
+<h3>The shared rule, written twice</h3>
+
+<p>Both apps needed the same drop predicate, and both already had a <code>underPath</code> helper.
+The rule reads directly: keep a path if the destination is not inside it, and if it does not
+already live there.</p>
+
+<pre><code>// web/src/lib/paths.ts
+export function movableInto(paths, destDir) {
+  return paths.filter(
+    (p) =&gt; !underPath(destDir, p) &amp;&amp; parentPath(p) !== normalize(destDir),
+  );
+}</code></pre>
+
+<p><code>underPath(destDir, p)</code> covers both the self-drop and the descendant case in one
+test, since a path is considered under itself. The Dart version in
+<code>app/lib/util/paths.dart</code> is the same expression. Normalising the destination is what
+makes a trailing slash harmless.</p>
+
+<h3>Range selection</h3>
+
+<p>Each app keeps one extra piece of state — the anchor — updated on every plain interaction, and
+consults it when the range gesture fires. The web version:</p>
+
+<pre><code>function toggleSelect(entry, shiftKey) {
+  if (shiftKey &amp;&amp; selectAnchor !== null) {
+    const anchorIdx = displayed.findIndex((e) =&gt; e.path === selectAnchor);
+    const targetIdx = displayed.findIndex((e) =&gt; e.path === entry.path);
+    if (anchorIdx !== -1 &amp;&amp; targetIdx !== -1) {
+      const [lo, hi] = anchorIdx &lt; targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
+      setSelected((cur) =&gt; new Set([...cur, ...displayed.slice(lo, hi + 1).map((e) =&gt; e.path)]));
+      setSelectAnchor(entry.path);
+      return;
+    }
+  }
+  /* plain toggle, then: */ setSelectAnchor(entry.path);
+}</code></pre>
+
+<p>Three decisions are encoded here. The range is taken over <code>displayed</code> — what is on
+screen right now — so it follows the current sort and filter rather than some server-side order.
+A range <em>adds</em> to the selection instead of replacing it, so ranges compose. And the anchor
+moves to wherever you just interacted, so a second shift-click extends from there.</p>
+
+<p>Mobile mirrors it in <code>_toggleSelect</code>, with <code>_rangeArmed</code> standing in for
+the shift key and cleared after use. The fallback carries the comment explaining why it is not
+dead code:</p>
+
+<pre><code>// A pull-to-refresh during select mode can drop the anchor from the
+// listing without clearing the selection; fall back to a plain
+// toggle rather than extending from an index we no longer have.
+if (anchorIdx != -1 &amp;&amp; targetIdx != -1) { … }</code></pre>
+
+<h3>The checkbox, restored to a normal controlled input</h3>
+
+<pre><code>onChange={(e) =&gt; {
+  const native = e.nativeEvent as Partial&lt;MouseEvent&gt;;
+  onToggleSelect(entry, native.shiftKey === true);
+}}</code></pre>
+
+<p>No <code>onClick</code>, no <code>preventDefault</code>, no empty <code>onChange</code>. The
+regression test pins the actual defect rather than its surroundings — it asserts the box you
+clicked reports <code>checked === true</code>, and that unticking it clears. It fails against the
+old handler, which is the only reason to trust it.</p>
+
+<h3>Web drag and drop</h3>
+
+<p>The grid owns the DOM plumbing. Drag payloads travel under a private MIME type, which is what
+keeps our own drags distinguishable from files arriving from the OS:</p>
+
+<pre><code>const DRAG_TYPE = "application/x-dufs-paths";
+
+onDragStart={(e) =&gt; {
+  const paths = isSel ? [...selected] : [entry.path];
+  e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(paths));
+  e.dataTransfer.effectAllowed = "move";
+}}</code></pre>
+
+<p>A folder tile's <code>onDrop</code> branches on <code>dataTransfer.files.length</code>: files
+present means an upload into that folder, otherwise decode the payload and move. It calls
+<code>stopPropagation()</code> so the drop does not <em>also</em> reach the grid background, which
+would upload into the current folder as well. The background handler on <code>&lt;main&gt;</code>
+ignores anything that is not an OS file drag, so internal drags never trigger a stray upload. Its
+<code>onDragLeave</code> checks <code>currentTarget.contains(relatedTarget)</code>, because
+crossing a child tile fires a leave event that would otherwise flicker the highlight off.</p>
+
+<p>The grouped search-results grid simply omits the drop handlers, which switches the whole
+feature off there — results span folders, so "the folder you dropped into" would be ambiguous.</p>
+
+<h3>Mobile drag and drop</h3>
+
+<p>In selection mode each tile is wrapped in a <code>LongPressDraggable</code>, and folder tiles
+additionally in a <code>DragTarget</code>. The gating is one line, and it is the whole reason the
+two gestures never collide:</p>
+
+<pre><code>onLongPress: selectable &amp;&amp; !_selecting ? () =&gt; _enterSelect(entry) : null,
+…
+if (!selectable || !_selecting) return tile;
+return _draggableTile(entry, tile);</code></pre>
+
+<p>Outside selection mode long-press enters selection; inside it, the draggable claims the press.
+<code>onWillAcceptWithDetails</code> runs <code>movableInto</code> so an illegal target never
+highlights, and <code>_moveDropped</code> filters again before issuing any request — mixed drags
+can be partly legal, so the predicate has to run on each item, not just on the batch.</p>
+
+<h3>What the tests pin</h3>
+
+<div class="wrapscroll">
+<table>
+  <tr><th>Behaviour</th><th>How it is proven</th></tr>
+  <tr><td>Clicked checkbox renders checked</td><td>Asserts the clicked element's own
+    <code>checked</code>; fails against the cancelled-click handler</td></tr>
+  <tr><td>Anchor vanished from the listing</td><td>A mock whose second listing drops the anchor's
+    file, driven by a pull-to-refresh fling</td></tr>
+  <tr><td>Folder into itself</td><td>Web: drop is a no-op and no <code>move</code> is issued.
+    Mobile: the target refuses, so no <code>MOVE</code> at all</td></tr>
+  <tr><td>Drag carries the selection</td><td>Payload asserted directly, then both moves observed
+    at the client</td></tr>
+  <tr><td>PdfScreen unmount window</td><td>Asserts the PDF was written — the step immediately
+    before the bind</td></tr>
+</table>
+</div>
+
+<h2 id="playground">Playground — try the rules</h2>
+
+<h3>Range selection</h3>
+<p>Click a tile to toggle it and drop the anchor there. Then either shift-click (web) or arm the
+range button and tap (mobile). Both modes run the same logic the apps do.</p>
+
+<div class="diagram">
+  <div class="controls">
+    <label>Mode</label>
+    <select id="mode">
+      <option value="web">Web — shift-click</option>
+      <option value="mobile">Mobile — arm, then tap</option>
+    </select>
+    <button id="armBtn" class="primary" style="display:none">Select range</button>
+    <button id="rsReset">Reset</button>
+  </div>
+  <div class="row" id="rsRow"></div>
+  <p class="status" id="rsStatus"></p>
+  <p class="status" id="rsLog" style="color:var(--accent)"></p>
+</div>
+
+<h3>The drop rule</h3>
+<p>Pick something to drag and somewhere to drop it. The verdict runs the real
+<code>movableInto</code> logic.</p>
+
+<div class="diagram">
+  <div class="controls">
+    <label>Drag</label>
+    <select id="dragSel"></select>
+    <label>onto</label>
+    <select id="destSel"></select>
+  </div>
+  <div id="dropVerdict"></div>
+</div>
+
+<h2 id="quiz">Quiz</h2>
+<p class="lead">Five questions on the reasoning behind the change.</p>
+<div id="quiz"></div>
+<div class="score" id="score">Score: 0 / 0</div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- micro-world 1: range selection ---------- */
+  var ENTRIES = [
+    { name: "dest", icon: "📁", path: "/dest" },
+    { name: "a.txt", icon: "📄", path: "/a.txt" },
+    { name: "b.txt", icon: "📄", path: "/b.txt" },
+    { name: "c.txt", icon: "📄", path: "/c.txt" },
+    { name: "d.txt", icon: "📄", path: "/d.txt" }
+  ];
+  var selected = [], anchor = null, armed = false;
+  var row = document.getElementById("rsRow"),
+      statusEl = document.getElementById("rsStatus"),
+      logEl = document.getElementById("rsLog"),
+      modeEl = document.getElementById("mode"),
+      armBtn = document.getElementById("armBtn");
+
+  function has(p) { return selected.indexOf(p) !== -1; }
+
+  // Mirrors toggleSelect(): a range adds to the selection and re-anchors.
+  function interact(entry, rangeGesture) {
+    if (rangeGesture && anchor !== null) {
+      var ai = ENTRIES.findIndex(function (e) { return e.path === anchor; });
+      var ti = ENTRIES.findIndex(function (e) { return e.path === entry.path; });
+      if (ai !== -1 && ti !== -1) {
+        var lo = Math.min(ai, ti), hi = Math.max(ai, ti);
+        for (var i = lo; i <= hi; i++) {
+          if (!has(ENTRIES[i].path)) selected.push(ENTRIES[i].path);
+        }
+        logEl.textContent = "Range " + ENTRIES[lo].name + " … " + ENTRIES[hi].name +
+          " added. Anchor moves to " + entry.name + ".";
+        anchor = entry.path; armed = false; render(); return;
+      }
+    }
+    var at = selected.indexOf(entry.path);
+    if (at === -1) { selected.push(entry.path); logEl.textContent = "Selected " + entry.name + "."; }
+    else { selected.splice(at, 1); logEl.textContent = "Deselected " + entry.name + "."; }
+    anchor = entry.path; armed = false; render();
+  }
+
+  function render() {
+    row.innerHTML = "";
+    ENTRIES.forEach(function (e) {
+      var d = document.createElement("div");
+      d.className = "tile" + (has(e.path) ? " sel" : "");
+      d.style.cursor = "pointer";
+      var box = document.createElement("span");
+      box.className = "badge" + (has(e.path) ? " on" : "");
+      box.innerHTML = has(e.path) ? "✓" : "&nbsp;";
+      d.appendChild(box);
+      var ic = document.createElement("span");
+      ic.className = "ic"; ic.textContent = e.icon; d.appendChild(ic);
+      d.appendChild(document.createTextNode(e.name));
+      if (anchor === e.path) {
+        var tag = document.createElement("span");
+        tag.className = "anchor-tag"; tag.textContent = "anchor"; d.appendChild(tag);
+      }
+      d.addEventListener("click", function (ev) {
+        var isRange = modeEl.value === "web" ? ev.shiftKey : armed;
+        interact(e, isRange);
+      });
+      row.appendChild(d);
+    });
+    var mobile = modeEl.value === "mobile";
+    armBtn.style.display = mobile ? "" : "none";
+    armBtn.textContent = armed ? "Range armed — tap an item" : "Select range";
+    armBtn.className = armed ? "primary" : "";
+    statusEl.textContent = selected.length + " selected · anchor: " +
+      (anchor ? anchor.slice(1) : "none") +
+      (mobile ? " · " + (armed ? "armed" : "not armed") : " · hold shift to range-select");
+  }
+
+  modeEl.addEventListener("change", function () { armed = false; render(); });
+  armBtn.addEventListener("click", function () { armed = !armed; render(); });
+  document.getElementById("rsReset").addEventListener("click", function () {
+    selected = []; anchor = null; armed = false; logEl.textContent = ""; render();
+  });
+  render();
+
+  /* ---------- micro-world 2: the drop rule ---------- */
+  function normalize(p) {
+    var out = [];
+    p.split("/").forEach(function (s) {
+      if (!s || s === ".") return;
+      if (s === "..") out.pop(); else out.push(s);
+    });
+    return "/" + out.join("/");
+  }
+  function parentPath(p) {
+    var n = normalize(p);
+    if (n === "/") return "/";
+    return normalize(n.slice(0, n.lastIndexOf("/")) || "/");
+  }
+  function underPath(p, base) {
+    if (base === "/") return true;
+    return p === base || p.indexOf(base + "/") === 0;
+  }
+  function movable(p, destDir) {
+    return !underPath(destDir, p) && parentPath(p) !== normalize(destDir);
+  }
+
+  var DRAGGABLE = ["/Media", "/Media/2026", "/Media/pic.jpg", "/Media/2026/trip.jpg", "/notes.txt"];
+  var DESTS = ["/", "/Media", "/Media/2026", "/Media/2026/07", "/Archive"];
+  var dragSel = document.getElementById("dragSel"),
+      destSel = document.getElementById("destSel"),
+      verdict = document.getElementById("dropVerdict");
+  DRAGGABLE.forEach(function (p) { dragSel.add(new Option(p, p)); });
+  DESTS.forEach(function (p) { destSel.add(new Option(p, p)); });
+  dragSel.value = "/Media"; destSel.value = "/Media/2026/07";
+
+  function judge() {
+    var p = dragSel.value, d = destSel.value, ok = movable(p, d), why;
+    if (ok) {
+      why = "Allowed — the destination is outside " + p + ", and it does not already live there.";
+    } else if (underPath(normalize(d), p)) {
+      why = d === p
+        ? "Refused — dropping " + p + " onto itself has no meaning."
+        : "Refused — " + d + " lives inside " + p + ", so the subtree would become its own parent.";
+    } else {
+      why = "Skipped — " + p + " already lives directly in " + d + ", so the move is a no-op.";
+    }
+    verdict.innerHTML = "";
+    var box = document.createElement("div");
+    box.className = "verdict " + (ok ? "ok" : "bad");
+    box.textContent = (ok ? "✓ moves" : "✕ does not move") + " · " + why;
+    verdict.appendChild(box);
+  }
+  dragSel.addEventListener("change", judge);
+  destSel.addEventListener("change", judge);
+  judge();
+
+  /* ---------- quiz ---------- */
+  var QUESTIONS = [
+    {
+      q: "Why did the checkbox you just clicked render unchecked while the app counted it as selected?",
+      options: [
+        "React batches its state updates, so the checkbox re-rendered just before the selection set had actually changed.",
+        "Cancelling the click reverted the DOM after React's tracker recorded the new value, so it never rewrote it.",
+        "The onChange handler was a no-op, so React treated the input as uncontrolled and skipped its updates.",
+        "The tile's selected class and the input's checked prop were derived from two different state variables."
+      ],
+      answer: 1,
+      why: "The browser toggles first, the tracker records that, then preventDefault reverts the DOM — so React's next comparison sees no difference to write."
+    },
+    {
+      q: "What makes the mobile 'anchor is missing' fallback reachable in real use?",
+      options: [
+        "Bulk move and delete both reload the listing while leaving the current selection and its anchor untouched.",
+        "Global search results are selectable, so an anchor set there is absent from the current folder's entries.",
+        "Navigating into a subfolder keeps the selection, so the anchor points outside the listing on screen.",
+        "Pull-to-refresh stays live during select mode and can drop the anchor's file without clearing selection."
+      ],
+      answer: 3,
+      why: "Bulk operations exit selection mode first, and search results are not selectable — refresh is the one path that swaps the listing under a live anchor."
+    },
+    {
+      q: "Which two situations does movableInto() exist to prevent?",
+      options: [
+        "Dropping a folder into itself or its own subtree, and moving an item into the folder it already lives in.",
+        "Dropping any folder onto another folder, since the server cannot move directories atomically at all.",
+        "Moving more than one item at a time, which the WebDAV MOVE verb cannot express in a single request.",
+        "Dropping files whose names already exist somewhere in the destination folder, which would overwrite them silently."
+      ],
+      answer: 0,
+      why: "A folder cannot become its own parent, and a move into the folder an item is already in is a request worth not sending."
+    },
+    {
+      q: "Why did the PdfScreen test never reach the branch it claimed to cover?",
+      options: [
+        "The HttpServer bind failed inside the test zone, so the code threw before reaching the mounted check.",
+        "The widget was still mounted when init resumed, so the guard evaluated false and the branch was skipped.",
+        "It was blocked unpacking the viewer, in an asset load that only resolves while the binding is pumped.",
+        "The gate completer was never completed, leaving the mocked download awaiting forever inside runAsync."
+      ],
+      answer: 2,
+      why: "_init() sat in the asset-bundle load inside _extractViewerOnce; the test only slept, never pumped, so the download never resumed."
+    },
+    {
+      q: "Why must _init() close the server itself rather than leaving it to dispose()?",
+      options: [
+        "dispose runs before init starts, so any server bound afterwards would never be reachable by the widget.",
+        "Between bind and the assignment to _server, dispose has nothing to close, so the server would leak.",
+        "The serve loop keeps a reference that dispose cannot reach, so closing must happen inside init itself.",
+        "Flutter disposes the state twice on back navigation, so the second close would throw without the guard."
+      ],
+      answer: 1,
+      why: "dispose() closes _server, but during that window _server is still null — so an aborted PDF open would leak one loopback server."
+    }
+  ];
+
+  var quizEl = document.getElementById("quiz"), scoreEl = document.getElementById("score");
+  var answered = 0, correct = 0;
+
+  QUESTIONS.forEach(function (item, qi) {
+    var card = document.createElement("div");
+    card.className = "q";
+    var stem = document.createElement("p");
+    stem.className = "stem";
+    stem.textContent = (qi + 1) + ". " + item.q;
+    card.appendChild(stem);
+    var why = document.createElement("p");
+    why.className = "why";
+    why.textContent = item.why;
+    var done = false;
+    item.options.forEach(function (text, oi) {
+      var b = document.createElement("button");
+      b.className = "opt";
+      b.type = "button";
+      b.textContent = text;
+      b.addEventListener("click", function () {
+        if (done) return;
+        done = true;
+        answered++;
+        var right = oi === item.answer;
+        if (right) correct++;
+        b.classList.add(right ? "correct" : "wrong");
+        if (!right) {
+          card.querySelectorAll(".opt")[item.answer].classList.add("correct");
+        }
+        why.classList.add("show");
+        scoreEl.textContent = "Score: " + correct + " / " + answered;
+      });
+      card.appendChild(b);
+    });
+    card.appendChild(why);
+    quizEl.appendChild(card);
+  });
+})();
+</script>
+</body>
+</html>
