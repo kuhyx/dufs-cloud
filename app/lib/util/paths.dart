@@ -85,6 +85,18 @@ bool underPath(String path, String base) {
   return path == base || path.startsWith('$base/');
 }
 
+/// The subset of [pathList] that may legally be dropped into [destDir].
+///
+/// Drops the two cases the server cannot sensibly answer: a folder dragged
+/// onto itself or into its own descendant (which would orphan the subtree),
+/// and an item already living directly in [destDir] (a no-op move).
+List<String> movableInto(Iterable<String> pathList, String destDir) {
+  final dest = normalize(destDir);
+  return pathList
+      .where((p) => !underPath(dest, p) && parentPath(p) != dest)
+      .toList();
+}
+
 /// One breadcrumb segment: a display [name] and the absolute [path] it links
 /// to.
 class Crumb {

@@ -739,6 +739,152 @@ void main() {
     expect(find.text('1 selected'), findsOneWidget);
   });
 
+  // Drives a long-press drag from [from] to [to], asserting the drag
+  // feedback appears mid-gesture, and returns after the drop settles.
+  Future<void> dragOnto(
+    WidgetTester tester,
+    Finder from,
+    Finder to, {
+    required String expectFeedback,
+  }) async {
+    final gesture = await tester.startGesture(tester.getCenter(from));
+    await tester.pump(const Duration(milliseconds: 700));
+    await gesture.moveTo(tester.getCenter(to));
+    await tester.pump();
+    expect(find.text(expectFeedback), findsOneWidget);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('drag in select mode moves the selection into a folder',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    final methods = <String>[];
+    String? destination;
+    final mock = MockClient((req) async {
+      methods.add(req.method);
+      if (req.method == 'MOVE') {
+        destination = req.headers['destination'];
+        return http.Response('', 201);
+      }
+      if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
+      return http.Response(_listing(_root), 207);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+
+    // Long-press enters select mode; the next long-press starts a drag.
+    await tester.longPress(find.text('clip.mp4'));
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
+
+    await dragOnto(
+      tester,
+      find.text('clip.mp4'),
+      find.text('Sub'),
+      expectFeedback: 'Move 1 item',
+    );
+    expect(methods.where((m) => m == 'MOVE').length, 1);
+    // WebDAV's Destination is the full target URL: folder + kept name.
+    expect(destination, endsWith('/Sub/clip.mp4'));
+    // The move exits select mode and reloads the folder.
+    expect(find.text('1 selected'), findsNothing);
+  });
+
+  testWidgets('dragging two selected items moves both', (tester) async {
+    final settings = await _settings(configured: true);
+    final methods = <String>[];
+    final mock = MockClient((req) async {
+      methods.add(req.method);
+      if (req.method == 'MOVE') return http.Response('', 201);
+      if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
+      return http.Response(_listing(_root), 207);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('clip.mp4'));
+    await tester.pump();
+    await tester.tap(find.text('doc.txt'));
+    await tester.pump();
+    expect(find.text('2 selected'), findsOneWidget);
+
+    await dragOnto(
+      tester,
+      find.text('clip.mp4'),
+      find.text('Sub'),
+      expectFeedback: 'Move 2 items',
+    );
+    expect(methods.where((m) => m == 'MOVE').length, 2);
+  });
+
+  testWidgets('dragging an unselected item carries only that item',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    final destinations = <String>[];
+    final mock = MockClient((req) async {
+      if (req.method == 'MOVE') {
+        destinations.add(req.url.path);
+        return http.Response('', 201);
+      }
+      if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
+      return http.Response(_listing(_root), 207);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('clip.mp4'));
+    await tester.pump();
+
+    // data.bin is not selected, so only it travels.
+    await dragOnto(
+      tester,
+      find.text('data.bin'),
+      find.text('Sub'),
+      expectFeedback: 'Move 1 item',
+    );
+    expect(destinations, ['/data.bin']);
+  });
+
+  testWidgets('a folder refuses a drop of itself', (tester) async {
+    final settings = await _settings(configured: true);
+    final methods = <String>[];
+    final mock = MockClient((req) async {
+      methods.add(req.method);
+      if (req.url.path == '/Sub') return http.Response(_listing([]), 207);
+      return http.Response(_listing(_root), 207);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('Sub'));
+    await tester.pump();
+
+    await dragOnto(
+      tester,
+      find.text('Sub'),
+      find.text('Sub'),
+      expectFeedback: 'Move 1 item',
+    );
+    // Dropping a folder on itself would orphan its subtree: no MOVE at all,
+    // and the selection is left untouched.
+    expect(methods.where((m) => m == 'MOVE'), isEmpty);
+    expect(find.text('1 selected'), findsOneWidget);
+  });
+
+  testWidgets('a failed drag-move is reported in a snackbar', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock(moveFail: true)));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('clip.mp4'));
+    await tester.pump();
+
+    await dragOnto(
+      tester,
+      find.text('clip.mp4'),
+      find.text('Sub'),
+      expectFeedback: 'Move 1 item',
+    );
+    expect(find.text('1 item(s) could not be moved'), findsOneWidget);
+  });
+
   testWidgets('bulk delete: confirm deletes each item; cancel does not',
       (tester) async {
     final settings = await _settings(configured: true);

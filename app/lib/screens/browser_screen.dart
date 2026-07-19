@@ -792,13 +792,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
       itemBuilder: (context, i) {
         final entry = entries[i];
         // While selecting, a tap toggles the item instead of opening it.
-        return EntryTile(
+        final tile = EntryTile(
           client: client,
           entry: entry,
           onTap: () => selectable && _selecting
               ? _toggleSelect(entry)
               : unawaited(_open(entry)),
-          onLongPress: selectable ? () => _enterSelect(entry) : null,
+          // Long-press enters select mode; once selecting it starts a drag
+          // instead, so the two gestures never compete for the same press.
+          onLongPress: selectable && !_selecting
+              ? () => _enterSelect(entry)
+              : null,
           selected: selectable && _selecting
               ? _selected.contains(entry.path)
               : null,
@@ -807,7 +811,81 @@ class _BrowserScreenState extends State<BrowserScreen> {
           onRename: () => unawaited(_rename(entry)),
           onDelete: () => unawaited(_delete(entry)),
         );
+        if (!selectable || !_selecting) return tile;
+        return _draggableTile(entry, tile);
       },
     );
+  }
+
+  // In select mode a tile can be dragged, and a folder tile can receive a
+  // drop. Dragging a selected item carries the whole selection; dragging an
+  // unselected one carries just itself.
+  Widget _draggableTile(DirEntry entry, Widget tile) {
+    final payload = _selected.contains(entry.path)
+        ? _selected.toList()
+        : <String>[entry.path];
+    final draggable = LongPressDraggable<List<String>>(
+      data: payload,
+      feedback: _dragFeedback(payload.length),
+      childWhenDragging: Opacity(opacity: 0.4, child: tile),
+      child: tile,
+    );
+    if (!entry.isDir) return draggable;
+    return DragTarget<List<String>>(
+      // Reject a drop that would move a folder into itself or its own
+      // subtree, so the target does not even light up for it.
+      onWillAcceptWithDetails: (details) =>
+          paths.movableInto(details.data, entry.path).isNotEmpty,
+      onAcceptWithDetails: (details) =>
+          unawaited(_moveDropped(entry.path, details.data)),
+      builder: (context, candidate, rejected) => DecoratedBox(
+        decoration: BoxDecoration(
+          border: candidate.isEmpty
+              ? null
+              : Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: draggable,
+      ),
+    );
+  }
+
+  Widget _dragFeedback(int count) {
+    return Material(
+      color: Theme.of(context).colorScheme.primaryContainer,
+      borderRadius: BorderRadius.circular(8),
+      elevation: 6,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text('Move $count item${count == 1 ? '' : 's'}'),
+      ),
+    );
+  }
+
+  // Moves the dropped entries into [destDir], skipping any the drop rules
+  // disallow. Mirrors _moveSelected's batching so one bad item cannot abort
+  // the rest.
+  Future<void> _moveDropped(String destDir, List<String> dropped) async {
+    final client = _client;
+    if (client == null) return;
+    final movable = paths.movableInto(dropped, destDir);
+    if (movable.isEmpty) return;
+    setState(() => _busy = true);
+    var failed = 0;
+    for (final path in movable) {
+      try {
+        await client.move(path, destDir);
+      } on Exception {
+        failed++;
+      }
+    }
+    if (failed > 0) _snack('$failed item(s) could not be moved');
+    _index = null;
+    _exitSelect();
+    await _load(_path);
+    if (mounted) setState(() => _busy = false);
   }
 }

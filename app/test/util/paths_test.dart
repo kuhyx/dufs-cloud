@@ -92,4 +92,37 @@ void main() {
       expect(formatDuration(0), '0s');
     });
   });
+
+  group('movableInto', () {
+    test('keeps items that can legally move into the destination', () {
+      expect(
+        movableInto(['/Media/pic.jpg', '/Media/clip.mp4'], '/Media/2026'),
+        ['/Media/pic.jpg', '/Media/clip.mp4'],
+      );
+    });
+
+    test('drops a folder dragged onto itself or into its own subtree', () {
+      expect(movableInto(['/Media'], '/Media'), isEmpty);
+      expect(movableInto(['/Media'], '/Media/2026/07'), isEmpty);
+      // A sibling that merely shares a name prefix is still movable.
+      expect(movableInto(['/Media'], '/Media2'), ['/Media']);
+    });
+
+    test('drops items already living directly in the destination', () {
+      expect(movableInto(['/Media/pic.jpg'], '/Media'), isEmpty);
+      // A trailing slash on the destination must not defeat the check.
+      expect(movableInto(['/Media/pic.jpg'], '/Media/'), isEmpty);
+      // Deeper descendants are not "already there" and may move up.
+      expect(movableInto(['/Media/2026/pic.jpg'], '/Media'), [
+        '/Media/2026/pic.jpg',
+      ]);
+    });
+
+    test('keeps only the legal subset of a mixed drag', () {
+      expect(
+        movableInto(['/Media', '/notes.txt', '/Media/pic.jpg'], '/Media/2026'),
+        ['/notes.txt', '/Media/pic.jpg'],
+      );
+    });
+  });
 }

@@ -20,6 +20,25 @@ interface GridProps {
   readonly onEditText: (entry: DirEntry) => void;
   readonly onDelete: (entry: DirEntry) => void;
   readonly onRename: (entry: DirEntry) => void;
+  /** Drag-to-move/upload wiring. Omitted in global search mode, where the
+   * grouped results span folders and a drop target would be ambiguous. */
+  readonly onMoveInto?: (destDir: string, paths: readonly string[]) => void;
+  readonly onUploadInto?: (destDir: string, files: FileList) => void;
+}
+
+/** Internal drag payload: the dragged entry paths, JSON-encoded. A custom
+ * type keeps our own drags distinguishable from files dragged in from the OS. */
+const DRAG_TYPE = "application/x-dufs-paths";
+
+/** Reads the dragged paths back out, tolerating a drag that isn't ours. */
+function draggedPaths(data: string): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((p): p is string => typeof p === "string");
+  } catch {
+    return [];
+  }
 }
 
 function Thumb({
@@ -56,7 +75,13 @@ export function Grid({
   onEditText,
   onDelete,
   onRename,
+  onMoveInto,
+  onUploadInto,
 }: GridProps): React.JSX.Element {
+  // The folder tile currently under the pointer during a drag, highlighted so
+  // it is obvious where a drop will land.
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const dragEnabled = onMoveInto !== undefined || onUploadInto !== undefined;
   return (
     <ul className="grid">
       {entries.map((entry) => {
@@ -69,10 +94,60 @@ export function Grid({
           else if (opensViewer) onOpenMedia(entry);
           else if (isText(entry.name)) onEditText(entry);
         };
+        const isDropTarget = dropTarget === entry.path;
+        // Only folders can receive a drop, and only while dragging is wired up.
+        const canReceive = dragEnabled && entry.kind === "dir";
         return (
           <li
             key={entry.path}
-            className={`tile tile-${entry.kind}${isSel ? " tile-selected" : ""}`}
+            className={`tile tile-${entry.kind}${isSel ? " tile-selected" : ""}${
+              isDropTarget ? " tile-drop" : ""
+            }`}
+            draggable={dragEnabled}
+            onDragStart={(e) => {
+              // Dragging a selected item carries the whole selection; dragging
+              // an unselected one carries just itself and leaves it alone.
+              const paths = isSel ? [...selected] : [entry.path];
+              e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(paths));
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={
+              canReceive
+                ? (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const files = e.dataTransfer.types.includes("Files");
+                    e.dataTransfer.dropEffect = files ? "copy" : "move";
+                    setDropTarget(entry.path);
+                  }
+                : undefined
+            }
+            onDragLeave={
+              canReceive
+                ? () => {
+                    setDropTarget(null);
+                  }
+                : undefined
+            }
+            onDrop={
+              canReceive
+                ? (e) => {
+                    e.preventDefault();
+                    // Keep the drop from also reaching the grid background,
+                    // which uploads into the folder being viewed.
+                    e.stopPropagation();
+                    setDropTarget(null);
+                    if (e.dataTransfer.files.length > 0) {
+                      onUploadInto?.(entry.path, e.dataTransfer.files);
+                      return;
+                    }
+                    const paths = draggedPaths(
+                      e.dataTransfer.getData(DRAG_TYPE),
+                    );
+                    if (paths.length > 0) onMoveInto?.(entry.path, paths);
+                  }
+                : undefined
+            }
           >
             <label className="tile-select">
               <input

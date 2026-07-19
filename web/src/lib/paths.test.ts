@@ -4,6 +4,7 @@ import {
   crumbs,
   encodePath,
   formatDuration,
+  movableInto,
   underPath,
   extname,
   humanSize,
@@ -116,5 +117,36 @@ describe("humanSize", () => {
     expect(humanSize(3 * 1024 * 1024 * 1024)).toBe("3.0 GB");
     expect(humanSize(2 * 1024 ** 4)).toBe("2.0 TB");
     expect(humanSize(50 * 1024)).toBe("50 KB");
+  });
+});
+
+describe("movableInto", () => {
+  it("keeps items that can legally move into the destination", () => {
+    expect(
+      movableInto(["/Media/pic.jpg", "/Media/clip.mp4"], "/Media/2026"),
+    ).toEqual(["/Media/pic.jpg", "/Media/clip.mp4"]);
+  });
+
+  it("drops a folder dragged onto itself or into its own subtree", () => {
+    expect(movableInto(["/Media"], "/Media")).toEqual([]);
+    expect(movableInto(["/Media"], "/Media/2026/07")).toEqual([]);
+    // A sibling whose name merely shares a prefix is still movable.
+    expect(movableInto(["/Media"], "/Media2")).toEqual(["/Media"]);
+  });
+
+  it("drops items already living directly in the destination", () => {
+    expect(movableInto(["/Media/pic.jpg"], "/Media")).toEqual([]);
+    // Trailing slashes on the destination must not defeat the check.
+    expect(movableInto(["/Media/pic.jpg"], "/Media/")).toEqual([]);
+    // Deeper descendants are not "already there" and may move up.
+    expect(movableInto(["/Media/2026/pic.jpg"], "/Media")).toEqual([
+      "/Media/2026/pic.jpg",
+    ]);
+  });
+
+  it("keeps only the legal subset of a mixed drag", () => {
+    expect(
+      movableInto(["/Media", "/notes.txt", "/Media/pic.jpg"], "/Media/2026"),
+    ).toEqual(["/notes.txt", "/Media/pic.jpg"]);
   });
 });

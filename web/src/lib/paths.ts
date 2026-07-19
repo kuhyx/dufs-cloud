@@ -101,6 +101,20 @@ export function underPath(path: string, base: string): boolean {
   return path === base || path.startsWith(`${base}/`);
 }
 
+/** The subset of `paths` that may legally be dropped into `destDir`.
+ *
+ * Drops the two cases the server cannot sensibly answer: a folder dragged
+ * onto itself or into its own descendant (which would orphan the subtree),
+ * and an item already living directly in `destDir` (a no-op move). */
+export function movableInto(
+  paths: readonly string[],
+  destDir: string,
+): readonly string[] {
+  return paths.filter(
+    (p) => !underPath(destDir, p) && parentPath(p) !== normalize(destDir),
+  );
+}
+
 /** Human-readable duration, split into h/m/s (e.g. 5073000 ms → "1h 24m 33s").
  * Trailing zero units are dropped; "0s" for a zero (or sub-second) duration. */
 export function formatDuration(ms: number): string {

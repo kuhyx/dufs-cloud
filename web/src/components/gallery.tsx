@@ -9,6 +9,7 @@ import {
   isPdf,
   isVideo,
   joinPath,
+  movableInto,
   underPath,
 } from "../lib/paths.ts";
 import {
@@ -55,6 +56,9 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // Last item clicked/tapped without a modifier — the range-select anchor.
   const [selectAnchor, setSelectAnchor] = useState<string | null>(null);
+  // True while files from the OS hover the grid background, so the whole
+  // content area can show it will accept the drop.
+  const [osDragOver, setOsDragOver] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [showMove, setShowMove] = useState(false);
   const [showDeleteSelected, setShowDeleteSelected] = useState(false);
@@ -176,13 +180,13 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
     setViewerIndex((cur) => (cur + delta + media.length) % media.length);
   }
 
-  function onUploadPicked(files: FileList | null): void {
+  function uploadInto(destDir: string, files: FileList | null): void {
     if (files === null || files.length === 0) return;
     setBusy(`Uploading ${files.length} file(s)…`);
     void (async () => {
       try {
         for (const file of Array.from(files)) {
-          await client.upload(path, file);
+          await client.upload(destDir, file);
         }
         refreshAll();
       } catch (err: unknown) {
@@ -190,6 +194,32 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
         return;
       }
       setBusy(null);
+    })();
+  }
+
+  function onUploadPicked(files: FileList | null): void {
+    uploadInto(path, files);
+  }
+
+  // Drop of dragged entries onto a folder tile. Illegal drops (a folder onto
+  // itself or into its own descendant, or an item already in the target) are
+  // filtered out rather than reported — the drag simply does nothing.
+  function moveInto(destDir: string, paths: readonly string[]): void {
+    const movable = movableInto(paths, destDir);
+    if (movable.length === 0) return;
+    setBusy(`Moving ${movable.length} item(s)…`);
+    void (async () => {
+      try {
+        for (const p of movable) {
+          await client.move(p, destDir);
+        }
+      } catch (err: unknown) {
+        setBusy(err instanceof Error ? err.message : String(err));
+        return;
+      }
+      setBusy(null);
+      clearSelection();
+      refreshAll();
     })();
   }
 
@@ -393,7 +423,29 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
         </div>
       )}
 
-      <main className="content">
+      <main
+        className={`content${osDragOver ? " content-drop" : ""}`}
+        // Files dragged in from the OS and dropped on empty grid space land in
+        // the folder being viewed; a folder tile handles its own drop first
+        // and stops the event from reaching here. Internal drags are ignored.
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes("Files")) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setOsDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          // Ignore the leave events fired while crossing child tiles.
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          setOsDragOver(false);
+        }}
+        onDrop={(e) => {
+          if (!e.dataTransfer.types.includes("Files")) return;
+          e.preventDefault();
+          setOsDragOver(false);
+          uploadInto(path, e.dataTransfer.files);
+        }}
+      >
         {loading && <p className="muted">Loading…</p>}
         {error !== null && <p className="error">Could not load: {error}</p>}
 
@@ -473,6 +525,8 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
             onEditText={setEditEntry}
             onDelete={setDeleteEntry}
             onRename={setRenameEntry}
+            onMoveInto={moveInto}
+            onUploadInto={uploadInto}
           />
         )}
       </main>
