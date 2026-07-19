@@ -30,6 +30,7 @@ describe("useMeta", () => {
         durationMs: 1000,
         createdMs: null,
         uploadedMs: null,
+        proxyPath: null,
       },
     };
     const { result } = renderHook(() =>

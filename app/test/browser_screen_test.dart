@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -185,6 +186,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(VideoScreen), findsOneWidget);
   });
+
+  testWidgets(
+    'opening a video plays its proxy in preference to the original',
+    (tester) async {
+      final settings = await _settings(configured: true);
+      final mock = MockClient((req) async {
+        if (req.method == 'PROPFIND') {
+          return http.Response(_listing(_root), 207);
+        }
+        if (req.url.path == '/.meta/index.json') {
+          return http.Response(
+            jsonEncode({
+              'entries': {
+                '/clip.mp4': {'proxyPath': '/.proxies/clip.mp4.mp4'},
+              },
+            }),
+            200,
+          );
+        }
+        return http.Response.bytes([1, 2, 3], 200);
+      });
+      await tester.pumpWidget(_browser(settings, mock));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('clip.mp4'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final videoScreen = tester.widget<VideoScreen>(find.byType(VideoScreen));
+      expect(videoScreen.path, '/.proxies/clip.mp4.mp4');
+    },
+  );
 
   testWidgets('opening audio pushes the audio screen', (tester) async {
     final settings = await _settings(configured: true);

@@ -10,8 +10,13 @@
 #       "/Media/2025/11/clip.mp4": {
 #         "width": 1920, "height": 1080,
 #         "durationMs": 92000,
-#         "createdMs": <mtime ms>, "uploadedMs": <first-seen ms>
+#         "createdMs": <mtime ms>, "uploadedMs": <first-seen ms>,
+#         "proxyPath": "/.proxies/Media/2025/11/clip.mp4.mp4"
 #       }, ... } }
+#
+# proxyPath is null unless generate_video_proxies.sh has produced a
+# browser/ExoPlayer-safe MP4 for that video (see that script for why); both
+# clients play the proxy in preference to the original when it is set.
 #
 # Keys are absolute cloud paths (leading slash), matching what the SPA requests.
 # Durations/dimensions come from ffprobe; images get dimensions only. The prior
@@ -93,7 +98,7 @@ main() {
             '(.[$k].uploadedMs) // empty' <<<"$prior")"
         [[ -z "$uploaded_ms" ]] && uploaded_ms="$now_ms"
 
-        local dur_ms=null width=null height=null
+        local dur_ms=null width=null height=null proxy_rel=""
         if [[ "$kind" == "video" ]]; then
             local probe; probe="$(ffprobe -v quiet -print_format json \
                 -show_entries format=duration:stream=width,height \
@@ -104,6 +109,10 @@ main() {
                 width="$(jq -r '(.streams[0].width // "null")' <<<"$probe" 2>/dev/null || echo null)"
                 height="$(jq -r '(.streams[0].height // "null")' <<<"$probe" 2>/dev/null || echo null)"
             fi
+            # Set by generate_video_proxies.sh when this video's audio/container
+            # needed fixing to play in a browser/ExoPlayer; both clients prefer
+            # this over the original when present.
+            [[ -f "$root/.proxies$rel.mp4" ]] && proxy_rel="/.proxies$rel.mp4"
         elif [[ "$kind" == "image" ]]; then
             # ImageMagick is authoritative for image dimensions (ffprobe is
             # unreliable on stills); [0] takes the first frame of multi-frame
@@ -123,11 +132,14 @@ main() {
             --argjson d "${dur_ms:-null}" \
             --argjson c "$mtime_ms" \
             --argjson u "$uploaded_ms" \
-            '.[$k] = {width:$w, height:$h, durationMs:$d, createdMs:$c, uploadedMs:$u}' \
+            --arg p "$proxy_rel" \
+            '.[$k] = {width:$w, height:$h, durationMs:$d, createdMs:$c, uploadedMs:$u,
+                      proxyPath: (if $p == "" then null else $p end)}' \
             "$TMP_JSON" >"$TMP_JSON.next" && mv "$TMP_JSON.next" "$TMP_JSON"
         count=$((count + 1))
     done < <(fd --type f --absolute-path \
         --exclude .meta --exclude .thumbs --exclude _thumbs --exclude assets \
+        --exclude .proxies \
         . "$root" --print0)
 
     jq -n --argjson ms "$now_ms" --slurpfile e "$TMP_JSON" \

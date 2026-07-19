@@ -4,10 +4,11 @@ import type { DirEntry } from "../api/types.ts";
 
 /**
  * Names never included in the whole-cloud index. The app shell (index.html,
- * assets, thumbnails) is not user content, and `.thumbs` in particular is a
- * full mirror of the media tree — descending into it would double the walk and
- * flood results with a thumbnail per image. `Keepass` holds the KeePass
- * database and its sync metadata: sensitive and noise in a media filter.
+ * assets, thumbnails) is not user content, and `.thumbs`/`.proxies` in
+ * particular are full mirrors of the media tree — descending into them would
+ * double the walk and flood results with a thumbnail/proxy per video.
+ * `Keepass` holds the KeePass database and its sync metadata: sensitive and
+ * noise in a media filter.
  */
 const SKIP = new Set([
   "index.html",
@@ -17,6 +18,7 @@ const SKIP = new Set([
   ".thumbs",
   "_thumbs",
   ".meta",
+  ".proxies",
   "Keepass",
 ]);
 

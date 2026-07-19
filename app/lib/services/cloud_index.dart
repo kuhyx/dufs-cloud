@@ -1,10 +1,11 @@
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 
-/// Names never included in the whole-cloud index: the app shell, the thumbnail
-/// mirror (`.thumbs` — descending it would double the walk and flood results
-/// with a thumbnail per image), the metadata index, and the KeePass data
-/// (sensitive and noise in a media filter).
+/// Names never included in the whole-cloud index: the app shell, the
+/// thumbnail/proxy mirrors (`.thumbs`/`.proxies` — descending them would
+/// double the walk and flood results with a thumbnail/proxy per video), the
+/// metadata index, and the KeePass data (sensitive and noise in a media
+/// filter).
 const Set<String> skipNames = {
   'index.html',
   'assets',
@@ -13,6 +14,7 @@ const Set<String> skipNames = {
   '.thumbs',
   '_thumbs',
   '.meta',
+  '.proxies',
   'Keepass',
 };
 

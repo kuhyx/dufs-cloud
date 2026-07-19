@@ -13,6 +13,10 @@ export interface MediaMeta {
   readonly createdMs: number | null;
   /** When the indexer first saw the file (≈ upload time) in epoch ms, or null. */
   readonly uploadedMs: number | null;
+  /** Absolute cloud path of a browser-safe MP4 proxy for this video (see
+   * `scripts/generate_video_proxies.sh`), or null when either this isn't a
+   * video or the original already plays fine as-is. */
+  readonly proxyPath: string | null;
 }
 
 /** The metadata index: a map from absolute cloud path to its {@link MediaMeta}. */

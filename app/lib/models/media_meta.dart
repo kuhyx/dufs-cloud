@@ -9,6 +9,7 @@ class MediaMeta {
     this.durationMs,
     this.createdMs,
     this.uploadedMs,
+    this.proxyPath,
   });
 
   /// Builds a [MediaMeta] from one index entry's JSON map (tolerant of missing
@@ -19,6 +20,7 @@ class MediaMeta {
         durationMs: _asInt(json['durationMs']),
         createdMs: _asInt(json['createdMs']),
         uploadedMs: _asInt(json['uploadedMs']),
+        proxyPath: _asString(json['proxyPath']),
       );
 
   /// Pixel width (images and videos), or null.
@@ -35,6 +37,11 @@ class MediaMeta {
 
   /// When the indexer first saw the file (≈ upload time) in epoch ms, or null.
   final int? uploadedMs;
+
+  /// Absolute cloud path of a browser/ExoPlayer-safe MP4 proxy for this video
+  /// (see `scripts/generate_video_proxies.sh`), or null when either this
+  /// isn't a video or the original already plays fine as-is.
+  final String? proxyPath;
 }
 
 /// The metadata index: a map from absolute cloud path to its [MediaMeta].
@@ -57,3 +64,5 @@ MetaIndex metaIndexFromJson(Object? decoded) {
 }
 
 int? _asInt(Object? v) => v is num ? v.toInt() : null;
+
+String? _asString(Object? v) => v is String ? v : null;

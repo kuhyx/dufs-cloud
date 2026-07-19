@@ -416,7 +416,9 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
         <MediaViewer
           key={viewerEntry.path}
           entry={viewerEntry}
-          url={client.fileUrl(viewerEntry.path)}
+          url={client.fileUrl(
+            meta[viewerEntry.path]?.proxyPath ?? viewerEntry.path,
+          )}
           onClose={() => {
             setViewerIndex(-1);
           }}

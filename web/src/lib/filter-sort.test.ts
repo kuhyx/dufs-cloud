@@ -82,6 +82,7 @@ describe("applyFilterSort — filtering", () => {
       durationMs: 5000,
       createdMs: 100,
       uploadedMs: 200,
+      proxyPath: null,
     },
     "/long.mp4": {
       width: 1280,
@@ -89,6 +90,7 @@ describe("applyFilterSort — filtering", () => {
       durationMs: 60000,
       createdMs: 50,
       uploadedMs: 400,
+      proxyPath: null,
     },
   };
   const entries = [
@@ -200,6 +202,7 @@ describe("applyFilterSort — sorting", () => {
       durationMs: 3000,
       createdMs: 300,
       uploadedMs: 10,
+      proxyPath: null,
     },
     "/b.mp4": {
       width: 200,
@@ -207,6 +210,7 @@ describe("applyFilterSort — sorting", () => {
       durationMs: 1000,
       createdMs: 100,
       uploadedMs: 20,
+      proxyPath: null,
     },
   };
   const entries = [

@@ -86,6 +86,30 @@ describe("Gallery", () => {
     });
   });
 
+  it("plays a video's proxy in preference to the original when indexed", async () => {
+    const client = makeClient({
+      fetchMeta: vi.fn(() =>
+        Promise.resolve({
+          "/clip.mp4": {
+            width: null,
+            height: null,
+            durationMs: null,
+            createdMs: null,
+            uploadedMs: null,
+            proxyPath: "/.proxies/clip.mp4.mp4",
+          },
+        }),
+      ),
+    });
+    render(<Gallery client={client} />);
+    await userEvent.click(await screen.findByText("clip.mp4"));
+    await waitFor(() => {
+      const video = document.querySelector("video");
+      expect(video).not.toBeNull();
+      expect(video?.getAttribute("src")).toBe("/.proxies/clip.mp4.mp4");
+    });
+  });
+
   it("edits a text file and saves it", async () => {
     const client = makeClient();
     render(<Gallery client={client} />);

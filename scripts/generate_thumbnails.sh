@@ -80,6 +80,6 @@ while IFS= read -r src; do
 			failed=$((failed + 1))
 		fi
 	fi
-done < <("$FD" "${FD_ARGS[@]}" --type f --exclude '.thumbs' --exclude '_thumbs' . "$ROOT" 2>/dev/null || true)
+done < <("$FD" "${FD_ARGS[@]}" --type f --exclude '.thumbs' --exclude '_thumbs' --exclude '.proxies' . "$ROOT" 2>/dev/null || true)
 
 log "done: $made made, $skipped current, $failed failed → $THUMBS"

@@ -56,9 +56,9 @@ describe("sizeValues", () => {
 
 describe("durationValues", () => {
   const meta: MetaIndex = {
-    "/a.mp4": { width: null, height: null, durationMs: 5000, createdMs: null, uploadedMs: null },
-    "/b.mp4": { width: null, height: null, durationMs: 92000, createdMs: null, uploadedMs: null },
-    "/c.mp4": { width: null, height: null, durationMs: 30000, createdMs: null, uploadedMs: null },
+    "/a.mp4": { width: null, height: null, durationMs: 5000, createdMs: null, uploadedMs: null, proxyPath: null },
+    "/b.mp4": { width: null, height: null, durationMs: 92000, createdMs: null, uploadedMs: null, proxyPath: null },
+    "/c.mp4": { width: null, height: null, durationMs: 30000, createdMs: null, uploadedMs: null, proxyPath: null },
   };
   it("returns ascending known durations, skipping unindexed entries", () => {
     const entries = [file("/a.mp4"), file("/b.mp4"), file("/c.mp4"), file("/x.mp4")];
