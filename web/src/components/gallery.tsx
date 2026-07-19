@@ -53,6 +53,8 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  // Last item clicked/tapped without a modifier — the range-select anchor.
+  const [selectAnchor, setSelectAnchor] = useState<string | null>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [showMove, setShowMove] = useState(false);
   const [showDeleteSelected, setShowDeleteSelected] = useState(false);
@@ -112,6 +114,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
 
   function clearSelection(): void {
     setSelected(new Set());
+    setSelectAnchor(null);
   }
 
   // Reload the current folder and invalidate the whole-cloud index so a later
@@ -139,13 +142,29 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
     });
   }
 
-  function toggleSelect(entry: DirEntry): void {
+  // Shift-click selects every item between the anchor (the last item
+  // clicked without a modifier) and the clicked one, inclusive — standard
+  // shift-click range semantics, scoped to what's currently on screen.
+  function toggleSelect(entry: DirEntry, shiftKey: boolean): void {
+    if (shiftKey && selectAnchor !== null) {
+      const anchorIdx = displayed.findIndex((e) => e.path === selectAnchor);
+      const targetIdx = displayed.findIndex((e) => e.path === entry.path);
+      if (anchorIdx !== -1 && targetIdx !== -1) {
+        const [lo, hi] =
+          anchorIdx < targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
+        const range = displayed.slice(lo, hi + 1).map((e) => e.path);
+        setSelected((cur) => new Set([...cur, ...range]));
+        setSelectAnchor(entry.path);
+        return;
+      }
+    }
     setSelected((cur) => {
       const next = new Set(cur);
       if (next.has(entry.path)) next.delete(entry.path);
       else next.add(entry.path);
       return next;
     });
+    setSelectAnchor(entry.path);
   }
 
   // Grid only calls this for media entries, so the entry is always in `media`.

@@ -14,7 +14,7 @@ interface GridProps {
   readonly client: DufsClient;
   readonly entries: readonly DirEntry[];
   readonly selected: ReadonlySet<string>;
-  readonly onToggleSelect: (entry: DirEntry) => void;
+  readonly onToggleSelect: (entry: DirEntry, shiftKey: boolean) => void;
   readonly onOpenDir: (path: string) => void;
   readonly onOpenMedia: (entry: DirEntry) => void;
   readonly onEditText: (entry: DirEntry) => void;
@@ -79,8 +79,16 @@ export function Grid({
                 type="checkbox"
                 checked={isSel}
                 aria-label={`Select ${entry.name}`}
-                onChange={() => {
-                  onToggleSelect(entry);
+                // React routes a checkbox's change through the click event,
+                // so the modifier state is on the native event. Toggling
+                // here rather than in onClick+preventDefault keeps this a
+                // normal controlled input: cancelling the click leaves
+                // React's value tracker believing the box already holds the
+                // new value, so it never writes `checked` back and the box
+                // you just clicked renders stale.
+                onChange={(e) => {
+                  const native = e.nativeEvent as Partial<MouseEvent>;
+                  onToggleSelect(entry, native.shiftKey === true);
                 }}
               />
             </label>

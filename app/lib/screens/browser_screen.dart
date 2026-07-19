@@ -94,6 +94,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
   // [_path], which the whole-cloud filter view would violate.
   bool _selecting = false;
   final Set<String> _selected = <String>{};
+  // Last item tapped without range mode armed — the range-select anchor
+  // (touch's equivalent of shift-click's "last item clicked").
+  String? _selectAnchor;
+  // Armed by the "Range select" action bar button; the next tap extends
+  // the selection from the anchor to that item, inclusive, then disarms.
+  bool _rangeArmed = false;
 
   @override
   void initState() {
@@ -441,22 +447,52 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void _enterSelect(DirEntry entry) {
     setState(() {
       _selecting = true;
+      _selectAnchor = entry.path;
       _selected
         ..clear()
         ..add(entry.path);
     });
   }
 
+  // A plain tap toggles just this entry and moves the anchor here; an armed
+  // range-select tap instead selects every entry between the anchor and
+  // this one (inclusive, in the current listing's order) and disarms.
   void _toggleSelect(DirEntry entry) {
     setState(() {
+      final anchor = _selectAnchor;
+      if (_rangeArmed && anchor != null) {
+        final anchorIdx = _entries.indexWhere((e) => e.path == anchor);
+        final targetIdx = _entries.indexWhere((e) => e.path == entry.path);
+        // A pull-to-refresh during select mode can drop the anchor from the
+        // listing without clearing the selection; fall back to a plain
+        // toggle rather than extending from an index we no longer have.
+        if (anchorIdx != -1 && targetIdx != -1) {
+          final lo = anchorIdx < targetIdx ? anchorIdx : targetIdx;
+          final hi = anchorIdx < targetIdx ? targetIdx : anchorIdx;
+          for (final e in _entries.sublist(lo, hi + 1)) {
+            _selected.add(e.path);
+          }
+          _selectAnchor = entry.path;
+          _rangeArmed = false;
+          return;
+        }
+      }
       if (!_selected.remove(entry.path)) _selected.add(entry.path);
+      _selectAnchor = entry.path;
+      _rangeArmed = false;
     });
+  }
+
+  void _toggleRangeArmed() {
+    setState(() => _rangeArmed = !_rangeArmed);
   }
 
   void _exitSelect() {
     setState(() {
       _selecting = false;
       _selected.clear();
+      _selectAnchor = null;
+      _rangeArmed = false;
     });
   }
 
@@ -633,6 +669,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
       ),
       title: Text('${_selected.length} selected'),
       actions: [
+        IconButton(
+          icon: Icon(
+            Icons.checklist_rtl,
+            color: _rangeArmed
+                ? Theme.of(context).colorScheme.primary
+                : null,
+          ),
+          tooltip: _rangeArmed
+              ? 'Range select armed — tap an item'
+              : 'Select range',
+          onPressed: _busy ? null : _toggleRangeArmed,
+        ),
         IconButton(
           icon: const Icon(Icons.drive_file_move),
           tooltip: 'Move',

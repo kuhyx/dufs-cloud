@@ -84,6 +84,21 @@ MockClient _mock({
   });
 }
 
+// Serves the full root listing once, then a listing with clip.mp4 removed —
+// i.e. the file disappears server-side between the initial load and a
+// pull-to-refresh. fetchMeta uses GET, so the first PROPFIND is the load.
+MockClient _mockVanishing() {
+  var listings = 0;
+  return MockClient((req) async {
+    if (req.method != 'PROPFIND') return http.Response('', 400);
+    final gone = listings++ > 0;
+    final items = gone
+        ? _root.where((e) => e.$1 != '/clip.mp4').toList()
+        : _root;
+    return http.Response(_listing(items), 207);
+  });
+}
+
 Future<Settings> _settings({required bool configured}) async {
   SharedPreferences.setMockInitialValues(
     configured ? {'dufs_url': 'https://h', 'dufs_user': 'u'} : {},
@@ -662,6 +677,66 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('1 selected'), findsNothing);
     expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('range select: arms, selects the anchor..target range, disarms',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock()));
+    await tester.pumpAndSettle();
+    // Sorted (dirs first, then name asc): Sub, clip.mp4, data.bin, doc.txt,
+    // pic.jpg.
+
+    await tester.longPress(find.text('clip.mp4'));
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Select range'));
+    await tester.pump();
+    expect(find.byTooltip('Range select armed — tap an item'), findsOneWidget);
+
+    await tester.tap(find.text('pic.jpg'));
+    await tester.pump();
+    // clip.mp4..pic.jpg inclusive = clip.mp4, data.bin, doc.txt, pic.jpg.
+    expect(find.text('4 selected'), findsOneWidget);
+    // Armed state cleared after the range tap.
+    expect(find.byTooltip('Select range'), findsOneWidget);
+
+    // The anchor moved to pic.jpg; a plain tap elsewhere just toggles it.
+    await tester.tap(find.text('doc.txt'));
+    await tester.pump();
+    expect(find.text('3 selected'), findsOneWidget);
+  });
+
+  testWidgets('range select falls back to a plain toggle when the anchor '
+      'vanished from the listing', (tester) async {
+    final settings = await _settings(configured: true);
+    // Pull-to-refresh stays available in select mode and does not clear the
+    // selection, so the anchor can disappear server-side under us.
+    await tester.pumpWidget(_browser(settings, _mockVanishing()));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('clip.mp4'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Select range'));
+    await tester.pump();
+
+    await tester.fling(find.text('doc.txt'), const Offset(0, 300), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('clip.mp4'), findsNothing);
+    // Still armed, and clip.mp4 is still counted even though it is gone.
+    expect(find.byTooltip('Range select armed — tap an item'), findsOneWidget);
+    expect(find.text('1 selected'), findsOneWidget);
+
+    // No resolvable anchor: the tap degrades to a plain toggle and disarms.
+    await tester.tap(find.text('doc.txt'));
+    await tester.pump();
+    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.byTooltip('Select range'), findsOneWidget);
+
+    await tester.tap(find.text('doc.txt'));
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
   });
 
   testWidgets('bulk delete: confirm deletes each item; cancel does not',

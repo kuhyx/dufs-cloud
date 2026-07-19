@@ -101,7 +101,16 @@ describe("Grid", () => {
     expect(picBox.closest(".tile")).toHaveClass("tile-selected");
     // Clicking another tile's checkbox reports it back to the parent.
     await userEvent.click(screen.getByLabelText("Select Media"));
-    expect(onToggleSelect).toHaveBeenCalledWith(entries[0]);
+    expect(onToggleSelect).toHaveBeenCalledWith(entries[0], false);
+  });
+
+  it("reports shift-click so the caller can range-select", () => {
+    const onToggleSelect = vi.fn();
+    renderGrid({ onToggleSelect });
+    fireEvent.click(screen.getByLabelText("Select clip.mp4"), {
+      shiftKey: true,
+    });
+    expect(onToggleSelect).toHaveBeenCalledWith(entries[2], true);
   });
 
   it("falls back to an icon when a thumbnail fails to load", () => {
