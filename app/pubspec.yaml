@@ -25,6 +25,9 @@ dependencies:
   xml: ^6.5.0
 
 dev_dependencies:
+  # Generates the Android launcher icons from assets/icon/ (see
+  # python_pkg/app_icons in testsAndMisc for the shared style).
+  flutter_launcher_icons: ^0.14.4
   flutter_test:
     sdk: flutter
   plugin_platform_interface: ^2.1.8
@@ -44,3 +47,15 @@ flutter:
     - assets/pdfjs/web/locale/en-US/
     - assets/pdfjs/web/standard_fonts/
     - assets/pdfjs/web/wasm/
+
+# Launcher icon generation. Source art is produced by the shared generator:
+#   PYTHONPATH=~/testsAndMisc python3 -m python_pkg.app_icons generate --app dufs_client
+# then run: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#1B1D21"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  adaptive_icon_monochrome: "assets/icon/icon_monochrome.png"
+  min_sdk_android: 21
