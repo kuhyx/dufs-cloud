@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Allows plaintext HTTP to loopback only. The PDF viewer serves its vendored
+  pdf.js assets from a local-only HttpServer (127.0.0.1) inside the app so
+  the WebView loads them as ES modules with a real origin instead of
+  file:// ("null" origin, which browsers block module imports from) — this
+  traffic never leaves the device, so cleartext here carries no exposure.
+  Everything else (the dufs cloud itself) keeps the platform default of
+  HTTPS-only.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

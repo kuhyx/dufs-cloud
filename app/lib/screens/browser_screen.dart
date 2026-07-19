@@ -3,7 +3,9 @@ import 'dart:io';
 
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/models/media_meta.dart';
+import 'package:dufs_client/screens/audio_screen.dart';
 import 'package:dufs_client/screens/image_screen.dart';
+import 'package:dufs_client/screens/pdf_screen.dart';
 import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/screens/text_editor_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
@@ -245,6 +247,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => VideoScreen(
+            client: client,
+            path: entry.path,
+            title: entry.name,
+          ),
+        ),
+      );
+    } else if (entry.isAudio) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AudioScreen(
+            client: client,
+            path: entry.path,
+            title: entry.name,
+          ),
+        ),
+      );
+    } else if (entry.isPdf) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PdfScreen(
             client: client,
             path: entry.path,
             title: entry.name,

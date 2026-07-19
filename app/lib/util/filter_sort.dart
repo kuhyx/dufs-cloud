@@ -16,6 +16,12 @@ enum TypeFilter {
   /// Video files.
   video,
 
+  /// Audio files.
+  audio,
+
+  /// PDF files.
+  pdf,
+
   /// Text files.
   text,
 
@@ -66,6 +72,8 @@ const List<TypeFilter> _categoryOrder = [
   TypeFilter.folder,
   TypeFilter.image,
   TypeFilter.video,
+  TypeFilter.audio,
+  TypeFilter.pdf,
   TypeFilter.text,
   TypeFilter.other,
   TypeFilter.all,
@@ -190,6 +198,8 @@ TypeFilter categoryOf(DirEntry entry) {
   if (entry.isDir) return TypeFilter.folder;
   if (paths.isImage(entry.name)) return TypeFilter.image;
   if (paths.isVideo(entry.name)) return TypeFilter.video;
+  if (paths.isAudio(entry.name)) return TypeFilter.audio;
+  if (paths.isPdf(entry.name)) return TypeFilter.pdf;
   if (paths.isText(entry.name)) return TypeFilter.text;
   return TypeFilter.other;
 }

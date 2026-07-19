@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dufs_client/screens/audio_screen.dart';
 import 'package:dufs_client/screens/browser_screen.dart';
 import 'package:dufs_client/screens/image_screen.dart';
+import 'package:dufs_client/screens/pdf_screen.dart';
 import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
@@ -18,8 +20,10 @@ import 'package:share_plus/share_plus.dart'
     show ShareParams, ShareResult, ShareResultStatus;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import 'support/fake_video_platform.dart';
+import 'support/fake_webview_platform.dart';
 import 'support/secure_storage_mock.dart';
 
 String _listing(List<(String, bool, int)> items) {
@@ -123,6 +127,7 @@ void main() {
 
   setUp(() {
     VideoPlayerPlatform.instance = FakeVideoPlayerPlatform();
+    WebViewPlatform.instance = FakeWebViewPlatform();
   });
 
   testWidgets('unconfigured shows a hint and no upload button',
@@ -179,6 +184,44 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(VideoScreen), findsOneWidget);
+  });
+
+  testWidgets('opening audio pushes the audio screen', (tester) async {
+    final settings = await _settings(configured: true);
+    final mock = MockClient((req) async {
+      if (req.method == 'PROPFIND') {
+        return http.Response(
+          _listing([('/song.mp3', false, 10)]),
+          207,
+        );
+      }
+      return http.Response.bytes([1, 2, 3], 200);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('song.mp3'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(AudioScreen), findsOneWidget);
+  });
+
+  testWidgets('opening a PDF pushes the PDF screen', (tester) async {
+    final settings = await _settings(configured: true);
+    final mock = MockClient((req) async {
+      if (req.method == 'PROPFIND') {
+        return http.Response(
+          _listing([('/doc.pdf', false, 10)]),
+          207,
+        );
+      }
+      return http.Response.bytes([1, 2, 3], 200);
+    });
+    await tester.pumpWidget(_browser(settings, mock));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('doc.pdf'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(PdfScreen), findsOneWidget);
   });
 
   testWidgets('tapping a non-media, non-text file downloads it',

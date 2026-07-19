@@ -9,6 +9,8 @@ String _typeLabel(TypeFilter t) => switch (t) {
       TypeFilter.folder => 'Folders',
       TypeFilter.image => 'Images',
       TypeFilter.video => 'Videos',
+      TypeFilter.audio => 'Audio',
+      TypeFilter.pdf => 'PDFs',
       TypeFilter.text => 'Text',
       TypeFilter.other => 'Other',
     };

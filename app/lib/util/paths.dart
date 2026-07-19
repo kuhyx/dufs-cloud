@@ -14,7 +14,12 @@ const Set<String> _videoExts = {
 };
 const Set<String> _textExts = {
   'txt', 'md', 'markdown', 'log', 'csv', 'json', 'yaml', 'yml', //
-  'ini', 'conf', 'sh', 'toml', 'xml',
+  'ini', 'conf', 'sh', 'toml', 'xml', 'py', 'js', 'html', 'css', 'tex',
+  'ipynb',
+};
+const Set<String> _pdfExts = {'pdf'};
+const Set<String> _audioExts = {
+  'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'opus',
 };
 
 /// Lower-case extension without the dot, or `''` if none.
@@ -32,6 +37,12 @@ bool isVideo(String name) => _videoExts.contains(extname(name));
 
 /// Whether [name] is an editable text file (by extension).
 bool isText(String name) => _textExts.contains(extname(name));
+
+/// Whether [name] is a viewable PDF (by extension).
+bool isPdf(String name) => _pdfExts.contains(extname(name));
+
+/// Whether [name] is a playable audio file (by extension).
+bool isAudio(String name) => _audioExts.contains(extname(name));
 
 /// Normalizes to a leading-slash, no-trailing-slash absolute path
 /// (`'/'` stays `'/'`), resolving `.` and `..` segments.

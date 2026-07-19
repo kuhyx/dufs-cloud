@@ -4,7 +4,9 @@ import type { DirEntry } from "../api/types.ts";
 import {
   basename,
   crumbs,
+  isAudio,
   isImage,
+  isPdf,
   isVideo,
   joinPath,
   underPath,
@@ -95,7 +97,10 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
   // media viewer, so both work identically in folder and global mode.
   const displayed = globalMode ? globalResults : visible;
   const media = useMemo(
-    () => displayed.filter((e) => isImage(e.name) || isVideo(e.name)),
+    () =>
+      displayed.filter(
+        (e) => isImage(e.name) || isVideo(e.name) || isPdf(e.name) || isAudio(e.name),
+      ),
     [displayed],
   );
   const selectedEntries = useMemo(

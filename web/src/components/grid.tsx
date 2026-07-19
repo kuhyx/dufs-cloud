@@ -1,7 +1,14 @@
 import { useState } from "react";
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
-import { humanSize, isImage, isText, isVideo } from "../lib/paths.ts";
+import {
+  humanSize,
+  isAudio,
+  isImage,
+  isPdf,
+  isText,
+  isVideo,
+} from "../lib/paths.ts";
 
 interface GridProps {
   readonly client: DufsClient;
@@ -51,11 +58,13 @@ export function Grid({
   return (
     <ul className="grid">
       {entries.map((entry) => {
-        const media = isImage(entry.name) || isVideo(entry.name);
+        const hasThumb = isImage(entry.name) || isVideo(entry.name);
+        const opensViewer =
+          hasThumb || isPdf(entry.name) || isAudio(entry.name);
         const isSel = selected.has(entry.path);
         const activate = (): void => {
           if (entry.kind === "dir") onOpenDir(entry.path);
-          else if (media) onOpenMedia(entry);
+          else if (opensViewer) onOpenMedia(entry);
           else if (isText(entry.name)) onEditText(entry);
         };
         return (
@@ -77,13 +86,21 @@ export function Grid({
               <span className="tile-preview">
                 {entry.kind === "dir" ? (
                   <span className="tile-icon">📁</span>
-                ) : media ? (
+                ) : hasThumb ? (
                   <>
                     <Thumb client={client} entry={entry} />
                     {isVideo(entry.name) && <span className="play-badge">▶</span>}
                   </>
                 ) : (
-                  <span className="tile-icon">{isText(entry.name) ? "📝" : "📄"}</span>
+                  <span className="tile-icon">
+                    {isPdf(entry.name)
+                      ? "📕"
+                      : isAudio(entry.name)
+                        ? "🎵"
+                        : isText(entry.name)
+                          ? "📝"
+                          : "📄"}
+                  </span>
                 )}
               </span>
               <span className="tile-name" title={entry.name}>

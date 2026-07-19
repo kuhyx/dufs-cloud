@@ -43,6 +43,40 @@ describe("MediaViewer", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("renders an <iframe> for PDFs and does not close on click", () => {
+    const onClose = vi.fn();
+    render(
+      <MediaViewer
+        entry={mk("doc.pdf")}
+        url="/doc.pdf"
+        onClose={onClose}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    const frame = document.querySelector("iframe");
+    expect(frame).not.toBeNull();
+    if (frame) fireEvent.click(frame);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("renders an <audio> player for audio files and does not close on click", () => {
+    const onClose = vi.fn();
+    render(
+      <MediaViewer
+        entry={mk("song.mp3")}
+        url="/song.mp3"
+        onClose={onClose}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    const audio = document.querySelector("audio");
+    expect(audio).not.toBeNull();
+    if (audio) fireEvent.click(audio.parentElement ?? audio);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("offers a download for non-media files", () => {
     render(
       <MediaViewer

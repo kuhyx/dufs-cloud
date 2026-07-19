@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DirEntry } from "../api/types.ts";
-import { isImage, isVideo } from "../lib/paths.ts";
+import { isAudio, isImage, isPdf, isVideo } from "../lib/paths.ts";
 
 interface MediaViewerProps {
   readonly entry: DirEntry;
@@ -75,6 +75,25 @@ export function MediaViewer({
               setZoomed((z) => !z);
             }}
           />
+        ) : isPdf(entry.name) ? (
+          <iframe
+            className="viewer-pdf"
+            src={url}
+            title={entry.name}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          />
+        ) : isAudio(entry.name) ? (
+          <div
+            className="viewer-fallback"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <p>{entry.name}</p>
+            <audio className="viewer-audio" src={url} controls autoPlay />
+          </div>
         ) : (
           <div className="viewer-fallback">
             <p>{entry.name}</p>

@@ -7,7 +7,9 @@ import {
   underPath,
   extname,
   humanSize,
+  isAudio,
   isImage,
+  isPdf,
   isText,
   isVideo,
   joinPath,
@@ -34,7 +36,16 @@ describe("type predicates", () => {
     expect(isVideo("a.mkv")).toBe(true);
     expect(isVideo("a.png")).toBe(false);
     expect(isText("notes.md")).toBe(true);
+    expect(isText("script.py")).toBe(true);
+    expect(isText("notebook.ipynb")).toBe(true);
     expect(isText("a.bin")).toBe(false);
+  });
+  it("classifies PDFs and audio", () => {
+    expect(isPdf("doc.pdf")).toBe(true);
+    expect(isPdf("doc.docx")).toBe(false);
+    expect(isAudio("song.mp3")).toBe(true);
+    expect(isAudio("song.wav")).toBe(true);
+    expect(isAudio("song.pdf")).toBe(false);
   });
 });
 

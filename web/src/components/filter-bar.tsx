@@ -33,6 +33,8 @@ const TYPE_OPTIONS: readonly { value: TypeFilter; label: string }[] = [
   { value: "folder", label: "Folders" },
   { value: "image", label: "Images" },
   { value: "video", label: "Videos" },
+  { value: "audio", label: "Audio" },
+  { value: "pdf", label: "PDFs" },
   { value: "text", label: "Text" },
   { value: "other", label: "Other" },
 ];

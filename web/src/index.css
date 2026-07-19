@@ -610,9 +610,19 @@ button.ghost,
   max-width: 96vw;
   max-height: 88vh;
 }
+.viewer-pdf {
+  width: 96vw;
+  height: 88vh;
+  border: none;
+  background: #fff;
+}
 .viewer-fallback {
   color: #fff;
   text-align: center;
+}
+.viewer-audio {
+  margin-top: 1rem;
+  width: min(90vw, 32rem);
 }
 .viewer-close,
 .viewer-nav {

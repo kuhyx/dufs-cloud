@@ -10,7 +10,12 @@ const VIDEO_EXTS = new Set([
 ]);
 const TEXT_EXTS = new Set([
   "txt", "md", "markdown", "log", "csv", "json", "yaml", "yml",
-  "ini", "conf", "sh", "toml", "xml",
+  "ini", "conf", "sh", "toml", "xml", "py", "js", "html", "css", "tex",
+  "ipynb",
+]);
+const PDF_EXTS = new Set(["pdf"]);
+const AUDIO_EXTS = new Set([
+  "mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "opus",
 ]);
 
 /** Lower-case extension without the dot, or "" if none. */
@@ -28,6 +33,12 @@ export function isVideo(name: string): boolean {
 }
 export function isText(name: string): boolean {
   return TEXT_EXTS.has(extname(name));
+}
+export function isPdf(name: string): boolean {
+  return PDF_EXTS.has(extname(name));
+}
+export function isAudio(name: string): boolean {
+  return AUDIO_EXTS.has(extname(name));
 }
 
 /** Normalize to a leading-slash, no-trailing-slash absolute path ("/" stays "/"). */

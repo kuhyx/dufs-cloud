@@ -51,6 +51,8 @@ describe("categoryOf", () => {
     expect(categoryOf(dir("d"))).toBe("folder");
     expect(categoryOf(file("a.jpg"))).toBe("image");
     expect(categoryOf(file("a.mp4"))).toBe("video");
+    expect(categoryOf(file("a.mp3"))).toBe("audio");
+    expect(categoryOf(file("a.pdf"))).toBe("pdf");
     expect(categoryOf(file("a.md"))).toBe("text");
     expect(categoryOf(file("a.bin"))).toBe("other");
   });

@@ -1,5 +1,5 @@
 import type { DirEntry, MetaIndex } from "../api/types.ts";
-import { extname, isImage, isText, isVideo } from "./paths.ts";
+import { extname, isAudio, isImage, isPdf, isText, isVideo } from "./paths.ts";
 
 /** Coarse category used by the type filter and the "type" sort. */
 export type TypeFilter =
@@ -7,6 +7,8 @@ export type TypeFilter =
   | "folder"
   | "image"
   | "video"
+  | "audio"
+  | "pdf"
   | "text"
   | "other";
 
@@ -83,6 +85,8 @@ export function categoryOf(entry: DirEntry): TypeFilter {
   if (entry.kind === "dir") return "folder";
   if (isImage(entry.name)) return "image";
   if (isVideo(entry.name)) return "video";
+  if (isAudio(entry.name)) return "audio";
+  if (isPdf(entry.name)) return "pdf";
   if (isText(entry.name)) return "text";
   return "other";
 }
@@ -91,6 +95,8 @@ const CATEGORY_ORDER: readonly TypeFilter[] = [
   "folder",
   "image",
   "video",
+  "audio",
+  "pdf",
   "text",
   "other",
   "all",

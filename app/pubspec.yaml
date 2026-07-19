@@ -21,6 +21,7 @@ dependencies:
   share_plus: ^11.0.0
   shared_preferences: ^2.5.5
   video_player: ^2.9.2
+  webview_flutter: ^4.14.0
   xml: ^6.5.0
 
 dev_dependencies:
@@ -29,6 +30,17 @@ dev_dependencies:
   plugin_platform_interface: ^2.1.8
   very_good_analysis: ^10.2.0
   video_player_platform_interface: ^6.9.0
+  webview_flutter_platform_interface: ^2.14.0
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/pdfjs/build/
+    - assets/pdfjs/web/
+    - assets/pdfjs/web/cmaps/
+    - assets/pdfjs/web/iccs/
+    - assets/pdfjs/web/images/
+    - assets/pdfjs/web/locale/
+    - assets/pdfjs/web/locale/en-US/
+    - assets/pdfjs/web/standard_fonts/
+    - assets/pdfjs/web/wasm/

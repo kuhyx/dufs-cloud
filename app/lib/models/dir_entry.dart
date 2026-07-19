@@ -46,4 +46,10 @@ class DirEntry {
 
   /// Whether this file is an editable text file (by extension).
   bool get isText => paths.isText(name);
+
+  /// Whether this file is a viewable PDF (by extension).
+  bool get isPdf => paths.isPdf(name);
+
+  /// Whether this file is a playable audio file (by extension).
+  bool get isAudio => paths.isAudio(name);
 }

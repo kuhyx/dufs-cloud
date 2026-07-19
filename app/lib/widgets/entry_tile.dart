@@ -127,6 +127,8 @@ class EntryTile extends StatelessWidget {
     if (entry.isDir) return Icons.folder;
     if (entry.isVideo) return Icons.movie;
     if (entry.isImage) return Icons.image;
+    if (entry.isAudio) return Icons.audiotrack;
+    if (entry.isPdf) return Icons.picture_as_pdf;
     if (entry.isText) return Icons.description;
     return Icons.insert_drive_file;
   }

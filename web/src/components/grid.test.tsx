@@ -32,6 +32,8 @@ const entries: DirEntry[] = [
   entry("clip.mp4", "file"),
   entry("notes.txt", "file"),
   entry("data.bin", "file"),
+  entry("doc.pdf", "file"),
+  entry("song.mp3", "file"),
 ];
 
 function renderGrid(over: Partial<Parameters<typeof Grid>[0]> = {}) {
@@ -61,9 +63,19 @@ describe("Grid", () => {
     await userEvent.click(screen.getByText("notes.txt"));
     // Non-media, non-text file does nothing on activate.
     await userEvent.click(screen.getByText("data.bin"));
+    await userEvent.click(screen.getByText("doc.pdf"));
+    await userEvent.click(screen.getByText("song.mp3"));
     expect(onOpenDir).toHaveBeenCalledWith("/Media");
     expect(onOpenMedia).toHaveBeenCalledWith(entries[1]);
     expect(onEditText).toHaveBeenCalledWith(entries[3]);
+    expect(onOpenMedia).toHaveBeenCalledWith(entries[5]);
+    expect(onOpenMedia).toHaveBeenCalledWith(entries[6]);
+  });
+
+  it("shows distinct icons for PDF and audio tiles", () => {
+    renderGrid();
+    expect(screen.getByText("📕")).toBeInTheDocument();
+    expect(screen.getByText("🎵")).toBeInTheDocument();
   });
 
   it("renders a download link and a delete button for files", async () => {
