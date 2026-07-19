@@ -46,6 +46,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
   const [viewerIndex, setViewerIndex] = useState(-1);
   const [editEntry, setEditEntry] = useState<DirEntry | null>(null);
   const [deleteEntry, setDeleteEntry] = useState<DirEntry | null>(null);
+  const [renameEntry, setRenameEntry] = useState<DirEntry | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -178,6 +179,20 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
     setBusy(`Deleting ${entry.name}…`);
     client
       .remove(entry.path)
+      .then(() => {
+        setBusy(null);
+        refreshAll();
+      })
+      .catch((err: unknown) => {
+        setBusy(err instanceof Error ? err.message : String(err));
+      });
+  }
+
+  function renameSelected(entry: DirEntry, newName: string): void {
+    setRenameEntry(null);
+    setBusy(`Renaming ${entry.name}…`);
+    client
+      .rename(entry.path, newName)
       .then(() => {
         setBusy(null);
         refreshAll();
@@ -417,6 +432,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
                     onOpenMedia={openMedia}
                     onEditText={setEditEntry}
                     onDelete={setDeleteEntry}
+                    onRename={setRenameEntry}
                   />
                 )}
               </section>
@@ -437,6 +453,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
             onOpenMedia={openMedia}
             onEditText={setEditEntry}
             onDelete={setDeleteEntry}
+            onRename={setRenameEntry}
           />
         )}
       </main>
@@ -499,6 +516,20 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           onConfirm={createFolder}
           onCancel={() => {
             setShowNewFolder(false);
+          }}
+        />
+      )}
+      {renameEntry && (
+        <PromptDialog
+          title={`Rename "${renameEntry.name}"`}
+          placeholder="New name"
+          confirmLabel="Rename"
+          initialValue={renameEntry.name}
+          onConfirm={(newName) => {
+            renameSelected(renameEntry, newName);
+          }}
+          onCancel={() => {
+            setRenameEntry(null);
           }}
         />
       )}

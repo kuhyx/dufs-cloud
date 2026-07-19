@@ -15,6 +15,7 @@ class EntryTile extends StatelessWidget {
     this.onLongPress,
     this.onDownload,
     this.onDelete,
+    this.onRename,
     this.selected,
     this.onToggleSelect,
     super.key,
@@ -38,6 +39,9 @@ class EntryTile extends StatelessWidget {
 
   /// Called to delete the entry (null hides the menu item).
   final VoidCallback? onDelete;
+
+  /// Called to rename the entry (null hides the menu item).
+  final VoidCallback? onRename;
 
   /// Whether the tile is selected; null hides the selection checkbox.
   final bool? selected;
@@ -94,6 +98,7 @@ class EntryTile extends StatelessWidget {
                 icon: const Icon(Icons.more_vert),
                 onSelected: (v) {
                   if (v == 'download') onDownload?.call();
+                  if (v == 'rename') onRename?.call();
                   if (v == 'delete') onDelete?.call();
                 },
                 itemBuilder: (_) => [
@@ -101,6 +106,11 @@ class EntryTile extends StatelessWidget {
                     const PopupMenuItem(
                       value: 'download',
                       child: Text('Download'),
+                    ),
+                  if (onRename != null)
+                    const PopupMenuItem(
+                      value: 'rename',
+                      child: Text('Rename'),
                     ),
                   const PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],

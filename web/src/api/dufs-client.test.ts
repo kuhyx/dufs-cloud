@@ -131,4 +131,31 @@ describe("createDufsClient", () => {
     const client = createDufsClient(fetchImpl);
     await expect(client.remove("/nope")).rejects.toThrow("404");
   });
+
+  it("move MOVEs into the destination dir, keeping the base name", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(jsonResponse("")),
+    );
+    const client = createDufsClient(fetchImpl);
+    await client.move("/a/pic.jpg", "/b");
+    const call = fetchImpl.mock.calls.at(0);
+    expect(call?.[0]).toBe("/a/pic.jpg");
+    expect(call?.[1]?.method).toBe("MOVE");
+    const headers = call?.[1]?.headers as Record<string, string>;
+    expect(headers.Destination).toBe("/b/pic.jpg");
+    expect(headers.Overwrite).toBe("F");
+  });
+
+  it("rename MOVEs to a new name in the same directory", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(jsonResponse("")),
+    );
+    const client = createDufsClient(fetchImpl);
+    await client.rename("/a/old.jpg", "new.jpg");
+    const call = fetchImpl.mock.calls.at(0);
+    expect(call?.[0]).toBe("/a/old.jpg");
+    expect(call?.[1]?.method).toBe("MOVE");
+    const headers = call?.[1]?.headers as Record<string, string>;
+    expect(headers.Destination).toBe("/a/new.jpg");
+  });
 });

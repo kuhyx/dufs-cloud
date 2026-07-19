@@ -4,23 +4,27 @@ interface PromptDialogProps {
   readonly title: string;
   readonly placeholder: string;
   readonly confirmLabel: string;
+  /** Pre-filled, pre-selected starting value (e.g. the current name, for
+   * rename); defaults to blank (e.g. "New folder"). */
+  readonly initialValue?: string;
   readonly onConfirm: (value: string) => void;
   readonly onCancel: () => void;
 }
 
 /**
- * A modal that collects a single line of text (used for "New folder"). The
- * confirm button stays disabled until the trimmed input is non-empty, so the
- * caller never has to guard against blank names.
+ * A modal that collects a single line of text (used for "New folder" and
+ * "Rename"). The confirm button stays disabled until the trimmed input is
+ * non-empty, so the caller never has to guard against blank names.
  */
 export function PromptDialog({
   title,
   placeholder,
   confirmLabel,
+  initialValue = "",
   onConfirm,
   onCancel,
 }: PromptDialogProps): React.JSX.Element {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
   const trimmed = value.trim();
 
   function submit(): void {

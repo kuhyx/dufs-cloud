@@ -121,6 +121,21 @@ class DufsClient {
     }
   }
 
+  /// Renames [path] to [newName], keeping it in the same directory (MOVE).
+  Future<void> rename(String path, String newName) async {
+    final dest = paths.joinPath(paths.parentPath(path), newName);
+    final request = http.Request('MOVE', _uri(path))
+      ..headers.addAll(<String, String>{
+        ...authHeaders,
+        'destination': _uri(dest).toString(),
+        'overwrite': 'F',
+      });
+    final response = await _http.send(request);
+    if (response.statusCode >= 400) {
+      throw Exception('MOVE $path -> ${response.statusCode}');
+    }
+  }
+
   /// Reads a text file's contents.
   Future<String> readText(String path) async {
     final response = await _http.get(_uri(path), headers: authHeaders);

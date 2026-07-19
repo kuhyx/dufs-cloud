@@ -48,6 +48,7 @@ function makeClient(overrides: Partial<DufsClient> = {}): DufsClient {
     zipUrl: (p: string) => `${p}?zip`,
     createDir: vi.fn(() => Promise.resolve()),
     move: vi.fn(() => Promise.resolve()),
+    rename: vi.fn(() => Promise.resolve()),
     fetchMeta: vi.fn(() => Promise.resolve({})),
     downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
     ...overrides,
@@ -196,6 +197,53 @@ describe("Gallery", () => {
     await userEvent.click(screen.getByLabelText("Delete pic.jpg"));
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(client.remove).not.toHaveBeenCalled();
+  });
+
+  it("renames a file, pre-filled with its current name", async () => {
+    const client = makeClient();
+    render(<Gallery client={client} />);
+    await screen.findByText("pic.jpg");
+    await userEvent.click(screen.getByLabelText("Rename pic.jpg"));
+    const input = screen.getByLabelText('Rename "pic.jpg"');
+    expect(input).toHaveValue("pic.jpg");
+    await userEvent.clear(input);
+    await userEvent.type(input, "renamed.jpg");
+    await userEvent.click(screen.getByRole("button", { name: "Rename" }));
+    await waitFor(() => {
+      expect(client.rename).toHaveBeenCalledWith("/pic.jpg", "renamed.jpg");
+    });
+  });
+
+  it("cancels a rename", async () => {
+    const client = makeClient();
+    render(<Gallery client={client} />);
+    await screen.findByText("pic.jpg");
+    await userEvent.click(screen.getByLabelText("Rename pic.jpg"));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(client.rename).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a rename error", async () => {
+    const client = makeClient({
+      rename: vi.fn(() => Promise.reject(new Error("renameerr"))),
+    });
+    render(<Gallery client={client} />);
+    await screen.findByText("pic.jpg");
+    await userEvent.click(screen.getByLabelText("Rename pic.jpg"));
+    await userEvent.click(screen.getByRole("button", { name: "Rename" }));
+    expect(await screen.findByText(/renameerr/)).toBeInTheDocument();
+  });
+
+  it("stringifies a non-Error rename rejection", async () => {
+    const client = makeClient({
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      rename: vi.fn(() => Promise.reject("plain-rename")),
+    });
+    render(<Gallery client={client} />);
+    await screen.findByText("pic.jpg");
+    await userEvent.click(screen.getByLabelText("Rename pic.jpg"));
+    await userEvent.click(screen.getByRole("button", { name: "Rename" }));
+    expect(await screen.findByText("plain-rename")).toBeInTheDocument();
   });
 
   it("shows an error when listing fails", async () => {

@@ -33,6 +33,7 @@ function makeClient(list: DufsClient["list"]): DufsClient {
     remove: vi.fn(),
     createDir: vi.fn(),
     move: vi.fn(),
+    rename: vi.fn(),
     readText: vi.fn(),
     writeText: vi.fn(),
     fetchMeta: vi.fn(() => Promise.resolve({})),

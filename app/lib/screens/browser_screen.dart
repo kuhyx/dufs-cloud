@@ -361,6 +361,44 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
+  Future<void> _rename(DirEntry entry) async {
+    final client = _client;
+    if (client == null) return;
+    final controller = TextEditingController(text: entry.name);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Rename "${entry.name}"'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'New name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || newName == entry.name) return;
+    setState(() => _busy = true);
+    try {
+      await client.rename(entry.path, newName);
+      _index = null;
+      await _load(_path);
+    } on Exception catch (e) {
+      _snack('Rename failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _newFolder() async {
     final client = _client;
     if (client == null) return;
@@ -718,6 +756,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               : null,
           onToggleSelect: selectable ? () => _toggleSelect(entry) : null,
           onDownload: entry.isDir ? null : () => unawaited(_download(entry)),
+          onRename: () => unawaited(_rename(entry)),
           onDelete: () => unawaited(_delete(entry)),
         );
       },

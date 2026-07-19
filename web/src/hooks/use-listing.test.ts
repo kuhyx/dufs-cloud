@@ -20,6 +20,7 @@ function mkClient(list: DufsClient["list"]): DufsClient {
     zipUrl: (p: string) => `${p}?zip`,
     createDir: vi.fn(),
     move: vi.fn(),
+    rename: vi.fn(),
     fetchMeta: vi.fn(() => Promise.resolve({})),
     downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
   };

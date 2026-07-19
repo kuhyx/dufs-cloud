@@ -21,6 +21,7 @@ function makeClient(): DufsClient {
     zipUrl: (p: string) => `${p}?zip`,
     createDir: vi.fn(),
     move: vi.fn(),
+    rename: vi.fn(),
     fetchMeta: vi.fn(() => Promise.resolve({})),
     downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
   };
@@ -46,6 +47,7 @@ function renderGrid(over: Partial<Parameters<typeof Grid>[0]> = {}) {
     onOpenMedia: vi.fn(),
     onEditText: vi.fn(),
     onDelete: vi.fn(),
+    onRename: vi.fn(),
     ...over,
   };
   render(<Grid {...props} />);
@@ -78,11 +80,14 @@ describe("Grid", () => {
     expect(screen.getByText("🎵")).toBeInTheDocument();
   });
 
-  it("renders a download link and a delete button for files", async () => {
+  it("renders a download link, a rename button and a delete button for files", async () => {
     const onDelete = vi.fn();
-    renderGrid({ onDelete });
+    const onRename = vi.fn();
+    renderGrid({ onDelete, onRename });
     const download = screen.getByLabelText("Download pic.jpg");
     expect(download).toHaveAttribute("href", "/pic.jpg");
+    await userEvent.click(screen.getByLabelText("Rename pic.jpg"));
+    expect(onRename).toHaveBeenCalledWith(entries[1]);
     await userEvent.click(screen.getByLabelText("Delete pic.jpg"));
     expect(onDelete).toHaveBeenCalledWith(entries[1]);
   });

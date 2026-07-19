@@ -14,6 +14,7 @@ function makeClient(fetchMeta: () => Promise<MetaIndex>): DufsClient {
     remove: vi.fn(),
     createDir: vi.fn(),
     move: vi.fn(),
+    rename: vi.fn(),
     readText: vi.fn(),
     writeText: vi.fn(),
     fetchMeta: vi.fn(fetchMeta),

@@ -332,6 +332,81 @@ void main() {
     expect(find.textContaining('Delete failed'), findsOneWidget);
   });
 
+  testWidgets('rename: pre-filled, cancel, unchanged, and a successful rename',
+      (tester) async {
+    final methods = <String>[];
+    String? destination;
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, MockClient((req) async {
+      methods.add(req.method);
+      if (req.method == 'MOVE') {
+        destination = req.headers['destination'];
+        return http.Response('', 201);
+      }
+      return http.Response(_listing(_root), 207);
+    })));
+    await tester.pumpAndSettle();
+    // The last tile is a file (folders sort first): pic.jpg.
+
+    // Cancel: pre-filled with the current name, no MOVE.
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    final field = tester.widget<TextField>(find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    ));
+    expect(field.controller?.text, 'pic.jpg');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(methods, isNot(contains('MOVE')));
+
+    // Confirming with the name unchanged is a no-op too.
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+    await tester.pumpAndSettle();
+    expect(methods, isNot(contains('MOVE')));
+
+    // A real rename → MOVE with the new destination.
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'renamed.jpg');
+    await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+    await tester.pumpAndSettle();
+    expect(methods, contains('MOVE'));
+    expect(destination, endsWith('/renamed.jpg'));
+  });
+
+  testWidgets('rename surfaces a snackbar on failure', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock(moveFail: true)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'renamed.jpg');
+    await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Rename failed'), findsOneWidget);
+  });
+
   testWidgets('new folder: create, cancel and error', (tester) async {
     // Cancel (and empty-name) path: no MKCOL.
     final methods = <String>[];

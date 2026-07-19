@@ -194,6 +194,21 @@ void main() {
       await expectLater(bad.move('/a/x', '/b'), throwsException);
     });
 
+    test('rename() MOVEs to a new name in the same dir and throws on error',
+        () async {
+      late http.BaseRequest seen;
+      final ok = clientWith(MockClient((req) async {
+        seen = req;
+        return http.Response('', 204);
+      }));
+      await ok.rename('/a/old.jpg', 'new.jpg');
+      expect(seen.method, 'MOVE');
+      expect(seen.headers['destination'], 'https://host/a/new.jpg');
+      expect(seen.headers['overwrite'], 'F');
+      final bad = clientWith(MockClient((_) async => http.Response('', 412)));
+      await expectLater(bad.rename('/a/x', 'y'), throwsException);
+    });
+
     test('readText() returns the body and throws on error', () async {
       final ok = clientWith(MockClient((_) async => http.Response('hi', 200)));
       expect(await ok.readText('/n.txt'), 'hi');

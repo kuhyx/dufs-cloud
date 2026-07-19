@@ -19,6 +19,7 @@ interface GridProps {
   readonly onOpenMedia: (entry: DirEntry) => void;
   readonly onEditText: (entry: DirEntry) => void;
   readonly onDelete: (entry: DirEntry) => void;
+  readonly onRename: (entry: DirEntry) => void;
 }
 
 function Thumb({
@@ -54,6 +55,7 @@ export function Grid({
   onOpenMedia,
   onEditText,
   onDelete,
+  onRename,
 }: GridProps): React.JSX.Element {
   return (
     <ul className="grid">
@@ -120,6 +122,16 @@ export function Grid({
                 >
                   ⭳
                 </a>
+                <button
+                  type="button"
+                  className="tile-act"
+                  aria-label={`Rename ${entry.name}`}
+                  onClick={() => {
+                    onRename(entry);
+                  }}
+                >
+                  ✏️
+                </button>
                 <button
                   type="button"
                   className="tile-act danger"

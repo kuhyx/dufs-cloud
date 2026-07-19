@@ -1,5 +1,11 @@
 import type { DirEntry, EntryKind, MetaIndex } from "./types.ts";
-import { basename, encodePath, joinPath, normalize } from "../lib/paths.ts";
+import {
+  basename,
+  encodePath,
+  joinPath,
+  normalize,
+  parentPath,
+} from "../lib/paths.ts";
 
 const DAV_NS = "DAV:";
 
@@ -19,6 +25,8 @@ export interface DufsClient {
   createDir(path: string): Promise<void>;
   /** Move `fromPath` into directory `destDir`, keeping its base name (MOVE). */
   move(fromPath: string, destDir: string): Promise<void>;
+  /** Rename `path` to `newName`, keeping it in the same directory (MOVE). */
+  rename(path: string, newName: string): Promise<void>;
   readText(path: string): Promise<string>;
   writeText(path: string, content: string): Promise<void>;
   /** Fetch the server metadata index; resolves to `{}` when absent. */
@@ -121,6 +129,12 @@ export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
     async move(fromPath, destDir) {
       const dest = joinPath(destDir, basename(fromPath));
       await request("MOVE", fromPath, {
+        headers: { Destination: encodePath(dest), Overwrite: "F" },
+      });
+    },
+    async rename(path, newName) {
+      const dest = joinPath(parentPath(path), newName);
+      await request("MOVE", path, {
         headers: { Destination: encodePath(dest), Overwrite: "F" },
       });
     },
