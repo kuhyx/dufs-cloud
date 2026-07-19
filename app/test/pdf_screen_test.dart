@@ -229,6 +229,14 @@ void main() {
           return http.Response.bytes([1, 2, 3], 200);
         }),
       );
+      // Seeding must be synchronous: real I/O futures never complete in the
+      // fake-async test zone, so an awaited create() here hangs the test.
+      final pdfFile = File('${tempRoot.path}/pdfjs/web/target.pdf');
+      Directory('${tempRoot.path}/pdfjs/web').createSync(recursive: true);
+      // With the marker present _init() skips unpacking the viewer, which
+      // otherwise blocks in AssetManifest.loadFromAssetBundle (that only
+      // resolves while the binding is pumped) and never reaches the bind.
+      File('${tempRoot.path}/pdfjs/.extracted').createSync();
       await tester.runAsync(() async {
         await tester.pumpWidget(
           MaterialApp(
@@ -240,8 +248,17 @@ void main() {
         // (rather than the ordinary dispose() path) is what closes it.
         await tester.pumpWidget(const MaterialApp(home: SizedBox()));
         gate.complete();
-        await Future<void>.delayed(const Duration(milliseconds: 200));
       });
+      // The gated continuation only runs once control leaves the first
+      // runAsync, so wait for it in a second one. Writing the pdf is the step
+      // immediately before the bind, so the file appearing proves _init()
+      // really did run on to bind a server while unmounted.
+      await tester.runAsync(() async {
+        for (var i = 0; i < 500 && !pdfFile.existsSync(); i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      });
+      expect(pdfFile.existsSync(), isTrue);
       expect(find.byType(WebViewWidget), findsNothing);
     },
   );
