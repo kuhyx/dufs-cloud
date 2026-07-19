@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Gallery } from "./gallery.tsx";
 import type { DufsClient } from "../api/dufs-client.ts";
@@ -495,6 +495,69 @@ describe("Gallery", () => {
     // Selection clears after a successful move.
     await waitFor(() => {
       expect(screen.queryByText("2 selected")).toBeNull();
+    });
+  });
+
+  it("selects items and deletes them after confirming", async () => {
+    const client = makeClient();
+    render(<Gallery client={client} />);
+    await screen.findByText("pic.jpg");
+    await userEvent.click(screen.getByLabelText("Select pic.jpg"));
+    await userEvent.click(screen.getByLabelText("Select clip.mp4"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Delete 2 item(s)?");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+    await waitFor(() => {
+      expect(client.remove).toHaveBeenCalledWith("/pic.jpg");
+      expect(client.remove).toHaveBeenCalledWith("/clip.mp4");
+    });
+    // Selection clears after a successful bulk delete.
+    await waitFor(() => {
+      expect(screen.queryByText("2 selected")).toBeNull();
+    });
+  });
+
+  it("cancelling the bulk-delete confirm does nothing", async () => {
+    const client = makeClient();
+    render(<Gallery client={client} />);
+    await screen.findByText("pic.jpg");
+    await userEvent.click(screen.getByLabelText("Select pic.jpg"));
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(client.remove).not.toHaveBeenCalled();
+  });
+
+  it("reports how many items failed to delete in a bulk delete", async () => {
+    const client = makeClient({
+      remove: vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("nope")),
+    });
+    render(<Gallery client={client} />);
+    await screen.findByText("pic.jpg");
+    await userEvent.click(screen.getByLabelText("Select pic.jpg"));
+    await userEvent.click(screen.getByLabelText("Select clip.mp4"));
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText("1 item(s) could not be deleted"),
+      ).toBeInTheDocument();
     });
   });
 

@@ -111,6 +111,12 @@ button.ghost,
   padding: 0.4rem 0.8rem;
 }
 
+button.danger {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
 /* filter bar */
 .filterbar {
   position: sticky;

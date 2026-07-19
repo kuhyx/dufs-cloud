@@ -54,6 +54,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [showMove, setShowMove] = useState(false);
+  const [showDeleteSelected, setShowDeleteSelected] = useState(false);
   // Folder groups the user has collapsed in the global-results view.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   // The whole-cloud index powers global filtering; it is walked lazily the first
@@ -218,6 +219,25 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
     })();
   }
 
+  function deleteSelected(): void {
+    setShowDeleteSelected(false);
+    const entries = selectedEntries;
+    setBusy(`Deleting ${entries.length} item(s)…`);
+    void (async () => {
+      let failed = 0;
+      for (const entry of entries) {
+        try {
+          await client.remove(entry.path);
+        } catch {
+          failed += 1;
+        }
+      }
+      setBusy(failed > 0 ? `${failed} item(s) could not be deleted` : null);
+      clearSelection();
+      refreshAll();
+    })();
+  }
+
   function downloadSelected(): void {
     setBusy(`Preparing ${selectedEntries.length} item(s)…`);
     // Global results span folders, so their archive paths are relative to the
@@ -323,6 +343,15 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           </button>
           <button type="button" onClick={downloadSelected}>
             Download
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              setShowDeleteSelected(true);
+            }}
+          >
+            Delete
           </button>
           <button type="button" onClick={clearSelection}>
             Clear
@@ -449,6 +478,16 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           }}
           onCancel={() => {
             setDeleteEntry(null);
+          }}
+        />
+      )}
+      {showDeleteSelected && (
+        <ConfirmDialog
+          message={`Delete ${selectedEntries.length} item(s)? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={deleteSelected}
+          onCancel={() => {
+            setShowDeleteSelected(false);
           }}
         />
       )}
