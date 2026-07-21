@@ -1,24 +1,47 @@
+/* Design tokens — unified-design-system (~/.claude/skills/unified-design-system).
+   Same variable names/values as every other repo; only the accent usage
+   context differs. Warm-tinted throughout; light mode's --surface-1 is
+   lighter than --bg (rule 15), dark mode's is darker-then-lighter via the
+   ink-raised steps. */
 :root {
-  --bg: #ffffff;
-  --fg: #1c1f24;
-  --muted: #5b6570;
-  --card: #f4f6f8;
-  --border: #d8dee4;
-  --accent: #2f6feb;
-  --danger: #cf222e;
-  --overlay: rgba(0, 0, 0, 0.82);
+  --bg: #f6f4f3;
+  --surface-1: #fcfbfb;
+  --border: #e0dad7;
+  --text: #211d1b;
+  --text-muted: #70625b;
+  --accent: #b8862e;
+  --success: #8a9a3c;
+  --warning: #e0a63c;
+  --danger: #e2585f;
+  --on-fill: #211d1b;   /* text/icons ON a filled accent/success/warning/danger surface */
+  --on-scrim: #eceae9;  /* text/icons on a dark translucent overlay/backdrop — fixed, not theme-tied */
+  --overlay: rgba(33, 29, 27, 0.82);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 3rem;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1117;
-    --fg: #e6edf3;
-    --muted: #9198a1;
-    --card: #161b22;
-    --border: #30363d;
-    --accent: #589bff;
-    --danger: #f85149;
-    --overlay: rgba(0, 0, 0, 0.9);
+    --bg: #211d1b;
+    --surface-1: #2b2624;
+    --border: #463e3a;
+    --text: #eceae9;
+    --text-muted: #aaa09a;
+    --overlay: rgba(33, 29, 27, 0.9);
+    /* No shadows at all in dark UI (rule 26) — every shadow declared below
+       is cleared here rather than differentiating elevation with a shadow. */
+    --shadow-menu: none;
+    --shadow-dialog: none;
   }
 }
 * {
@@ -32,9 +55,8 @@ body,
 }
 body {
   background: var(--bg);
-  color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  color: var(--text);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 button {
@@ -56,9 +78,9 @@ button {
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  padding: 0.6rem 1rem;
+  padding: 0.6rem var(--space-3);
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -72,30 +94,40 @@ button {
   background: none;
   border: none;
   color: var(--accent);
-  padding: 0.15rem 0.2rem;
+  padding: var(--space-1) 0.2rem;
 }
 .crumb:hover {
   text-decoration: underline;
 }
 .crumb-sep {
-  color: var(--muted);
+  color: var(--text-muted);
   margin: 0 0.1rem;
 }
 .tools {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 .busy {
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* Every button shares one padding pair, 8px/16px — half of the app-wide
+   canonical 12px/24px but the same exact 2x ratio (rule 22), deliberately
+   sized down for this toolbar's information density. */
+button.primary,
+button.ghost,
+.tools button:not(.primary),
+.selbar button,
+.dialog-actions button {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
 }
 button.primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-fill);
   border: none;
-  border-radius: 8px;
-  padding: 0.4rem 0.9rem;
 }
 button.primary:disabled {
   opacity: 0.5;
@@ -105,15 +137,13 @@ button.primary:disabled {
 button.ghost,
 .tools button:not(.primary),
 .selbar button {
-  background: var(--card);
+  background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.4rem 0.8rem;
 }
 
 button.danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-fill);
   border-color: var(--danger);
 }
 
@@ -125,19 +155,19 @@ button.danger {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
 .filterbar input,
 .filterbar select {
   font: inherit;
-  color: var(--fg);
-  background: var(--card);
+  color: var(--text);
+  background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
 }
 .filter-query {
   /* Fixed basis with no grow/shrink so the box stays a constant width as
@@ -166,7 +196,7 @@ button.danger {
 .sizerange {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-1);
 }
 .slider {
   position: relative;
@@ -206,10 +236,13 @@ button.danger {
   border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--bg);
-  box-shadow: 0 0 0 1px var(--border);
+  /* A ring, not an elevation shadow — `outline` reads identically in both
+     themes without invoking box-shadow at all (rule 26/27). */
+  outline: 1px solid var(--border);
 }
 .slider-note {
   font-size: 0.75rem;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   /* Fixed width + tabular figures so digit changes while dragging don't shove
      the controls to the right. */
@@ -227,11 +260,11 @@ button.danger {
 }
 .extpicker-btn {
   font: inherit;
-  color: var(--fg);
-  background: var(--card);
+  color: var(--text);
+  background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
   max-width: 12rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -252,38 +285,43 @@ button.danger {
   min-width: 11rem;
   max-height: 60vh;
   overflow-y: auto;
-  padding: 0.4rem;
+  padding: var(--space-2);
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-md);
+  /* Floating overlay: one shadow tier permitted (rule 26), cleared entirely
+     in dark mode via the --shadow-menu override above. */
+  box-shadow: var(--shadow-menu, 0 2px 4px rgba(33, 29, 27, 0.12));
 }
 .extpicker-hint {
-  padding: 0.1rem 0.3rem 0.4rem;
+  padding: 0.1rem 0.3rem var(--space-2);
   border-bottom: 1px solid var(--border);
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
   font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 .extpicker-opt {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
-  padding: 0.3rem 0.4rem;
+  padding: 0.3rem var(--space-2);
   border: none;
   background: none;
   color: inherit;
-  border-radius: 6px;
+  /* Nested inside .extpicker-menu (radius-md, --space-2 padding gap) — outer
+     minus gap, per rule 24, not a reused flat token. */
+  border-radius: calc(var(--radius-md) - var(--space-2));
   text-align: left;
   font: inherit;
 }
 .extpicker-opt:hover {
-  background: var(--card);
+  background: var(--surface-1);
 }
 .ext-glyph {
   width: 1rem;
   text-align: center;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 .ext-include .ext-glyph {
   color: var(--accent);
@@ -292,28 +330,28 @@ button.danger {
   color: var(--danger);
 }
 .ext-exclude {
-  color: var(--muted);
+  color: var(--text-muted);
   text-decoration: line-through;
 }
 .extpicker-empty {
-  padding: 0.3rem;
+  padding: var(--space-1);
   font-size: 0.82rem;
 }
 
 /* global (whole-cloud) filter results, grouped by folder */
 .result-group {
-  margin-bottom: 1.2rem;
+  margin-bottom: var(--space-4);
 }
 .group-head {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.2rem 0.1rem 0.5rem;
+  gap: var(--space-1);
+  padding: 0.2rem 0.1rem var(--space-2);
 }
 .group-toggle {
   background: none;
   border: none;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.8rem;
   padding: 0 0.2rem;
   width: 1.2rem;
@@ -330,11 +368,12 @@ button.danger {
 }
 .group-count {
   font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 
 .duration-filter {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-1);
 }
 
 /* selection bar */
@@ -344,8 +383,8 @@ button.danger {
   z-index: 4;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.5rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: color-mix(in srgb, var(--accent) 12%, var(--bg));
   border-bottom: 1px solid var(--border);
 }
@@ -364,11 +403,15 @@ button.danger {
   place-items: center;
   width: 1.5rem;
   height: 1.5rem;
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: 6px;
+  background: rgba(33, 29, 27, 0.45);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .tile-select input {
+  /* Native checkbox default is the browser's own blue, off-palette —
+     accent-color re-tints the built-in check without a custom SVG/shadow-DOM
+     replacement. */
+  accent-color: var(--accent);
   cursor: pointer;
   margin: 0;
 }
@@ -394,48 +437,48 @@ button.danger {
 .picker-path {
   font-size: 0.82rem;
   word-break: break-all;
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-2);
 }
 .picker-list {
   list-style: none;
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-1);
   padding: 0;
   max-height: 50vh;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .picker-list li {
-  padding: 0.1rem 0.4rem;
+  padding: 0.1rem var(--space-2);
 }
 .picker-row {
   width: 100%;
   text-align: left;
   background: none;
   border: none;
-  padding: 0.35rem 0.4rem;
-  border-radius: 6px;
+  padding: var(--space-2);
+  border-radius: calc(var(--radius-sm) - 0.1rem);
 }
 .picker-row:hover {
-  background: var(--card);
+  background: var(--surface-1);
 }
 .prompt-input {
   width: 100%;
   font: inherit;
-  color: var(--fg);
-  background: var(--card);
+  color: var(--text);
+  background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.5rem;
-  margin-top: 0.6rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .content {
   flex: 1 1 auto;
-  padding: 1rem;
+  padding: var(--space-3);
 }
 .muted {
-  color: var(--muted);
+  color: var(--text-muted);
 }
 .error {
   color: var(--danger);
@@ -452,9 +495,9 @@ button.danger {
 }
 .tile {
   position: relative;
-  background: var(--card);
+  background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 .tile-main {
@@ -471,7 +514,7 @@ button.danger {
   display: grid;
   place-items: center;
   aspect-ratio: 1 / 1;
-  background: color-mix(in srgb, var(--card) 60%, #000 6%);
+  background: color-mix(in srgb, var(--surface-1) 85%, var(--bg) 15%);
   overflow: hidden;
 }
 .thumb-img {
@@ -487,8 +530,8 @@ button.danger {
   position: absolute;
   bottom: 0.35rem;
   right: 0.4rem;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  background: rgba(33, 29, 27, 0.6);
+  color: var(--on-scrim);
   border-radius: 50%;
   width: 1.6rem;
   height: 1.6rem;
@@ -497,16 +540,19 @@ button.danger {
   font-size: 0.8rem;
 }
 .tile-name {
-  padding: 0.4rem 0.5rem 0.1rem;
-  font-size: 0.82rem;
+  padding: var(--space-2) var(--space-2) 0.1rem;
+  /* The one label users actually read to identify a file — the 16px body
+     floor (rule 20), not a chrome-sized caption. */
+  font-size: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .tile-size {
-  padding: 0 0.5rem 0.45rem;
+  padding: 0 var(--space-2) 0.45rem;
   font-size: 0.72rem;
-  color: var(--muted);
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
 }
 .tile-actions {
   position: absolute;
@@ -522,10 +568,10 @@ button.danger {
   opacity: 1;
 }
 .tile-act {
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  background: rgba(33, 29, 27, 0.55);
+  color: var(--on-scrim);
   border: none;
-  border-radius: 6px;
+  border-radius: calc(var(--radius-sm) - 0.15rem);
   padding: 0.15rem 0.35rem;
   font-size: 0.8rem;
   text-decoration: none;
@@ -547,31 +593,33 @@ button.danger {
 .dialog {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 1.1rem 1.2rem;
   max-width: min(92vw, 40rem);
   width: 100%;
+  /* Same depth technique as .extpicker-menu (one shadow tier, floating
+     overlays only) rather than border-only — consolidated per rule 27.
+     Larger tier since a modal sits above a dropdown. Cleared in dark mode. */
+  box-shadow: var(--shadow-dialog, 0 4px 8px rgba(33, 29, 27, 0.16));
 }
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.6rem;
-  margin-top: 1rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 .dialog-actions button {
   border: 1px solid var(--border);
-  background: var(--card);
-  border-radius: 8px;
-  padding: 0.4rem 0.9rem;
+  background: var(--surface-1);
 }
 .dialog-actions .danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-fill);
   border-color: var(--danger);
 }
 .dialog-actions .primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-fill);
   border-color: var(--accent);
 }
 
@@ -584,22 +632,22 @@ button.danger {
 .editor-head {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.6rem;
+  margin-bottom: var(--space-2);
   font-size: 0.9rem;
 }
 .editor-status {
-  color: var(--muted);
+  color: var(--text-muted);
 }
 .editor-area {
   flex: 1 1 auto;
   resize: none;
   width: 100%;
-  background: var(--card);
-  color: var(--fg);
+  background: var(--surface-1);
+  color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 0.7rem;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9rem;
 }
 
@@ -612,7 +660,7 @@ button.danger {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 3rem 1rem;
+  padding: 3rem var(--space-3);
 }
 .viewer-img {
   max-width: 96vw;
@@ -633,22 +681,22 @@ button.danger {
   width: 96vw;
   height: 88vh;
   border: none;
-  background: #fff;
+  background: #fcfbfb;
 }
 .viewer-fallback {
-  color: #fff;
+  color: var(--on-scrim);
   text-align: center;
 }
 .viewer-audio {
-  margin-top: 1rem;
+  margin-top: var(--space-3);
   width: min(90vw, 32rem);
 }
 .viewer-close,
 .viewer-nav {
   position: absolute;
   z-index: 2;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  background: rgba(33, 29, 27, 0.5);
+  color: var(--on-scrim);
   border: none;
   border-radius: 50%;
   width: 2.6rem;
@@ -675,7 +723,7 @@ button.danger {
   left: 0;
   right: 0;
   text-align: center;
-  color: #fff;
+  color: var(--on-scrim);
   font-size: 0.85rem;
   pointer-events: none;
 }
