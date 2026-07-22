@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:chewie/chewie.dart';
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -86,18 +87,20 @@ class _VideoScreenState extends State<VideoScreen> {
   @override
   Widget build(BuildContext context) {
     final chewie = _chewie;
+    // Always dark regardless of the app's own theme — see the matching
+    // comment in image_screen.dart / AppViewerColors' doc comment.
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppViewerColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: AppViewerColors.background,
+        foregroundColor: AppViewerColors.foreground,
         title: Text(widget.title),
       ),
       body: Center(
         child: _error != null
             ? Text(
                 'Could not play: $_error',
-                style: const TextStyle(color: Colors.white70),
+                style: const TextStyle(color: AppViewerColors.muted),
               )
             : chewie == null
                 ? const CircularProgressIndicator()

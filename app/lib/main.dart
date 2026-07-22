@@ -1,5 +1,6 @@
 import 'package:dufs_client/screens/browser_screen.dart';
 import 'package:dufs_client/services/settings.dart';
+import 'package:dufs_client/ui/theme.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async {
@@ -21,11 +22,8 @@ class DufsApp extends StatelessWidget {
     return MaterialApp(
       title: 'Cloud',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: Colors.indigo),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.dark,
-      ),
+      theme: buildAppTheme(Brightness.light),
+      darkTheme: buildAppTheme(Brightness.dark),
       home: BrowserScreen(settings: settings),
     );
   }

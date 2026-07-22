@@ -63,18 +63,22 @@ class EntryTile extends StatelessWidget {
               children: [
                 Expanded(child: _preview()),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 4, 6, 0),
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
                   child: Text(
                     entry.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    // bodyMedium (16px, the read-content floor) — this is
+                    // the primary thing a user reads in the tile.
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
                   child: Text(
                     entry.isDir ? '' : paths.humanSize(entry.size),
+                    // labelSmall (12px) — a metadata badge, not read content;
+                    // stays small by design per tokens.md's chrome carve-out.
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),

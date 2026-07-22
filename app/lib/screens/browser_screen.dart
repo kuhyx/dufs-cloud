@@ -854,12 +854,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Widget _dragFeedback(int count) {
+    // Shadow policy: dark surfaces never get a shadow (elevation via fill
+    // steps only); light surfaces may shadow floating/overlay elements,
+    // which this drag-feedback chip is.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Theme.of(context).colorScheme.primaryContainer,
       borderRadius: BorderRadius.circular(8),
-      elevation: 6,
+      elevation: isDark ? 0 : 6,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // horizontal = 2x vertical (rule 22), both on the 4px spacing scale.
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Text('Move $count item${count == 1 ? '' : 's'}'),
       ),
     );

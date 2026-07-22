@@ -1,4 +1,5 @@
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/ui/theme.dart';
 import 'package:flutter/material.dart';
 
 /// Full-screen image viewer with pinch-zoom, loaded over authenticated HTTP.
@@ -22,11 +23,14 @@ class ImageScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Always dark regardless of the app's own theme — a media viewer's
+    // chrome shouldn't compete with the image, same convention as every
+    // photo app. See AppViewerColors' doc comment.
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppViewerColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: AppViewerColors.background,
+        foregroundColor: AppViewerColors.foreground,
         title: Text(title),
       ),
       body: Center(
@@ -39,7 +43,7 @@ class ImageScreen extends StatelessWidget {
             errorBuilder: (context, error, stack) => const Icon(
               Icons.broken_image,
               size: 64,
-              color: Colors.white54,
+              color: AppViewerColors.muted,
             ),
           ),
         ),
