@@ -223,11 +223,15 @@ main() {
             if [[ -n "$probe" ]]; then
                 # One jq emits all three values; splitting them into three
                 # calls was three forks per video for no benefit.
+                # `read` returns 1 at EOF without a delimiter, which under
+                # `set -e` would abort the whole run — and the unit ignores
+                # this script's exit status, so it would fail silently. Hence
+                # the trailing newline on the fallback AND the `|| :`.
                 IFS=$'\t' read -r dur_ms width height < <(jq --raw-output '
                     [ ((.format.duration // 0) | tonumber * 1000 | floor),
                       (.streams[0].width  // "null"),
                       (.streams[0].height // "null") ] | @tsv' \
-                    <<<"$probe" 2>/dev/null || printf 'null\tnull\tnull')
+                    <<<"$probe" 2>/dev/null || printf 'null\tnull\tnull\n') || :
                 : "${dur_ms:=null}" "${width:=null}" "${height:=null}"
             fi
             probed=$((probed + 1))
