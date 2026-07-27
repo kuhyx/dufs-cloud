@@ -17,13 +17,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart'
     show ShareParams, ShareResult, ShareResultStatus;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import 'support/fake_video_platform.dart';
 import 'support/fake_webview_platform.dart';
 import 'support/secure_storage_mock.dart';
 
@@ -140,9 +139,12 @@ Future<Directory> _tmpDir() async =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // BrowserScreen pushes a real VideoScreen, which builds a MediaKitPlayer
+  // (libmpv) rather than a fake — so the native library has to be loaded here
+  // exactly as main.dart does it.
+  MediaKit.ensureInitialized();
 
   setUp(() {
-    VideoPlayerPlatform.instance = FakeVideoPlayerPlatform();
     WebViewPlatform.instance = FakeWebViewPlatform();
   });
 
@@ -203,7 +205,7 @@ void main() {
   });
 
   testWidgets(
-    'opening a video plays its proxy in preference to the original',
+    'opening a video plays the original even when a proxy exists',
     (tester) async {
       final settings = await _settings(configured: true);
       final mock = MockClient((req) async {
@@ -227,8 +229,10 @@ void main() {
       await tester.tap(find.text('clip.mp4'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
+      // The proxy is built with `-map 0:v:0 -map 0:a:0?`, so it has no
+      // subtitle tracks; libmpv can play the original container directly.
       final videoScreen = tester.widget<VideoScreen>(find.byType(VideoScreen));
-      expect(videoScreen.path, '/.proxies/clip.mp4.mp4');
+      expect(videoScreen.path, '/clip.mp4');
     },
   );
 
@@ -621,6 +625,29 @@ void main() {
     await tester.enterText(find.byType(TextField), 'zzzzz');
     await tester.pumpAndSettle();
     expect(find.text('Nothing matches your filters.'), findsOneWidget);
+  });
+
+  testWidgets("the sheet's Clear button also empties the search box",
+      (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(settings, _mock()));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'clip');
+    await tester.pumpAndSettle();
+    expect(find.text('clip'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Filters'));
+    await tester.pumpAndSettle();
+    final clear = find.widgetWithText(TextButton, 'Clear');
+    await tester.ensureVisible(clear);
+    await tester.pumpAndSettle();
+    await tester.tap(clear);
+    await tester.pumpAndSettle();
+
+    // Leaving the old query on screen would advertise a filter that is no
+    // longer applied.
+    expect(find.text('clip'), findsNothing);
   });
 
   testWidgets('the filter sheet edits type and sort', (tester) async {

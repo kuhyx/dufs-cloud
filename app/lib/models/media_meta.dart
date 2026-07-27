@@ -38,9 +38,13 @@ class MediaMeta {
   /// When the indexer first saw the file (≈ upload time) in epoch ms, or null.
   final int? uploadedMs;
 
-  /// Absolute cloud path of a browser/ExoPlayer-safe MP4 proxy for this video
-  /// (see `scripts/generate_video_proxies.sh`), or null when either this
-  /// isn't a video or the original already plays fine as-is.
+  /// Absolute cloud path of a browser-safe MP4 proxy for this video (see
+  /// `scripts/generate_video_proxies.sh`), or null when either this isn't a
+  /// video or the original already plays fine as-is.
+  ///
+  /// Only the web gallery uses it. This app streams the original through
+  /// libmpv, which plays those containers natively and keeps the embedded
+  /// subtitle tracks the proxy strips.
   final String? proxyPath;
 }
 

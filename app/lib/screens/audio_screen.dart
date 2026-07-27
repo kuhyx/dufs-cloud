@@ -1,27 +1,21 @@
 import 'dart:async';
 
+import 'package:dufs_client/services/app_player.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 
-/// Builds the [VideoPlayerController] for a given [uri]/[httpHeaders].
-/// Injectable so tests can supply a controller backed by a fake platform.
-typedef AudioControllerFactory = VideoPlayerController Function(
-  Uri uri, {
-  Map<String, String> httpHeaders,
-});
-
-/// Full-screen audio player streaming over authenticated HTTP. Reuses
-/// [VideoPlayerController] (already a dependency, and audio-only network
-/// sources play fine with it) instead of adding a dedicated audio-playback
-/// package.
+/// Full-screen audio player streaming over authenticated HTTP.
+///
+/// Shares [AppPlayer] with the video screen so the app ships one media stack
+/// (libmpv) rather than two. No video output is attached — audio needs no
+/// texture.
 class AudioScreen extends StatefulWidget {
   /// Creates a player for [path] using [client].
   const AudioScreen({
     required this.client,
     required this.path,
     required this.title,
-    this.controllerFactory,
+    this.playerFactory,
     super.key,
   });
 
@@ -34,15 +28,19 @@ class AudioScreen extends StatefulWidget {
   /// Title shown in the app bar.
   final String title;
 
-  /// Overrides how the player controller is built (tests inject a fake).
-  final AudioControllerFactory? controllerFactory;
+  /// Overrides how the player is built (tests inject a fake).
+  final AppPlayerFactory? playerFactory;
 
   @override
   State<AudioScreen> createState() => _AudioScreenState();
 }
 
 class _AudioScreenState extends State<AudioScreen> {
-  VideoPlayerController? _audio;
+  AppPlayer? _audio;
+  final List<StreamSubscription<void>> _subs = [];
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+  bool _playing = false;
   String? _error;
 
   @override
@@ -52,37 +50,38 @@ class _AudioScreenState extends State<AudioScreen> {
   }
 
   Future<void> _init() async {
-    final build =
-        widget.controllerFactory ?? VideoPlayerController.networkUrl;
-    final controller = build(
-      widget.client.fileUri(widget.path),
-      httpHeaders: widget.client.authHeaders,
-    );
+    final player =
+        (widget.playerFactory ?? () => MediaKitPlayer(attachVideo: false))();
     try {
-      await controller.initialize();
+      _subs
+        ..add(player.position.listen((p) => _set(() => _position = p)))
+        ..add(player.duration.listen((d) => _set(() => _duration = d)))
+        ..add(player.playing.listen((p) => _set(() => _playing = p)));
+      await player.open(
+        widget.client.fileUri(widget.path),
+        widget.client.authHeaders,
+      );
       if (!mounted) {
-        await controller.dispose();
+        await player.dispose();
         return;
       }
-      controller.addListener(_onTick);
-      await controller.play();
-      setState(() => _audio = controller);
+      setState(() => _audio = player);
     } on Exception catch (e) {
+      await player.dispose();
       if (mounted) setState(() => _error = '$e');
     }
   }
 
-  void _onTick() {
-    if (mounted) setState(() {});
+  void _set(VoidCallback change) {
+    if (mounted) setState(change);
   }
 
   @override
   void dispose() {
-    final audio = _audio;
-    if (audio != null) {
-      audio.removeListener(_onTick);
-      unawaited(audio.dispose());
+    for (final sub in _subs) {
+      unawaited(sub.cancel());
     }
+    unawaited(_audio?.dispose());
     super.dispose();
   }
 
@@ -103,26 +102,44 @@ class _AudioScreenState extends State<AudioScreen> {
             ? Text('Could not play: $_error')
             : audio == null
                 ? const CircularProgressIndicator()
-                : _Controls(audio: audio, fmt: _fmt),
+                : _Controls(
+                    position: _position,
+                    duration: _duration,
+                    playing: _playing,
+                    fmt: _fmt,
+                    onSeek: (to) => unawaited(audio.seek(to)),
+                    onToggle: () =>
+                        unawaited(_playing ? audio.pause() : audio.play()),
+                  ),
       ),
     );
   }
 }
 
 class _Controls extends StatelessWidget {
-  const _Controls({required this.audio, required this.fmt});
+  const _Controls({
+    required this.position,
+    required this.duration,
+    required this.playing,
+    required this.fmt,
+    required this.onSeek,
+    required this.onToggle,
+  });
 
-  final VideoPlayerController audio;
+  final Duration position;
+  final Duration duration;
+  final bool playing;
   final String Function(Duration) fmt;
+  final void Function(Duration) onSeek;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
-    final value = audio.value;
-    final durationMs = value.duration.inMilliseconds;
-    final positionMs = value.position.inMilliseconds.clamp(
-      0,
-      durationMs == 0 ? 1 : durationMs,
-    );
+    final durationMs = duration.inMilliseconds;
+    // A zero-length max would assert in Slider, and the position can briefly
+    // run past a duration the demuxer has not finished refining.
+    final maxMs = durationMs == 0 ? 1 : durationMs;
+    final positionMs = position.inMilliseconds.clamp(0, maxMs);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -132,18 +149,15 @@ class _Controls extends StatelessWidget {
           const SizedBox(height: 24),
           Slider(
             value: positionMs.toDouble(),
-            max: durationMs == 0 ? 1 : durationMs.toDouble(),
-            onChanged: (v) => audio.seekTo(Duration(milliseconds: v.round())),
+            max: maxMs.toDouble(),
+            onChanged: (v) => onSeek(Duration(milliseconds: v.round())),
           ),
-          Text('${fmt(value.position)} / ${fmt(value.duration)}'),
+          Text('${fmt(position)} / ${fmt(duration)}'),
           const SizedBox(height: 8),
           IconButton(
             iconSize: 56,
-            icon: Icon(
-              value.isPlaying ? Icons.pause_circle : Icons.play_circle,
-            ),
-            onPressed: () =>
-                value.isPlaying ? audio.pause() : audio.play(),
+            icon: Icon(playing ? Icons.pause_circle : Icons.play_circle),
+            onPressed: onToggle,
           ),
         ],
       ),

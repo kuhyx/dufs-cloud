@@ -37,7 +37,13 @@ Browse, view images (pinch-zoom), play videos (streaming/seek), upload from the
 gallery, download, and delete — all over WebDAV with HTTP Basic auth. Password
 is kept in the Android keystore (`flutter_secure_storage`).
 
+Video and audio play through `media_kit` (libmpv + libass), so embedded ASS
+subtitle tracks render with their own styling and can be switched at runtime.
+That makes **libmpv a host prerequisite for `flutter test`** — the player tests
+construct a real libmpv instance over `dart:ffi`:
+
 ```bash
+sudo pacman -S mpv          # Arch; Debian/Ubuntu: apt install libmpv2
 cd app
 flutter pub get
 flutter analyze --fatal-infos --fatal-warnings   # very_good_analysis, strict

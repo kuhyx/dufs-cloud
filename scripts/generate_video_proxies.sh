@@ -1,10 +1,15 @@
 #!/bin/bash
-# generate_video_proxies.sh — generate browser/ExoPlayer-safe MP4 proxies for
-# videos that would otherwise fail to play: browsers cannot reliably play
-# arbitrary MKV/AVI/etc. *containers* via <video> even when the codecs inside
-# are fine, and neither browsers nor stock Android video_player decode
-# AC3/DTS-family audio (common in videos muxed for TVs/home theatre — e.g.
-# Google Drive phone backups with AC3 audio).
+# generate_video_proxies.sh — generate browser-safe MP4 proxies for videos
+# that would otherwise fail to play in the web gallery: browsers cannot
+# reliably play arbitrary MKV/AVI/etc. *containers* via <video> even when the
+# codecs inside are fine, and they do not decode AC3/DTS-family audio (common
+# in videos muxed for TVs/home theatre — e.g. Google Drive phone backups with
+# AC3 audio).
+#
+# These are for the WEB client only. The Flutter app plays the original file
+# via libmpv, which handles those containers and codecs natively — and must,
+# because the proxy below maps only the first video and audio stream, so every
+# embedded subtitle track is dropped from it.
 #
 # Tier 1 (default, cheap): for videos whose audio codec is in a known-broken
 # set, remux to MP4 copying the video stream as-is and transcoding ONLY the

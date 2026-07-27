@@ -14,3 +14,37 @@ app/coverage/
 # Editor / OS
 .DS_Store
 *.log
+
+# Binaries. Keep them out of the workspace by default; the `!` overrides below
+# are the exceptions enumerated (with reasons) in .binary-allowlist — they must
+# sit in the package directory to be built into a shipping artifact.
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.webp
+*.ttf
+*.otf
+*.woff
+*.woff2
+*.pfb
+*.bcmap
+*.mp3
+*.mp4
+*.wav
+*.zip
+*.tar.gz
+*.pdf
+*.jar
+*.so
+*.exe
+
+!app/assets/icon/*.png
+!app/android/app/src/main/res/**/*.png
+!app/assets/pdfjs/**/*.bcmap
+!app/assets/pdfjs/**/*.pfb
+!app/assets/pdfjs/**/*.ttf
+!app/assets/pdfjs/**/*.gif
+!app/assets/pdfjs/**/*.svg
+!app/assets/fonts/subfont.ttf

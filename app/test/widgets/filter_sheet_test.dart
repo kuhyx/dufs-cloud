@@ -2,6 +2,7 @@ import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/widgets/extension_picker.dart';
 import 'package:dufs_client/widgets/filter_sheet.dart';
 import 'package:dufs_client/widgets/quantile_range_slider.dart';
+import 'package:dufs_client/widgets/range_bounds_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -128,5 +129,86 @@ void main() {
         .widget<DropdownButton<SortKey>>(find.byType(DropdownButton<SortKey>));
     sortDd.onChanged?.call(SortKey.resolution);
     expect(s?.key, SortKey.resolution);
+  });
+
+  // --- typed bounds + Clear: parity with the web filter bar ---
+
+  const bigFilter = FilterState(minSize: 500 * 1024 * 1024);
+
+  testWidgets('a typed size bound is reported in bytes', (tester) async {
+    FilterState? f;
+    await pump(tester,
+        filter: defaultFilter,
+        sort: defaultSort,
+        onFilter: (v) => f = v,
+        onSort: (_) {});
+    await tester.enterText(find.widgetWithText(TextField, 'min MB'), '500');
+    await tester.pump();
+    expect(f?.minSize, 500 * bytesPerMb);
+  });
+
+  testWidgets('a typed length bound is reported in milliseconds',
+      (tester) async {
+    FilterState? f;
+    await pump(tester,
+        filter: const FilterState(type: TypeFilter.video),
+        sort: defaultSort,
+        durationValues: durations,
+        onFilter: (v) => f = v,
+        onSort: (_) {});
+    await tester.enterText(find.widgetWithText(TextField, 'max s'), '90');
+    await tester.pump();
+    expect(f?.maxDurationMs, 90000);
+  });
+
+  testWidgets('a typed resolution bound is reported in pixels', (tester) async {
+    FilterState? f;
+    await pump(tester,
+        filter: const FilterState(type: TypeFilter.image),
+        sort: defaultSort,
+        resolutionValues: [for (var i = 0; i <= 100; i++) i * 100000],
+        onFilter: (v) => f = v,
+        onSort: (_) {});
+    await tester.enterText(find.widgetWithText(TextField, 'min MP'), '2');
+    await tester.pump();
+    expect(f?.minPixels, 2 * pixelsPerMp);
+  });
+
+  testWidgets('clearing a typed bound removes it', (tester) async {
+    FilterState? f;
+    await pump(tester,
+        filter: bigFilter,
+        sort: defaultSort,
+        onFilter: (v) => f = v,
+        onSort: (_) {});
+    await tester.enterText(find.widgetWithText(TextField, 'min MB'), '');
+    await tester.pump();
+    expect(f?.minSize, isNull);
+  });
+
+  testWidgets('no Clear button while the filter is untouched', (tester) async {
+    await pump(tester,
+        filter: defaultFilter,
+        sort: defaultSort,
+        onFilter: (_) {},
+        onSort: (_) {});
+    expect(find.widgetWithText(TextButton, 'Clear'), findsNothing);
+  });
+
+  testWidgets('Clear appears once a filter is active and resets everything',
+      (tester) async {
+    FilterState? f;
+    await pump(tester,
+        filter: bigFilter,
+        sort: defaultSort,
+        onFilter: (v) => f = v,
+        onSort: (_) {});
+    final clear = find.widgetWithText(TextButton, 'Clear');
+    expect(clear, findsOneWidget);
+    await tester.ensureVisible(clear);
+    await tester.pumpAndSettle();
+    await tester.tap(clear);
+    await tester.pump();
+    expect(isFilterActive(f!), isFalse);
   });
 }

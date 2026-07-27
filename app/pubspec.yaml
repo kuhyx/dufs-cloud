@@ -9,18 +9,20 @@ environment:
 
 dependencies:
   archive: ^4.0.0
-  chewie: ^1.8.0
   cupertino_icons: ^1.0.8
   flutter:
     sdk: flutter
   flutter_secure_storage: ^10.3.1
   http: ^1.6.0
   image_picker: ^1.1.2
+  media_kit: ^1.2.6
+  media_kit_libs_android_video: ^1.3.8
+  media_kit_libs_linux: ^1.2.1
+  media_kit_video: ^2.0.1
   path: ^1.9.1
   path_provider: ^2.1.5
   share_plus: ^11.0.0
   shared_preferences: ^2.5.5
-  video_player: ^2.9.2
   webview_flutter: ^4.14.0
   xml: ^6.5.0
 
@@ -32,12 +34,14 @@ dev_dependencies:
     sdk: flutter
   plugin_platform_interface: ^2.1.8
   very_good_analysis: ^10.2.0
-  video_player_platform_interface: ^6.9.0
   webview_flutter_platform_interface: ^2.14.0
 
 flutter:
   uses-material-design: true
   assets:
+    # libass needs a real font file on Android: fontconfig cannot see the
+    # system fonts, so ASS subtitles fail to render without a bundled one.
+    - assets/fonts/subfont.ttf
     - assets/pdfjs/build/
     - assets/pdfjs/web/
     - assets/pdfjs/web/cmaps/

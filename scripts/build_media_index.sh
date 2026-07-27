@@ -15,8 +15,9 @@
 #       }, ... } }
 #
 # proxyPath is null unless generate_video_proxies.sh has produced a
-# browser/ExoPlayer-safe MP4 for that video (see that script for why); both
-# clients play the proxy in preference to the original when it is set.
+# browser-safe MP4 for that video (see that script for why). Only the web
+# client plays it; the app streams the original so it keeps the embedded
+# subtitle tracks the proxy strips.
 #
 # Keys are absolute cloud paths (leading slash), matching what the SPA requests.
 # Durations/dimensions come from ffprobe; images get dimensions only. The prior

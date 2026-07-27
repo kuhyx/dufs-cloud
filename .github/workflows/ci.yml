@@ -39,6 +39,15 @@ jobs:
         with:
           flutter-version: 3.44.6
           channel: stable
+      # media_kit reaches libmpv over dart:ffi, and the video player's tests
+      # construct a real Player, so the runner needs the shared library the
+      # same way a dev machine does. Without it `flutter test` fails to load.
+      - name: Install libmpv (media_kit)
+        run: |
+          sudo apt-get update
+          # libmpv2 on 24.04+; libmpv-dev is the fallback name on older images.
+          sudo apt-get install -y libmpv2 || sudo apt-get install -y libmpv-dev
+        working-directory: .
       - run: flutter pub get
       - run: flutter analyze --fatal-infos --fatal-warnings
       - run: flutter test --coverage

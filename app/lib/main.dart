@@ -2,9 +2,12 @@ import 'package:dufs_client/screens/browser_screen.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:dufs_client/ui/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Loads libmpv, which backs VideoScreen (see services/app_player.dart).
+  MediaKit.ensureInitialized();
   final settings = await Settings.load();
   runApp(DufsApp(settings: settings));
 }
