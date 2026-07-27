@@ -255,18 +255,23 @@ class _BrowserScreenState extends State<BrowserScreen> {
         ),
       );
     } else if (entry.isVideo) {
-      // Always stream the original, never the .proxies/ remux. The proxy
-      // exists for browsers, which cannot play arbitrary containers or AC3;
-      // libmpv handles both natively. More importantly the proxy is built with
-      // `-map 0:v:0 -map 0:a:0?` (generate_video_proxies.sh), so it has every
-      // embedded subtitle track stripped out — playing it would silently cost
-      // us the subtitles this player exists to show. `MediaMeta.proxyPath` is
-      // still used by the web client.
+      // Stream the original, never the browser `.mp4` remux: that one is built
+      // with `-map 0:v:0 -map 0:a:0?` (generate_video_proxies.sh) and so has
+      // every embedded subtitle track stripped out, which is exactly what this
+      // player exists to show. libmpv handles the containers and AC3/DTS that
+      // the browser proxy was made for. `MediaMeta.proxyPath` stays for the web
+      // client.
+      //
+      // The one exception is `appProxyPath`, a Matroska remux made only for
+      // audio libmpv cannot decode (TrueHD/MLP), which would otherwise play as
+      // silent video. It keeps the subtitle tracks, so preferring it loses
+      // nothing.
+      final playbackPath = _meta[entry.path]?.appProxyPath ?? entry.path;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => VideoScreen(
             client: client,
-            path: entry.path,
+            path: playbackPath,
             title: entry.name,
           ),
         ),

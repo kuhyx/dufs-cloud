@@ -10,6 +10,7 @@ class MediaMeta {
     this.createdMs,
     this.uploadedMs,
     this.proxyPath,
+    this.appProxyPath,
   });
 
   /// Builds a [MediaMeta] from one index entry's JSON map (tolerant of missing
@@ -21,6 +22,7 @@ class MediaMeta {
         createdMs: _asInt(json['createdMs']),
         uploadedMs: _asInt(json['uploadedMs']),
         proxyPath: _asString(json['proxyPath']),
+        appProxyPath: _asString(json['appProxyPath']),
       );
 
   /// Pixel width (images and videos), or null.
@@ -46,6 +48,14 @@ class MediaMeta {
   /// libmpv, which plays those containers natively and keeps the embedded
   /// subtitle tracks the proxy strips.
   final String? proxyPath;
+
+  /// Absolute cloud path of a Matroska proxy built for *this app* (see
+  /// `scripts/generate_video_proxies.sh`), or null when the original is fine.
+  ///
+  /// It exists only for audio the bundled libmpv cannot decode — TrueHD/MLP,
+  /// which would otherwise play as silent video. Unlike [proxyPath] it keeps
+  /// the embedded subtitle tracks, so preferring it costs nothing.
+  final String? appProxyPath;
 }
 
 /// The metadata index: a map from absolute cloud path to its [MediaMeta].

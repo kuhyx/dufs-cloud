@@ -11,7 +11,8 @@
 #         "width": 1920, "height": 1080,
 #         "durationMs": 92000,
 #         "createdMs": <mtime ms>, "uploadedMs": <first-seen ms>,
-#         "proxyPath": "/.proxies/Media/2025/11/clip.mp4.mp4"
+#         "proxyPath": "/.proxies/Media/2025/11/clip.mp4.mp4",
+#         "appProxyPath": null
 #       }, ... } }
 #
 # proxyPath is null unless generate_video_proxies.sh has produced a
@@ -198,6 +199,7 @@ main() {
     TMP_TSV="$(mktemp)"
 
     local i rel mtime_ms uploaded_ms dur_ms width height proxy_rel probe
+    local app_proxy_rel
     local probed=0 reused=0
     for i in "${!media[@]}"; do
         abs="${media[$i]}"
@@ -254,10 +256,15 @@ main() {
         proxy_rel=""
         [[ "$kind" == "video" && -f "$root/.proxies$rel.mp4" ]] &&
             proxy_rel="/.proxies$rel.mp4"
+        # Same treatment for the app-side Matroska proxy, which only exists for
+        # audio the app's libmpv cannot decode (see generate_video_proxies.sh).
+        app_proxy_rel=""
+        [[ "$kind" == "video" && -f "$root/.proxies$rel.app.mkv" ]] &&
+            app_proxy_rel="/.proxies$rel.app.mkv"
 
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
             "$rel" "$width" "$height" "$dur_ms" \
-            "$mtime_ms" "$uploaded_ms" "$proxy_rel" >>"$TMP_TSV"
+            "$mtime_ms" "$uploaded_ms" "$proxy_rel" "$app_proxy_rel" >>"$TMP_TSV"
     done
 
     # One jq builds the whole document. The previous version re-serialised the
@@ -275,7 +282,10 @@ main() {
                                       durationMs: (.[3] | num),
                                       createdMs:  (.[4] | num),
                                       uploadedMs: (.[5] | num),
-                                      proxyPath:  (if .[6] == "" then null else .[6] end) } })
+                                      proxyPath:  (if .[6] == "" then null else .[6] end),
+                                      appProxyPath:
+                                        (if (.[7] // "") == "" then null
+                                         else .[7] end) } })
                      | from_entries ) }' "$TMP_TSV" >"$TMP_OUT" ||
         die "failed to build index JSON"
 

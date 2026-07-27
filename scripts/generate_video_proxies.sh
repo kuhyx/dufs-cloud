@@ -61,6 +61,16 @@ command -v jq >/dev/null || { log "ERROR: jq not installed"; exit 1; }
 readonly VID_EXTS=(mp4 avi mkv mov wmv flv webm m4v 3gp ogv mpg mpeg mts m2ts vob)
 readonly SAFE_CONTAINER_EXTS=(mp4 webm)
 readonly BAD_AUDIO_CODECS=(ac3 eac3 dts dts-hd truehd mp2)
+# Audio the Flutter app's libmpv build cannot decode at all. Verified against
+# the shipped library: `ff_ac3_decoder`, `ff_eac3_decoder` and `ff_dca_decoder`
+# are present in lib/*/libmpv.so, `ff_truehd_decoder` and `ff_mlp_decoder` are
+# not — so a TrueHD file shows picture and plays silence. Those get a second,
+# app-only proxy below (see APP_PROXY_SUFFIX).
+readonly UNDECODABLE_AUDIO_CODECS=(truehd mlp)
+# Matroska, not MP4, because the app-side proxy exists to keep the file
+# playable *without* giving up the embedded ASS subtitle tracks — and MP4
+# cannot carry ASS.
+readonly APP_PROXY_SUFFIX=.app.mkv
 FD_ARGS=()
 for e in "${VID_EXTS[@]}"; do FD_ARGS+=(-e "$e"); done
 
@@ -85,15 +95,32 @@ is_bad_audio() {
 	return 1
 }
 
+is_undecodable_audio() {
+	local codec="$1"
+	for b in "${UNDECODABLE_AUDIO_CODECS[@]}"; do [[ "$codec" == "$b" ]] && return 0; done
+	return 1
+}
+
+# Transcode only the audio into a Matroska copy, keeping every video and
+# subtitle stream as-is. Used when the app could not otherwise produce sound.
+make_app_proxy() {
+	local src="$1" dst="$2"
+	mkdir -p "$(dirname "$dst")"
+	ffmpeg -y -loglevel error -i "$src" \
+		-map 0:v -map 0:a? -map 0:s? \
+		-c:v copy -c:s copy -c:a aac -b:a 192k \
+		"$dst" </dev/null 2>/dev/null
+}
+
 made=0 skipped=0 corrupted=0 failed=0
 while IFS= read -r src; do
 	[[ -f "$src" ]] || continue
 	rel="${src#"$CLOUD_ROOT"}"
 	dst="$PROXIES${rel}.mp4"
-	if [[ -f "$dst" && "$dst" -nt "$src" ]]; then
-		skipped=$((skipped + 1))
-		continue
-	fi
+	# Deliberately no early "the .mp4 is current, skip the probe" shortcut:
+	# it would also skip the app proxy below, so deleting just that artifact
+	# would never regenerate it. The shortcut only ever fired for files that
+	# already have a proxy — a handful — so probing them costs nothing.
 
 	if ! probe="$(ffprobe -v error -print_format json \
 		-show_entries stream=codec_type,codec_name \
@@ -108,6 +135,21 @@ while IFS= read -r src; do
 		'[.streams[]? | select(.codec_type=="audio") | .codec_name][0] // empty' \
 		<<<"$probe")"
 
+	# The app plays originals, so it only needs an artifact when the audio is
+	# undecodable for it; that artifact keeps the subtitle tracks.
+	if [[ -n "$audio_codec" ]] && is_undecodable_audio "$audio_codec"; then
+		app_dst="$PROXIES${rel}${APP_PROXY_SUFFIX}"
+		if [[ -f "$app_dst" && "$app_dst" -nt "$src" ]]; then
+			:
+		elif make_app_proxy "$src" "$app_dst"; then
+			made=$((made + 1))
+		else
+			log "ffmpeg failed (app proxy): $src"
+			printf '%s\n' "$src" >>"$REPORT"
+			failed=$((failed + 1))
+		fi
+	fi
+
 	needs_proxy=0
 	audio_args=(-c:a copy)
 	if [[ -n "$audio_codec" ]] && is_bad_audio "$audio_codec"; then
@@ -116,7 +158,7 @@ while IFS= read -r src; do
 	elif ((FORCE_REMUX)) && ! is_safe_container "$src"; then
 		needs_proxy=1
 	fi
-	if ((!needs_proxy)); then
+	if ((!needs_proxy)) || [[ -f "$dst" && "$dst" -nt "$src" ]]; then
 		skipped=$((skipped + 1))
 		continue
 	fi

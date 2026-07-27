@@ -236,6 +236,42 @@ void main() {
     },
   );
 
+  testWidgets(
+    'opening a video prefers the app proxy when the index has one',
+    (tester) async {
+      final settings = await _settings(configured: true);
+      final mock = MockClient((req) async {
+        if (req.method == 'PROPFIND') {
+          return http.Response(_listing(_root), 207);
+        }
+        if (req.url.path == '/.meta/index.json') {
+          return http.Response(
+            jsonEncode({
+              'entries': {
+                '/clip.mp4': {
+                  'proxyPath': '/.proxies/clip.mp4.mp4',
+                  'appProxyPath': '/.proxies/clip.mp4.app.mkv',
+                },
+              },
+            }),
+            200,
+          );
+        }
+        return http.Response.bytes([1, 2, 3], 200);
+      });
+      await tester.pumpWidget(_browser(settings, mock));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('clip.mp4'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // The app proxy exists only when libmpv cannot decode the original's
+      // audio (TrueHD/MLP); it is Matroska and keeps the subtitle tracks, so
+      // it wins over both the original and the browser `.mp4` proxy.
+      final videoScreen = tester.widget<VideoScreen>(find.byType(VideoScreen));
+      expect(videoScreen.path, '/.proxies/clip.mp4.app.mkv');
+    },
+  );
+
   testWidgets('opening audio pushes the audio screen', (tester) async {
     final settings = await _settings(configured: true);
     final mock = MockClient((req) async {

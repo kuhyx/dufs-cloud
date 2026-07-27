@@ -10,11 +10,19 @@ void main() {
         'durationMs': 92000,
         'createdMs': 100,
         'uploadedMs': 200,
+        'proxyPath': '/.proxies/clip.mkv.mp4',
+        'appProxyPath': '/.proxies/clip.mkv.app.mkv',
       });
       expect([m.width, m.height, m.durationMs, m.createdMs, m.uploadedMs],
           [1920, 1080, 92000, 100, 200]);
+      expect([m.proxyPath, m.appProxyPath],
+          ['/.proxies/clip.mkv.mp4', '/.proxies/clip.mkv.app.mkv']);
       final bad = MediaMeta.fromJson(const {'width': 'x', 'durationMs': null});
       expect([bad.width, bad.durationMs], [null, null]);
+      // Path fields are dropped rather than crashing when they are not strings.
+      final badPaths =
+          MediaMeta.fromJson(const {'proxyPath': 7, 'appProxyPath': false});
+      expect([badPaths.proxyPath, badPaths.appProxyPath], [null, null]);
       // doubles are coerced to int.
       expect(MediaMeta.fromJson(const {'durationMs': 3.0}).durationMs, 3);
     });
