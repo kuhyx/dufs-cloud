@@ -1,47 +1,23 @@
-/* Design tokens — unified-design-system (~/.claude/skills/unified-design-system).
-   Same variable names/values as every other repo; only the accent usage
-   context differs. Warm-tinted throughout; light mode's --surface-1 is
-   lighter than --bg (rule 15), dark mode's is darker-then-lighter via the
-   ink-raised steps. */
+/* Design tokens come from @kuhyx/web-ui (imported in main.tsx) -- the palette,
+   spacing, radius, type scale, shadow tiers and focus ring. This file used to
+   declare them itself; the copy is deleted rather than shadowed, so a change to
+   the design system reaches this app without a second edit here.
+   NOTE: the shared tokens default to DARK with a light override, which is the
+   inverse of the block that used to live here. The rendered result is the same
+   -- both honour prefers-color-scheme -- but the default with no media query is
+   now dark. */
 :root {
-  --bg: #f6f4f3;
-  --surface-1: #fcfbfb;
-  --border: #e0dad7;
-  --text: #211d1b;
-  --text-muted: #70625b;
-  --accent: #b8862e;
-  --success: #8a9a3c;
-  --warning: #e0a63c;
-  --danger: #e2585f;
-  --on-fill: #211d1b;   /* text/icons ON a filled accent/success/warning/danger surface */
-  --on-scrim: #eceae9;  /* text/icons on a dark translucent overlay/backdrop — fixed, not theme-tied */
-  --overlay: rgba(33, 29, 27, 0.82);
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 1rem;
-  --space-4: 1.5rem;
-  --space-5: 2rem;
-  --space-6: 3rem;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light dark;
+
+  /* App-specific: the scrim behind the media viewer and dialogs. Not a design
+     system token because nothing else needs a full-bleed backdrop, but it is
+     ink-tinted (never pure black) per the shadow policy. */
+  --overlay: rgba(33, 29, 27, 0.82);
 }
+
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #211d1b;
-    --surface-1: #2b2624;
-    --border: #463e3a;
-    --text: #eceae9;
-    --text-muted: #aaa09a;
     --overlay: rgba(33, 29, 27, 0.9);
-    /* No shadows at all in dark UI (rule 26) — every shadow declared below
-       is cleared here rather than differentiating elevation with a shadow. */
-    --shadow-menu: none;
-    --shadow-dialog: none;
   }
 }
 * {
@@ -291,7 +267,7 @@ button.danger {
   border-radius: var(--radius-md);
   /* Floating overlay: one shadow tier permitted (rule 26), cleared entirely
      in dark mode via the --shadow-menu override above. */
-  box-shadow: var(--shadow-menu, 0 2px 4px rgba(33, 29, 27, 0.12));
+  box-shadow: var(--shadow-1);
 }
 .extpicker-hint {
   padding: 0.1rem 0.3rem var(--space-2);
@@ -600,7 +576,7 @@ button.danger {
   /* Same depth technique as .extpicker-menu (one shadow tier, floating
      overlays only) rather than border-only — consolidated per rule 27.
      Larger tier since a modal sits above a dropdown. Cleared in dark mode. */
-  box-shadow: var(--shadow-dialog, 0 4px 8px rgba(33, 29, 27, 0.16));
+  box-shadow: var(--shadow-2);
 }
 .dialog-actions {
   display: flex;

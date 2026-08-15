@@ -25,7 +25,9 @@ function renderRange(opts: {
 
 /** Give the most-recently-rendered slider a 0..100px geometry (pointer x == %). */
 function primeSlider() {
-  const all = document.querySelectorAll(".slider");
+  // The shared RangeSlider binds its pointer handlers to the inner
+  // .slider-track, not the .slider wrapper the local copy used.
+  const all = document.querySelectorAll(".slider-track");
   const el = all[all.length - 1];
   if (el === undefined) throw new Error("no slider");
   vi.spyOn(el, "getBoundingClientRect").mockReturnValue({

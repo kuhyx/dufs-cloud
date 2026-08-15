@@ -1,6 +1,5 @@
 import { formatDuration } from "../lib/paths.ts";
-import { nth } from "../lib/quantile.ts";
-import { RangeSlider } from "./range-slider.tsx";
+import { nth, RangeSlider } from "@kuhyx/web-ui";
 
 interface DurationRangeProps {
   /** Ascending video durations (ms) in scope; empty when none are indexed. */

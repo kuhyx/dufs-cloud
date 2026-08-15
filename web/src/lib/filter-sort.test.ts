@@ -4,7 +4,6 @@ import {
   categoryOf,
   DEFAULT_FILTER,
   DEFAULT_SORT,
-  fuzzyMatch,
   isFilterActive,
   type FilterState,
   type SortState,
@@ -35,15 +34,6 @@ const filter = (over: Partial<FilterState> = {}): FilterState => ({
 const sort = (over: Partial<SortState> = {}): SortState => ({
   ...DEFAULT_SORT,
   ...over,
-});
-
-describe("fuzzyMatch", () => {
-  it("empty query matches; subsequence matches; gaps fail", () => {
-    expect(fuzzyMatch("", "anything")).toBe(true);
-    expect(fuzzyMatch("pic", "my-picture.jpg")).toBe(true);
-    expect(fuzzyMatch("PIC", "picture")).toBe(true);
-    expect(fuzzyMatch("zzz", "picture")).toBe(false);
-  });
 });
 
 describe("categoryOf", () => {

@@ -1,3 +1,5 @@
+import { fuzzyMatch } from "@kuhyx/web-ui";
+
 import type { DirEntry, MetaIndex } from "../api/types.ts";
 import { extname, isAudio, isImage, isPdf, isText, isVideo } from "./paths.ts";
 
@@ -101,18 +103,6 @@ const CATEGORY_ORDER: readonly TypeFilter[] = [
   "other",
   "all",
 ];
-
-/** Case-insensitive subsequence match: every query char appears in order. */
-export function fuzzyMatch(query: string, target: string): boolean {
-  if (query === "") return true;
-  const q = query.toLowerCase();
-  const t = target.toLowerCase();
-  let i = 0;
-  for (let j = 0; j < t.length && i < q.length; j++) {
-    if (t[j] === q[i]) i++;
-  }
-  return i === q.length;
-}
 
 function durationOf(entry: DirEntry, meta: MetaIndex): number | null {
   return meta[entry.path]?.durationMs ?? null;

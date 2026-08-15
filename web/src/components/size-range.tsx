@@ -1,6 +1,5 @@
 import { humanSize } from "../lib/paths.ts";
-import { nth } from "../lib/quantile.ts";
-import { RangeSlider } from "./range-slider.tsx";
+import { nth, RangeSlider } from "@kuhyx/web-ui";
 
 interface SizeRangeProps {
   /** Ascending file sizes (bytes) in scope; empty before the index loads. */
