@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@kuhyx/web-ui':
-        specifier: github:kuhyx/utils#web_ui-v0.3.0&path:/web_ui
-        version: https://codeload.github.com/kuhyx/utils/tar.gz/086791f4f9ef4cabdcfd8724924fbe12ba95592b#path:/web_ui(react@19.2.7)
+        specifier: github:kuhyx/utils#web_ui-v0.3.1&path:/web_ui
+        version: https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425#path:/web_ui(react@19.2.7)
       react:
         specifier: ^19.1.0
         version: 19.2.7
@@ -455,9 +455,9 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@kuhyx/web-ui@https://codeload.github.com/kuhyx/utils/tar.gz/086791f4f9ef4cabdcfd8724924fbe12ba95592b#path:/web_ui':
-    resolution: {path: /web_ui, tarball: https://codeload.github.com/kuhyx/utils/tar.gz/086791f4f9ef4cabdcfd8724924fbe12ba95592b}
-    version: 0.3.0
+  '@kuhyx/web-ui@https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425#path:/web_ui':
+    resolution: {path: /web_ui, tarball: https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425}
+    version: 0.3.1
     engines: {node: '>=24', pnpm: '>=10'}
     peerDependencies:
       react: '>=19'
@@ -1793,7 +1793,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kuhyx/web-ui@https://codeload.github.com/kuhyx/utils/tar.gz/086791f4f9ef4cabdcfd8724924fbe12ba95592b#path:/web_ui(react@19.2.7)':
+  '@kuhyx/web-ui@https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425#path:/web_ui(react@19.2.7)':
     dependencies:
       react: 19.2.7
 

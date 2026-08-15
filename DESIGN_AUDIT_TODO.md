@@ -62,6 +62,20 @@ findings are concentrated in the handful of places that bypass the theme.
 
 ## Web app (`web/`)
 
+> **RESOLVED 2026-08-15 — do not re-fix.** This section was written against an
+> older `index.css` and is now stale twice over. The token names it cites
+> (`--fg`, `--card`) were renamed in the earlier design-system pass, and the
+> `:root` block itself has since been *deleted*: the web app now consumes
+> `@kuhyx/web-ui/tokens.css`, so palette, spacing, radius, type and shadows all
+> arrive from the shared package (`~/utils/web_ui`). Verified against the
+> current file: **0** occurrences of `#fff`/`#ffffff`/`rgba(0,0,0,…)`, 37
+> `var(--space-*)` uses and 13 `var(--radius-*)` uses, i.e. the Rule 1, Rule 4
+> and Rule 11 findings below are all closed. `:focus-visible` is styled by the
+> shared layer and verified in a real browser at 1366x768 and 1024x600.
+>
+> Kept for the record rather than deleted, since the Flutter section above is
+> still live.
+
 **Design-token entry point:** `web/src/index.css:1-23` — `:root` CSS custom
 properties (`--bg`, `--fg`, `--muted`, `--card`, `--border`, `--accent`,
 `--danger`, `--overlay`) with a `@media (prefers-color-scheme: dark)`
