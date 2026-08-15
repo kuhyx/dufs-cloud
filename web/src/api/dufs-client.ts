@@ -1,4 +1,9 @@
-import type { DirEntry, EntryKind, MetaIndex } from "./types.ts";
+import type {
+  DirEntry,
+  EntryKind,
+  MetaIndex,
+  SubtitleManifest,
+} from "./types.ts";
 import {
   basename,
   encodePath,
@@ -31,6 +36,9 @@ export interface DufsClient {
   writeText(path: string, content: string): Promise<void>;
   /** Fetch the server metadata index; resolves to `{}` when absent. */
   fetchMeta(): Promise<MetaIndex>;
+  /** The subtitle manifest in `dir` (a video's `subtitlesPath`), or null when
+   * it is absent or unreadable. Tolerant by the same contract as fetchMeta. */
+  fetchSubtitleManifest(dir: string): Promise<SubtitleManifest | null>;
   /** Download a file's raw bytes (used to build multi-file zips). */
   downloadBytes(path: string): Promise<Uint8Array>;
 }
@@ -159,6 +167,20 @@ export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
         return {};
       }
     },
+    async fetchSubtitleManifest(dir) {
+      // Same tolerance as fetchMeta: subtitles are an enrichment, and a video
+      // whose manifest is missing simply has no embedded tracks to offer.
+      try {
+        const res = await fetchImpl(encodePath(`${dir}/tracks.json`), {
+          credentials: "same-origin",
+        });
+        if (!res.ok) return null;
+        const data: unknown = await res.json();
+        return isSubtitleManifest(data) ? data : null;
+      } catch {
+        return null;
+      }
+    },
     async downloadBytes(path) {
       const res = await request("GET", path);
       return new Uint8Array(await res.arrayBuffer());
@@ -171,6 +193,16 @@ interface MetaFile {
 }
 
 /** Narrow parsed JSON to the metadata index shape (tolerant of extra fields). */
+function isSubtitleManifest(data: unknown): data is SubtitleManifest {
+  if (typeof data !== "object" || data === null) return false;
+  return (
+    "tracks" in data &&
+    Array.isArray(data.tracks) &&
+    "fonts" in data &&
+    Array.isArray(data.fonts)
+  );
+}
+
 function isMetaIndex(data: unknown): data is MetaFile {
   if (typeof data !== "object" || data === null || !("entries" in data)) {
     return false;

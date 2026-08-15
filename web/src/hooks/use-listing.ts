@@ -11,6 +11,8 @@ const APP_FILES = new Set([
   ".thumbs",
   "_thumbs",
   ".meta",
+  ".proxies",
+  ".subs",
 ]);
 
 export interface Listing {

@@ -703,3 +703,72 @@ button.danger {
   font-size: 0.85rem;
   pointer-events: none;
 }
+
+/* Subtitle picker. Sits above the caption, clear of the native <video>
+   controls so it never covers the seek bar. */
+.subtitle-menu {
+  position: absolute;
+  bottom: 2.6rem;
+  right: 0.8rem;
+  z-index: 3;
+}
+.subtitle-toggle {
+  background: rgba(33, 29, 27, 0.5);
+  color: var(--on-scrim);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.85rem;
+}
+.subtitle-panel {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  right: 0;
+  min-width: 12rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-1);
+}
+.subtitle-panel > button {
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-align: left;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.subtitle-panel > button.is-active {
+  background: var(--accent);
+  color: var(--on-fill);
+}
+.subtitle-offset {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2) 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.subtitle-offset button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  width: 1.6rem;
+  height: 1.6rem;
+  line-height: 1;
+}
+.subtitle-offset-value {
+  margin-left: auto;
+  font-family: var(--font-mono);
+}

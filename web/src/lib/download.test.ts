@@ -26,6 +26,7 @@ function makeClient(over: Partial<DufsClient> = {}): DufsClient {
     readText: vi.fn(),
     writeText: vi.fn(),
     fetchMeta: vi.fn(() => Promise.resolve({})),
+    fetchSubtitleManifest: vi.fn(() => Promise.resolve(null)),
     downloadBytes: vi.fn((p: string) =>
       Promise.resolve(new TextEncoder().encode(`data-for${p}`)),
     ),

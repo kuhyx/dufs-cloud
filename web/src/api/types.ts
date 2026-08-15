@@ -48,6 +48,10 @@ export interface SubtitleTrackEntry {
 /** The manifest written alongside a video's extracted subtitle tracks. */
 export interface SubtitleManifest {
   readonly generatedMs: number;
+  /** File names of the fonts attached to the source container, resolved by the
+   * client against `${subtitlesPath}/fonts/`. libass needs the release's own
+   * faces or it substitutes and the typesetting renders wrong. */
+  readonly fonts: readonly string[];
   readonly tracks: readonly SubtitleTrackEntry[];
 }
 

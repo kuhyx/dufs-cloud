@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
-import type { DirEntry } from "../api/types.ts";
+import type { DirEntry, SubtitleManifest } from "../api/types.ts";
 import { isAudio, isImage, isPdf, isVideo } from "../lib/paths.ts";
+import { useJassub } from "../hooks/use-jassub.ts";
+import { useSubtitles } from "../hooks/use-subtitles.ts";
+import { SubtitleMenu } from "./subtitle-menu.tsx";
+
+/** Shared empty listing, so defaulting `siblings` does not hand the subtitle
+ * hook a fresh array identity on every render — that retriggers its memo, which
+ * resets the active track, which renders again, forever. */
+const NO_SIBLINGS: readonly DirEntry[] = [];
 
 interface MediaViewerProps {
   readonly entry: DirEntry;
@@ -8,6 +16,12 @@ interface MediaViewerProps {
   readonly onClose: () => void;
   readonly onPrev: () => void;
   readonly onNext: () => void;
+  /** Entries of the video's own directory, for sidecar subtitle discovery. */
+  readonly siblings?: readonly DirEntry[];
+  /** Where this video's extracted subtitles live, from the metadata index. */
+  readonly subtitlesPath?: string | null;
+  /** The extracted manifest, once fetched. */
+  readonly subtitleManifest?: SubtitleManifest | null;
 }
 
 /** Full-screen viewer: image lightbox (click-to-zoom) or an inline video player. */
@@ -17,14 +31,34 @@ export function MediaViewer({
   onClose,
   onPrev,
   onNext,
+  siblings = NO_SIBLINGS,
+  subtitlesPath = null,
+  subtitleManifest = null,
 }: MediaViewerProps): React.JSX.Element {
   // Zoom resets automatically per media because the parent keys this component
   // by path, remounting it on navigation.
   const [zoomed, setZoomed] = useState(false);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+
+  const subtitles = useSubtitles(
+    entry,
+    siblings,
+    subtitlesPath,
+    subtitleManifest,
+  );
+  useJassub(
+    videoEl,
+    subtitles.active,
+    subtitles.fontKey,
+    subtitles.offsetMs,
+  );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
       if (e.key === "Escape") onClose();
+      // Arrows seek the video once it has focus; stealing them for file
+      // navigation there made the player's own controls unusable.
+      else if (e.target === videoEl) return;
       else if (e.key === "ArrowLeft") onPrev();
       else if (e.key === "ArrowRight") onNext();
     }
@@ -32,7 +66,7 @@ export function MediaViewer({
     return () => {
       window.removeEventListener("keydown", onKey);
     };
-  }, [onClose, onPrev, onNext]);
+  }, [onClose, onPrev, onNext, videoEl]);
 
   const video = isVideo(entry.name);
 
@@ -57,6 +91,7 @@ export function MediaViewer({
       <div className="viewer-stage" onClick={onClose}>
         {video ? (
           <video
+            ref={setVideoEl}
             className="viewer-video"
             src={url}
             controls
@@ -111,6 +146,15 @@ export function MediaViewer({
       >
         ›
       </button>
+      {video && (
+        <SubtitleMenu
+          tracks={subtitles.tracks}
+          active={subtitles.active}
+          onSelect={subtitles.select}
+          offsetMs={subtitles.offsetMs}
+          onOffsetChange={subtitles.setOffsetMs}
+        />
+      )}
       <div className="viewer-caption">{entry.name}</div>
     </div>
   );

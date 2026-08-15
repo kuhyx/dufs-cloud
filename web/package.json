@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@kuhyx/web-ui": "github:kuhyx/utils#web_ui-v0.3.1&path:/web_ui",
+    "jassub": "^2.5.14",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

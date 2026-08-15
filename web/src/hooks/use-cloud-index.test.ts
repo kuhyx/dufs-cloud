@@ -37,6 +37,7 @@ function makeClient(list: DufsClient["list"]): DufsClient {
     readText: vi.fn(),
     writeText: vi.fn(),
     fetchMeta: vi.fn(() => Promise.resolve({})),
+    fetchSubtitleManifest: vi.fn(() => Promise.resolve(null)),
     downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
   };
 }

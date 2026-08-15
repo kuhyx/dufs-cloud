@@ -108,4 +108,71 @@ describe("dufs-client operations", () => {
       expect(await createDufsClient(fetchImpl).fetchMeta()).toEqual({});
     });
   });
+
+  describe("fetchSubtitleManifest", () => {
+    const manifest = { generatedMs: 1, fonts: ["a.ttf"], tracks: [] };
+
+    it("reads tracks.json from the video's subtitles directory", async () => {
+      const fetchImpl = vi.fn<typeof fetch>(() =>
+        Promise.resolve(
+          okResponse({ json: () => Promise.resolve(manifest) }),
+        ),
+      );
+      const got =
+        await createDufsClient(fetchImpl).fetchSubtitleManifest("/.subs/a b");
+      expect(got).toEqual(manifest);
+      expect(fetchImpl.mock.calls.at(0)?.at(0)).toBe(
+        "/.subs/a%20b/tracks.json",
+      );
+    });
+
+    it("returns null when the manifest is missing (non-ok)", async () => {
+      const fetchImpl = vi.fn<typeof fetch>(() =>
+        Promise.resolve(okResponse({ ok: false, status: 404 })),
+      );
+      expect(
+        await createDufsClient(fetchImpl).fetchSubtitleManifest("/.subs/a"),
+      ).toBeNull();
+    });
+
+    it("returns null for malformed manifest shapes", async () => {
+      const shapes: unknown[] = [
+        null,
+        5,
+        {},
+        { tracks: [] },
+        { fonts: [] },
+        { tracks: "no", fonts: [] },
+        { tracks: [], fonts: "no" },
+      ];
+      for (const shape of shapes) {
+        const fetchImpl = vi.fn<typeof fetch>(() =>
+          Promise.resolve(okResponse({ json: () => Promise.resolve(shape) })),
+        );
+        expect(
+          await createDufsClient(fetchImpl).fetchSubtitleManifest("/.subs/a"),
+        ).toBeNull();
+      }
+    });
+
+    it("returns null when JSON parsing throws", async () => {
+      const fetchImpl = vi.fn<typeof fetch>(() =>
+        Promise.resolve(
+          okResponse({ json: () => Promise.reject(new Error("bad")) }),
+        ),
+      );
+      expect(
+        await createDufsClient(fetchImpl).fetchSubtitleManifest("/.subs/a"),
+      ).toBeNull();
+    });
+
+    it("returns null when the network fetch itself rejects (offline)", async () => {
+      const fetchImpl = vi.fn<typeof fetch>(() =>
+        Promise.reject(new Error("offline")),
+      );
+      expect(
+        await createDufsClient(fetchImpl).fetchSubtitleManifest("/.subs/a"),
+      ).toBeNull();
+    });
+  });
 });

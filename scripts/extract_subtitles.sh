@@ -184,10 +184,16 @@ while IFS= read -r src; do
 
 	dump_fonts "$src" "$outdir"
 
+	# The SPA hands these to libass; without the release's own faces it
+	# substitutes and the typesetting renders visibly wrong. Names only —
+	# the client resolves them against <subtitlesPath>/fonts/.
+	fonts_json="$(find "$outdir/fonts" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null |
+		jq -R -s 'split("\n") | map(select(length > 0))')"
+
 	# tracks.json is written LAST: it is the completion marker the skip check
 	# above tests, so a crash mid-extraction retries instead of half-skipping.
-	if ! printf '%s\n' "${entries[@]}" | jq -s \
-		'{generatedMs: (now * 1000 | floor), tracks: .}' >"$manifest"; then
+	if ! printf '%s\n' "${entries[@]}" | jq -s --argjson fonts "$fonts_json" \
+		'{generatedMs: (now * 1000 | floor), fonts: $fonts, tracks: .}' >"$manifest"; then
 		log "failed writing manifest: $src"
 		printf '%s\n' "$src" >>"$REPORT"
 		failed=$((failed + 1))

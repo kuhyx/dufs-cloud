@@ -27,6 +27,7 @@ function client(over: Partial<DufsClient>): DufsClient {
     move: vi.fn(),
     rename: vi.fn(),
     fetchMeta: vi.fn(() => Promise.resolve({})),
+    fetchSubtitleManifest: vi.fn(() => Promise.resolve(null)),
     downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
     ...over,
   };

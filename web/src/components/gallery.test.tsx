@@ -58,6 +58,7 @@ function makeClient(overrides: Partial<DufsClient> = {}): DufsClient {
     move: vi.fn(() => Promise.resolve()),
     rename: vi.fn(() => Promise.resolve()),
     fetchMeta: vi.fn(() => Promise.resolve({})),
+    fetchSubtitleManifest: vi.fn(() => Promise.resolve(null)),
     downloadBytes: vi.fn(() => Promise.resolve(new Uint8Array())),
     ...overrides,
   };

@@ -34,6 +34,7 @@ import { useCloudIndex } from "../hooks/use-cloud-index.ts";
 import { Grid } from "./grid.tsx";
 import { FilterBar } from "./filter-bar.tsx";
 import { MediaViewer } from "./media-viewer.tsx";
+import { useSubtitleManifest } from "../hooks/use-subtitle-manifest.ts";
 import { TextEditor } from "./text-editor.tsx";
 import { ConfirmDialog } from "./confirm-dialog.tsx";
 import { PromptDialog } from "./prompt-dialog.tsx";
@@ -325,6 +326,10 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
 
   const viewerEntry =
     viewerIndex >= 0 && viewerIndex < media.length ? media[viewerIndex] : null;
+  const viewerSubtitlesPath = viewerEntry
+    ? (meta[viewerEntry.path]?.subtitlesPath ?? null)
+    : null;
+  const subtitleManifest = useSubtitleManifest(client, viewerSubtitlesPath);
   const showListing = !loading && error === null;
 
   return (
@@ -538,6 +543,9 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           url={client.fileUrl(
             meta[viewerEntry.path]?.proxyPath ?? viewerEntry.path,
           )}
+          siblings={displayed}
+          subtitlesPath={viewerSubtitlesPath}
+          subtitleManifest={subtitleManifest}
           onClose={() => {
             setViewerIndex(-1);
           }}

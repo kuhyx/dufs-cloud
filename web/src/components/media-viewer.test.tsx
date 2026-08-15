@@ -2,11 +2,35 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MediaViewer } from "./media-viewer.tsx";
-import type { DirEntry } from "../api/types.ts";
+import type { DirEntry, SubtitleManifest } from "../api/types.ts";
+
+// jassub is a WASM+worker renderer jsdom cannot run; its own lifecycle is
+// covered in use-jassub.test.ts.
+vi.mock("jassub", () => ({
+  default: class {
+    timeOffset = 0;
+    destroy = () => Promise.resolve();
+  },
+}));
 
 function mk(name: string): DirEntry {
   return { name, path: `/${name}`, kind: "file", size: 1, mtimeMs: 0 };
 }
+
+const manifest: SubtitleManifest = {
+  generatedMs: 0,
+  fonts: [],
+  tracks: [
+    {
+      si: 0,
+      codec: "ass",
+      lang: "eng",
+      title: "",
+      default: false,
+      file: "00.eng.ass",
+    },
+  ],
+};
 
 describe("MediaViewer", () => {
   it("shows an image and toggles zoom on click", async () => {
@@ -129,5 +153,84 @@ describe("MediaViewer", () => {
     await userEvent.click(screen.getByLabelText("Next"));
     expect(onPrev).toHaveBeenCalledOnce();
     expect(onNext).toHaveBeenCalledOnce();
+  });
+
+  it("leaves arrow keys to the video once it has focus, so seeking works", () => {
+    const onPrev = vi.fn();
+    const onNext = vi.fn();
+    const { container } = render(
+      <MediaViewer
+        entry={mk("a.mp4")}
+        url="/a.mp4"
+        onClose={vi.fn()}
+        onPrev={onPrev}
+        onNext={onNext}
+      />,
+    );
+    const video = container.querySelector("video");
+    fireEvent.keyDown(video as Element, { key: "ArrowLeft" });
+    fireEvent.keyDown(video as Element, { key: "ArrowRight" });
+    expect(onPrev).not.toHaveBeenCalled();
+    expect(onNext).not.toHaveBeenCalled();
+  });
+
+  it("still closes on Escape while the video has focus", () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <MediaViewer
+        entry={mk("a.mp4")}
+        url="/a.mp4"
+        onClose={onClose}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    fireEvent.keyDown(container.querySelector("video") as Element, {
+      key: "Escape",
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("offers a subtitle picker for a video with extracted tracks", () => {
+    render(
+      <MediaViewer
+        entry={mk("a.mp4")}
+        url="/a.mp4"
+        onClose={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        subtitlesPath="/.subs/a.mp4"
+        subtitleManifest={manifest}
+      />,
+    );
+    expect(screen.getByLabelText("Subtitles")).toHaveTextContent("English");
+  });
+
+  it("shows no subtitle picker for a video without any tracks", () => {
+    render(
+      <MediaViewer
+        entry={mk("a.mp4")}
+        url="/a.mp4"
+        onClose={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("Subtitles")).not.toBeInTheDocument();
+  });
+
+  it("shows no subtitle picker for non-video media", () => {
+    render(
+      <MediaViewer
+        entry={mk("a.jpg")}
+        url="/a.jpg"
+        onClose={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        subtitlesPath="/.subs/a.jpg"
+        subtitleManifest={manifest}
+      />,
+    );
+    expect(screen.queryByLabelText("Subtitles")).not.toBeInTheDocument();
   });
 });

@@ -8,6 +8,9 @@ export default defineConfig({
   base: "./",
   plugins: [react()],
   server: { port: 5273 },
+  // jassub (libass in WASM) ships an ES-module worker that code-splits, which
+  // Vite's default "iife" worker format cannot emit.
+  worker: { format: "es" },
   test: {
     environment: "jsdom",
     globals: true,
