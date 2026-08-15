@@ -21,6 +21,13 @@
 # (no re-encode) — just widens the container-safety net. Not run by default
 # because it would touch every non-mp4/webm video in the library.
 #
+# Tier 3 (--re-encode, opt-in, EXPENSIVE): re-encode the video stream to H.264
+# for codecs no browser decodes in any container (HEVC, MPEG-4 ASP, VC-1).
+# Remuxing cannot help these — the stream itself is undecodable — so this is
+# the only way to make them play in the web client, at minutes of CPU per file
+# and a much larger proxy. Measured with canPlayType() on this host, not
+# assumed: AV1 and VP8 play fine and are deliberately NOT on the list.
+#
 # Corrupted/unreadable files (ffprobe exits non-zero) are logged and
 # skipped — no proxy can fix a bad download.
 #
@@ -28,21 +35,25 @@
 # (idempotent: skipped if the proxy is newer than the source).
 #
 # CLOUD_ROOT comes from the dufs serve-path (~/.config/dufs/dufs.yaml), else
-# ~/cloud. Usage: generate_video_proxies.sh [--force-remux-container] [ROOT_DIR]
+# ~/cloud. Usage:
+#   generate_video_proxies.sh [--force-remux-container] [--re-encode] [ROOT_DIR]
 
 set -euo pipefail
 
 log() { printf '[video-proxies] %s\n' "$*" >&2; }
 
 FORCE_REMUX=0
+RE_ENCODE=0
 ROOT_ARG=""
 for arg in "$@"; do
 	case "$arg" in
 	--force-remux-container) FORCE_REMUX=1 ;;
+	--re-encode) RE_ENCODE=1 ;;
 	*) ROOT_ARG="$arg" ;;
 	esac
 done
 readonly FORCE_REMUX
+readonly RE_ENCODE
 
 CLOUD_ROOT="${CLOUD_ROOT:-}"
 if [[ -z "$CLOUD_ROOT" && -f "$HOME/.config/dufs/dufs.yaml" ]]; then
@@ -67,6 +78,13 @@ readonly BAD_AUDIO_CODECS=(ac3 eac3 dts dts-hd truehd mp2)
 # not — so a TrueHD file shows picture and plays silence. Those get a second,
 # app-only proxy below (see APP_PROXY_SUFFIX).
 readonly UNDECODABLE_AUDIO_CODECS=(truehd mlp)
+# Video codecs this host's Chromium cannot decode in ANY container. Measured
+# with canPlayType(), not assumed — AV1 and VP8 were on this list until the
+# probe said "probably" for both, and only HEVC/MPEG-4-ASP/VC-1 actually fail:
+#   mkv hevc/mpeg4/vc1 -> ""   mkv h264/av1/vp8 -> "probably"
+# Unlike the audio cases above these cannot be fixed by remuxing; the video
+# stream itself must be re-encoded, which is why it is opt-in (--re-encode).
+readonly UNPLAYABLE_VIDEO_CODECS=(hevc h265 mpeg4 msmpeg4v3 wmv3 vc1)
 # Matroska, not MP4, because the app-side proxy exists to keep the file
 # playable *without* giving up the embedded ASS subtitle tracks — and MP4
 # cannot carry ASS.
@@ -98,6 +116,12 @@ is_bad_audio() {
 is_undecodable_audio() {
 	local codec="$1"
 	for b in "${UNDECODABLE_AUDIO_CODECS[@]}"; do [[ "$codec" == "$b" ]] && return 0; done
+	return 1
+}
+
+is_unplayable_video() {
+	local codec="$1"
+	for b in "${UNPLAYABLE_VIDEO_CODECS[@]}"; do [[ "$codec" == "$b" ]] && return 0; done
 	return 1
 }
 
@@ -134,6 +158,9 @@ while IFS= read -r src; do
 	audio_codec="$(jq -r \
 		'[.streams[]? | select(.codec_type=="audio") | .codec_name][0] // empty' \
 		<<<"$probe")"
+	video_codec="$(jq -r \
+		'[.streams[]? | select(.codec_type=="video") | .codec_name][0] // empty' \
+		<<<"$probe")"
 
 	# The app plays originals, so it only needs an artifact when the audio is
 	# undecodable for it; that artifact keeps the subtitle tracks.
@@ -152,11 +179,22 @@ while IFS= read -r src; do
 
 	needs_proxy=0
 	audio_args=(-c:a copy)
+	video_args=(-c:v copy)
 	if [[ -n "$audio_codec" ]] && is_bad_audio "$audio_codec"; then
 		needs_proxy=1
 		audio_args=(-c:a aac -b:a 192k)
 	elif ((FORCE_REMUX)) && ! is_safe_container "$src"; then
 		needs_proxy=1
+	fi
+
+	# The expensive tier: re-encoding the video stream, minutes per file rather
+	# than seconds, so it never runs unless asked for. Audio is normalised to
+	# AAC at the same time — a file needing a video re-encode gains nothing from
+	# keeping an audio codec the browser may also refuse.
+	if ((RE_ENCODE)) && [[ -n "$video_codec" ]] && is_unplayable_video "$video_codec"; then
+		needs_proxy=1
+		video_args=(-c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p)
+		audio_args=(-c:a aac -b:a 192k)
 	fi
 	if ((!needs_proxy)) || [[ -f "$dst" && "$dst" -nt "$src" ]]; then
 		skipped=$((skipped + 1))
@@ -165,7 +203,7 @@ while IFS= read -r src; do
 
 	mkdir -p "$(dirname "$dst")"
 	if ffmpeg -y -loglevel error -i "$src" -map 0:v:0 -map 0:a:0? \
-		-c:v copy "${audio_args[@]}" -movflags +faststart \
+		"${video_args[@]}" "${audio_args[@]}" -movflags +faststart \
 		"$dst" </dev/null 2>/dev/null; then
 		made=$((made + 1))
 	else
