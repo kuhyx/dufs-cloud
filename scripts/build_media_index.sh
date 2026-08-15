@@ -12,13 +12,20 @@
 #         "durationMs": 92000,
 #         "createdMs": <mtime ms>, "uploadedMs": <first-seen ms>,
 #         "proxyPath": "/.proxies/Media/2025/11/clip.mp4.mp4",
-#         "appProxyPath": null
+#         "appProxyPath": null,
+#         "subtitlesPath": "/.subs/Media/2025/11/clip.mp4"
 #       }, ... } }
 #
 # proxyPath is null unless generate_video_proxies.sh has produced a
 # browser-safe MP4 for that video (see that script for why). Only the web
 # client plays it; the app streams the original so it keeps the embedded
 # subtitle tracks the proxy strips.
+#
+# subtitlesPath is null unless extract_subtitles.sh has pulled that video's
+# embedded text subtitle tracks out into <cloud>/.subs/<relpath>/. It points at
+# the DIRECTORY; the SPA fetches "<subtitlesPath>/tracks.json" to enumerate the
+# tracks and their fonts. This is what lets the browser render ASS at all —
+# it cannot demux subtitle streams out of a Matroska file itself.
 #
 # Keys are absolute cloud paths (leading slash), matching what the SPA requests.
 # Durations/dimensions come from ffprobe; images get dimensions only. The prior
@@ -261,10 +268,18 @@ main() {
         app_proxy_rel=""
         [[ "$kind" == "video" && -f "$root/.proxies$rel.app.mkv" ]] &&
             app_proxy_rel="/.proxies$rel.app.mkv"
+        # Likewise re-tested every run: extract_subtitles.sh writes tracks.json
+        # as its completion marker long after the source's mtime, so caching
+        # this would pin subtitlesPath to null forever. The SPA fetches that
+        # manifest to learn which embedded tracks exist.
+        subs_rel=""
+        [[ "$kind" == "video" && -f "$root/.subs$rel/tracks.json" ]] &&
+            subs_rel="/.subs$rel"
 
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
             "$rel" "$width" "$height" "$dur_ms" \
-            "$mtime_ms" "$uploaded_ms" "$proxy_rel" "$app_proxy_rel" >>"$TMP_TSV"
+            "$mtime_ms" "$uploaded_ms" "$proxy_rel" "$app_proxy_rel" \
+            "$subs_rel" >>"$TMP_TSV"
     done
 
     # One jq builds the whole document. The previous version re-serialised the
@@ -285,7 +300,10 @@ main() {
                                       proxyPath:  (if .[6] == "" then null else .[6] end),
                                       appProxyPath:
                                         (if (.[7] // "") == "" then null
-                                         else .[7] end) } })
+                                         else .[7] end),
+                                      subtitlesPath:
+                                        (if (.[8] // "") == "" then null
+                                         else .[8] end) } })
                      | from_entries ) }' "$TMP_TSV" >"$TMP_OUT" ||
         die "failed to build index JSON"
 

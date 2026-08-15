@@ -6,6 +6,7 @@ import {
   sizeValues,
 } from "./cloud-stats.ts";
 import type { DirEntry, MetaIndex } from "../api/types.ts";
+import { meta as makeMeta } from "../test/meta.ts";
 
 function file(path: string, size = 0): DirEntry {
   return {
@@ -56,9 +57,9 @@ describe("sizeValues", () => {
 
 describe("durationValues", () => {
   const meta: MetaIndex = {
-    "/a.mp4": { width: null, height: null, durationMs: 5000, createdMs: null, uploadedMs: null, proxyPath: null },
-    "/b.mp4": { width: null, height: null, durationMs: 92000, createdMs: null, uploadedMs: null, proxyPath: null },
-    "/c.mp4": { width: null, height: null, durationMs: 30000, createdMs: null, uploadedMs: null, proxyPath: null },
+    "/a.mp4": makeMeta({ durationMs: 5000 }),
+    "/b.mp4": makeMeta({ durationMs: 92000 }),
+    "/c.mp4": makeMeta({ durationMs: 30000 }),
   };
   it("returns ascending known durations, skipping unindexed entries", () => {
     const entries = [file("/a.mp4"), file("/b.mp4"), file("/c.mp4"), file("/x.mp4")];

@@ -9,6 +9,7 @@ import {
   type SortState,
 } from "./filter-sort.ts";
 import type { DirEntry, MetaIndex } from "../api/types.ts";
+import { meta as makeMeta } from "../test/meta.ts";
 
 const dir = (name: string): DirEntry => ({
   name,
@@ -66,22 +67,20 @@ describe("isFilterActive", () => {
 
 describe("applyFilterSort — filtering", () => {
   const meta: MetaIndex = {
-    "/short.mp4": {
+    "/short.mp4": makeMeta({
       width: 1920,
       height: 1080,
       durationMs: 5000,
       createdMs: 100,
       uploadedMs: 200,
-      proxyPath: null,
-    },
-    "/long.mp4": {
+    }),
+    "/long.mp4": makeMeta({
       width: 1280,
       height: 720,
       durationMs: 60000,
       createdMs: 50,
       uploadedMs: 400,
-      proxyPath: null,
-    },
+    }),
   };
   const entries = [
     dir("Album"),
@@ -186,22 +185,20 @@ describe("applyFilterSort — filtering", () => {
 
 describe("applyFilterSort — sorting", () => {
   const meta: MetaIndex = {
-    "/a.mp4": {
+    "/a.mp4": makeMeta({
       width: 100,
       height: 100,
       durationMs: 3000,
       createdMs: 300,
       uploadedMs: 10,
-      proxyPath: null,
-    },
-    "/b.mp4": {
+    }),
+    "/b.mp4": makeMeta({
       width: 200,
       height: 100,
       durationMs: 1000,
       createdMs: 100,
       uploadedMs: 20,
-      proxyPath: null,
-    },
+    }),
   };
   const entries = [
     file("b.mp4", 20, 200),

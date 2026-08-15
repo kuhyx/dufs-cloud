@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { Gallery } from "./gallery.tsx";
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
+import { meta as makeMeta } from "../test/meta.ts";
 
 function entry(name: string, kind: "dir" | "file"): DirEntry {
   return { name, path: `/${name}`, kind, size: 10, mtimeMs: 0 };
@@ -98,14 +99,7 @@ describe("Gallery", () => {
     const client = makeClient({
       fetchMeta: vi.fn(() =>
         Promise.resolve({
-          "/clip.mp4": {
-            width: null,
-            height: null,
-            durationMs: null,
-            createdMs: null,
-            uploadedMs: null,
-            proxyPath: "/.proxies/clip.mp4.mp4",
-          },
+          "/clip.mp4": makeMeta({ proxyPath: "/.proxies/clip.mp4.mp4" }),
         }),
       ),
     });

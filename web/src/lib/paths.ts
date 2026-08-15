@@ -18,6 +18,11 @@ const AUDIO_EXTS = new Set([
   "mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "opus",
 ]);
 
+/** Text subtitle formats libass (via jassub) can render. Bitmap formats
+ * (VobSub .sub/.idx, PGS .sup) are deliberately absent: they are an
+ * image-compositing pipeline, not a text one. */
+const SUBTITLE_EXTS = new Set(["ass", "ssa", "srt", "vtt"]);
+
 /** Lower-case extension without the dot, or "" if none. */
 export function extname(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -39,6 +44,9 @@ export function isPdf(name: string): boolean {
 }
 export function isAudio(name: string): boolean {
   return AUDIO_EXTS.has(extname(name));
+}
+export function isSubtitle(name: string): boolean {
+  return SUBTITLE_EXTS.has(extname(name));
 }
 
 /** Normalize to a leading-slash, no-trailing-slash absolute path ("/" stays "/"). */

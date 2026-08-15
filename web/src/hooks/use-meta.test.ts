@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useMeta } from "./use-meta.ts";
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { MetaIndex } from "../api/types.ts";
+import { meta as makeMeta } from "../test/meta.ts";
 
 function makeClient(fetchMeta: () => Promise<MetaIndex>): DufsClient {
   return {
@@ -25,14 +26,7 @@ function makeClient(fetchMeta: () => Promise<MetaIndex>): DufsClient {
 describe("useMeta", () => {
   it("starts empty and adopts the fetched index", async () => {
     const index: MetaIndex = {
-      "/a.mp4": {
-        width: null,
-        height: null,
-        durationMs: 1000,
-        createdMs: null,
-        uploadedMs: null,
-        proxyPath: null,
-      },
+      "/a.mp4": makeMeta({ durationMs: 1000 }),
     };
     const { result } = renderHook(() =>
       useMeta(makeClient(() => Promise.resolve(index))),

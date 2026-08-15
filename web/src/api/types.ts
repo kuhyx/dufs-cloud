@@ -17,6 +17,38 @@ export interface MediaMeta {
    * `scripts/generate_video_proxies.sh`), or null when either this isn't a
    * video or the original already plays fine as-is. */
   readonly proxyPath: string | null;
+  /** Absolute cloud path of the app-side Matroska proxy, which keeps the
+   * embedded subtitle tracks the web proxy strips. Emitted by the indexer and
+   * used by the Flutter client only; the web SPA never plays it (browsers
+   * cannot decode Matroska). Modelled here so the type matches the JSON. */
+  readonly appProxyPath: string | null;
+  /** Absolute cloud path of the DIRECTORY holding this video's extracted
+   * subtitle tracks and fonts (see `scripts/extract_subtitles.sh`), or null
+   * when the video has no embedded text subtitles or has not been processed.
+   * Fetch `${subtitlesPath}/tracks.json` to enumerate them. */
+  readonly subtitlesPath: string | null;
+}
+
+/** One extracted subtitle track, as listed in a `.subs/<video>/tracks.json`. */
+export interface SubtitleTrackEntry {
+  /** Index of this stream among the source's subtitle streams (ffmpeg 0:s:N). */
+  readonly si: number;
+  /** ffprobe codec name, e.g. "ass" or "subrip". */
+  readonly codec: string;
+  /** ISO-639 language code, or "und" when the source did not tag one. */
+  readonly lang: string;
+  /** Free-text track title from the container, e.g. "English subs" (may be ""). */
+  readonly title: string;
+  /** Whether the container marked this track as the default. */
+  readonly default: boolean;
+  /** File name within the subtitles directory, e.g. "09.pol.ass". */
+  readonly file: string;
+}
+
+/** The manifest written alongside a video's extracted subtitle tracks. */
+export interface SubtitleManifest {
+  readonly generatedMs: number;
+  readonly tracks: readonly SubtitleTrackEntry[];
 }
 
 /** The metadata index: a map from absolute cloud path to its {@link MediaMeta}. */
