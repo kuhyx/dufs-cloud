@@ -119,6 +119,20 @@ is_undecodable_audio() {
 	return 1
 }
 
+# Whether an existing proxy was built by the current version of this script.
+#
+# Checked by comparing stream counts against the source rather than by stamping
+# a version somewhere: proxies made before the multi-audio fix carry exactly one
+# audio track, and the artifact itself is the honest record of what it contains.
+# Without this, every existing proxy is newer than its source and would be
+# skipped forever, so the fix would silently reach nothing.
+proxy_is_current() {
+	local dst="$1" src_tracks="$2" have
+	have="$(ffprobe -v error -select_streams a -show_entries stream=index \
+		-of csv=p=0 "$dst" 2>/dev/null | grep -c . || true)"
+	[[ "$have" -ge "$src_tracks" ]]
+}
+
 is_unplayable_video() {
 	local codec="$1"
 	for b in "${UNPLAYABLE_VIDEO_CODECS[@]}"; do [[ "$codec" == "$b" ]] && return 0; done
@@ -196,13 +210,21 @@ while IFS= read -r src; do
 		video_args=(-c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p)
 		audio_args=(-c:a aac -b:a 192k)
 	fi
-	if ((!needs_proxy)) || [[ -f "$dst" && "$dst" -nt "$src" ]]; then
+	src_audio_tracks="$(jq -r \
+		'[.streams[]? | select(.codec_type=="audio")] | length' <<<"$probe")"
+	if ((!needs_proxy)) || { [[ -f "$dst" && "$dst" -nt "$src" ]] &&
+		proxy_is_current "$dst" "$src_audio_tracks"; }; then
 		skipped=$((skipped + 1))
 		continue
 	fi
 
 	mkdir -p "$(dirname "$dst")"
-	if ffmpeg -y -loglevel error -i "$src" -map 0:v:0 -map 0:a:0? \
+	# Every audio track, not just the first: this library is dual-audio anime,
+	# and mapping 0:a:0 silently forced the English dub while the Japanese
+	# track existed in the source and in the app proxy. MP4 carries multiple
+	# AAC tracks, and audio here is already AAC, so the extra tracks are a
+	# stream copy in the remux tiers and one cheap AAC encode each otherwise.
+	if ffmpeg -y -loglevel error -i "$src" -map 0:v:0 -map 0:a? \
 		"${video_args[@]}" "${audio_args[@]}" -movflags +faststart \
 		"$dst" </dev/null 2>/dev/null; then
 		made=$((made + 1))
