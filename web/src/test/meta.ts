@@ -13,6 +13,7 @@ export function meta(over: Partial<MediaMeta> = {}): MediaMeta {
     createdMs: null,
     uploadedMs: null,
     proxyPath: null,
+    dashPath: null,
     appProxyPath: null,
     subtitlesPath: null,
     ...over,

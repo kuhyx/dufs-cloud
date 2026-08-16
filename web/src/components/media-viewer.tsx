@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import type { DirEntry, SubtitleManifest } from "../api/types.ts";
 import { isAudio, isImage, isPdf, isVideo } from "../lib/paths.ts";
+import { useDashPlayer } from "../hooks/use-dash-player.ts";
 import { useJassub } from "../hooks/use-jassub.ts";
 import { useSubtitles } from "../hooks/use-subtitles.ts";
+import { AudioMenu } from "./audio-menu.tsx";
 import { SubtitleMenu } from "./subtitle-menu.tsx";
 
 /** Shared empty listing, so defaulting `siblings` does not hand the subtitle
@@ -22,6 +24,9 @@ interface MediaViewerProps {
   readonly subtitlesPath?: string | null;
   /** The extracted manifest, once fetched. */
   readonly subtitleManifest?: SubtitleManifest | null;
+  /** Where this video's DASH segments live, for the audio-track picker; null
+   * for the single-audio videos, which play the ordinary file. */
+  readonly dashPath?: string | null;
 }
 
 /** Full-screen viewer: image lightbox (click-to-zoom) or an inline video player. */
@@ -34,6 +39,7 @@ export function MediaViewer({
   siblings = NO_SIBLINGS,
   subtitlesPath = null,
   subtitleManifest = null,
+  dashPath = null,
 }: MediaViewerProps): React.JSX.Element {
   // Zoom resets automatically per media because the parent keys this component
   // by path, remounting it on navigation.
@@ -47,6 +53,7 @@ export function MediaViewer({
     subtitleManifest,
   );
   useJassub(videoEl, subtitles.active, subtitles.fonts, subtitles.offsetMs);
+  const dash = useDashPlayer(videoEl, dashPath);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
@@ -88,7 +95,7 @@ export function MediaViewer({
           <video
             ref={setVideoEl}
             className="viewer-video"
-            src={url}
+            src={dash.src ?? url}
             controls
             autoPlay
             onClick={(e) => {
@@ -141,6 +148,13 @@ export function MediaViewer({
       >
         ›
       </button>
+      {video && (
+        <AudioMenu
+          tracks={dash.audio}
+          active={dash.activeAudio}
+          onSelect={dash.selectAudio}
+        />
+      )}
       {video && (
         <SubtitleMenu
           tracks={subtitles.tracks}

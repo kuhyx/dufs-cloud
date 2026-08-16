@@ -704,15 +704,21 @@ button.danger {
   pointer-events: none;
 }
 
-/* Subtitle picker. Sits above the caption, clear of the native <video>
-   controls so it never covers the seek bar. */
-.subtitle-menu {
+/* Subtitle and audio pickers. Both sit above the caption, clear of the native
+   <video> controls so neither covers the seek bar. The audio picker sits to the
+   left of the subtitle one, and only appears for dual-audio videos. */
+.subtitle-menu,
+.audio-menu {
   position: absolute;
   bottom: 2.6rem;
   right: 0.8rem;
   z-index: 3;
 }
-.subtitle-toggle {
+.audio-menu {
+  right: 11rem;
+}
+.subtitle-toggle,
+.audio-toggle {
   background: rgba(33, 29, 27, 0.5);
   color: var(--on-scrim);
   border: none;
@@ -720,7 +726,8 @@ button.danger {
   padding: var(--space-1) var(--space-2);
   font-size: 0.85rem;
 }
-.subtitle-panel {
+.subtitle-panel,
+.audio-panel {
   position: absolute;
   bottom: calc(100% + var(--space-1));
   right: 0;
@@ -735,7 +742,8 @@ button.danger {
   box-shadow: var(--shadow-2);
   padding: var(--space-1);
 }
-.subtitle-panel > button {
+.subtitle-panel > button,
+.audio-panel > button {
   background: none;
   border: none;
   border-radius: var(--radius-sm);
@@ -745,7 +753,8 @@ button.danger {
   font-size: 0.9rem;
   white-space: nowrap;
 }
-.subtitle-panel > button.is-active {
+.subtitle-panel > button.is-active,
+.audio-panel > button.is-active {
   background: var(--accent);
   color: var(--on-fill);
 }

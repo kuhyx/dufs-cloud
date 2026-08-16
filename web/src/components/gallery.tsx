@@ -546,6 +546,7 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           siblings={displayed}
           subtitlesPath={viewerSubtitlesPath}
           subtitleManifest={subtitleManifest}
+          dashPath={meta[viewerEntry.path]?.dashPath ?? null}
           onClose={() => {
             setViewerIndex(-1);
           }}

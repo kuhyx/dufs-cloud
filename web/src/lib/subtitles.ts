@@ -78,6 +78,15 @@ export function isEnglish(language: string): boolean {
   return ENGLISH_TAGS.has(language.toLowerCase());
 }
 
+/** Human-readable name for a language tag, falling back to the raw tag.
+ *
+ * Shared with the audio-track picker: the same tags label both, and a file
+ * whose subtitles read "Japanese" should not have its audio read "jpn". */
+export function languageName(language: string): string {
+  const tag = language.trim();
+  return LANGUAGE_NAMES[tag.toLowerCase()] ?? tag;
+}
+
 /** Guesses whether a track titled `title` is a "forced"/signs-only track.
  *
  * A heuristic on purpose: the container's forced flag is not carried through
@@ -96,7 +105,7 @@ export function looksForcedTitle(title: string): boolean {
 export function subtitleLabel(track: SubtitleTrack): string {
   const language = track.language.trim();
   const title = track.title.trim();
-  const named = LANGUAGE_NAMES[language.toLowerCase()] ?? language;
+  const named = languageName(language);
 
   const parts: string[] = [];
   if (named !== "") parts.push(named);

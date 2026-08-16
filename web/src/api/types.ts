@@ -27,6 +27,12 @@ export interface MediaMeta {
    * when the video has no embedded text subtitles or has not been processed.
    * Fetch `${subtitlesPath}/tracks.json` to enumerate them. */
   readonly subtitlesPath: string | null;
+  /** Absolute cloud path of the DIRECTORY holding this video's DASH segments
+   * (see `scripts/generate_dash_streams.sh`), or null. Only dual-audio videos
+   * are segmented; the SPA plays those through MSE so it can offer an
+   * audio-track picker, which a plain `<video>` cannot because Chrome does not
+   * implement `audioTracks`. */
+  readonly dashPath: string | null;
 }
 
 /** One extracted subtitle track, as listed in a `.subs/<video>/tracks.json`. */

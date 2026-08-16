@@ -13,7 +13,8 @@
 #         "createdMs": <mtime ms>, "uploadedMs": <first-seen ms>,
 #         "proxyPath": "/.proxies/Media/2025/11/clip.mp4.mp4",
 #         "appProxyPath": null,
-#         "subtitlesPath": "/.subs/Media/2025/11/clip.mp4"
+#         "subtitlesPath": "/.subs/Media/2025/11/clip.mp4",
+#         "dashPath": null
 #       }, ... } }
 #
 # proxyPath is null unless generate_video_proxies.sh has produced a
@@ -26,6 +27,12 @@
 # the DIRECTORY; the SPA fetches "<subtitlesPath>/tracks.json" to enumerate the
 # tracks and their fonts. This is what lets the browser render ASS at all —
 # it cannot demux subtitle streams out of a Matroska file itself.
+#
+# dashPath is null unless generate_dash_streams.sh has segmented that video,
+# which it only does for videos with 2+ audio tracks. It points at the DIRECTORY
+# holding manifest.mpd and the segments; the SPA plays those through MSE when it
+# wants an audio-track picker, because Chrome does not implement
+# HTMLMediaElement.audioTracks and a plain <video> can only reach track one.
 #
 # Keys are absolute cloud paths (leading slash), matching what the SPA requests.
 # Durations/dimensions come from ffprobe; images get dimensions only. The prior
@@ -275,11 +282,17 @@ main() {
         subs_rel=""
         [[ "$kind" == "video" && -f "$root/.subs$rel/tracks.json" ]] &&
             subs_rel="/.subs$rel"
+        # Only dual-audio videos are segmented, and manifest.mpd is written
+        # last, so its presence means the whole segment set is ready. Re-tested
+        # every run for the same reason as the two above.
+        dash_rel=""
+        [[ "$kind" == "video" && -f "$root/.dash$rel/manifest.mpd" ]] &&
+            dash_rel="/.dash$rel"
 
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
             "$rel" "$width" "$height" "$dur_ms" \
             "$mtime_ms" "$uploaded_ms" "$proxy_rel" "$app_proxy_rel" \
-            "$subs_rel" >>"$TMP_TSV"
+            "$subs_rel" "$dash_rel" >>"$TMP_TSV"
     done
 
     # One jq builds the whole document. The previous version re-serialised the
@@ -303,7 +316,10 @@ main() {
                                          else .[7] end),
                                       subtitlesPath:
                                         (if (.[8] // "") == "" then null
-                                         else .[8] end) } })
+                                         else .[8] end),
+                                      dashPath:
+                                        (if (.[9] // "") == "" then null
+                                         else .[9] end) } })
                      | from_entries ) }' "$TMP_TSV" >"$TMP_OUT" ||
         die "failed to build index JSON"
 
