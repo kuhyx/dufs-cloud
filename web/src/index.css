@@ -705,17 +705,28 @@ button.danger {
 }
 
 /* Subtitle and audio pickers. Both sit above the caption, clear of the native
-   <video> controls so neither covers the seek bar. The audio picker sits to the
-   left of the subtitle one, and only appears for dual-audio videos. */
-.subtitle-menu,
-.audio-menu {
+   <video> controls so neither covers the seek bar. They share one flex row so
+   the audio picker is placed by the subtitle button's real width — track labels
+   run to "English — Full Subs(Moby JJ)" and longer, which a fixed offset cannot
+   anticipate. No background of its own: the row can be empty (single-audio, no
+   subtitles) and must not swallow the background clicks that close the viewer. */
+.viewer-controls {
   position: absolute;
   bottom: 2.6rem;
   right: 0.8rem;
   z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+/* Anchors each panel to its own button rather than to the row. */
+.subtitle-menu,
+.audio-menu {
+  position: relative;
+  min-width: 0;
 }
 .audio-menu {
-  right: 11rem;
+  flex-shrink: 0;
 }
 .subtitle-toggle,
 .audio-toggle {
@@ -725,6 +736,18 @@ button.danger {
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-2);
   font-size: 0.85rem;
+}
+/* A long subtitle label is clipped rather than allowed to push the audio
+   button off-screen; the full text is still one click away in the panel. */
+.subtitle-toggle {
+  max-width: min(60vw, 22rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audio-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .subtitle-panel,
 .audio-panel {

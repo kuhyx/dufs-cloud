@@ -149,20 +149,20 @@ export function MediaViewer({
         ›
       </button>
       {video && (
-        <AudioMenu
-          tracks={dash.audio}
-          active={dash.activeAudio}
-          onSelect={dash.selectAudio}
-        />
-      )}
-      {video && (
-        <SubtitleMenu
-          tracks={subtitles.tracks}
-          active={subtitles.active}
-          onSelect={subtitles.select}
-          offsetMs={subtitles.offsetMs}
-          onOffsetChange={subtitles.setOffsetMs}
-        />
+        <div className="viewer-controls">
+          <AudioMenu
+            tracks={dash.audio}
+            active={dash.activeAudio}
+            onSelect={dash.selectAudio}
+          />
+          <SubtitleMenu
+            tracks={subtitles.tracks}
+            active={subtitles.active}
+            onSelect={subtitles.select}
+            offsetMs={subtitles.offsetMs}
+            onOffsetChange={subtitles.setOffsetMs}
+          />
+        </div>
       )}
       <div className="viewer-caption">{entry.name}</div>
     </div>
