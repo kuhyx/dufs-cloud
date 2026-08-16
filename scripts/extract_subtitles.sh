@@ -29,6 +29,13 @@ set -euo pipefail
 
 log() { printf '[subtitles] %s\n' "$*" >&2; }
 
+# Stamped into every tracks.json and compared on the next run. Bump this
+# whenever the extracted artefacts change so already-extracted videos are
+# re-done automatically instead of being skipped as "newer than the source".
+#   2 — dump every font attachment, not just those before the first name
+#       ffmpeg rejects as unsafe (one 87-font release was yielding 4).
+readonly EXTRACT_VERSION=2
+
 CLOUD_ROOT="${CLOUD_ROOT:-}"
 if [[ -z "$CLOUD_ROOT" && -f "$HOME/.config/dufs/dufs.yaml" ]]; then
 	CLOUD_ROOT="$(sed -nE 's/^serve-path:[[:space:]]*//p' "$HOME/.config/dufs/dufs.yaml" | head -1)"
@@ -97,15 +104,38 @@ sub_extension() {
 # attach the exact fonts their typesetting references; without them libass
 # substitutes and signs render visibly wrong. ffmpeg writes attachments into
 # the *current* directory, hence the subshell + cd.
+#
+# Each attachment is dumped under an explicitly named `-dump_attachment:<idx>`
+# rather than the blanket `-dump_attachment:t ""`. That blanket form takes the
+# filename from the attachment's own metadata, and ffmpeg ABORTS THE WHOLE RUN
+# on the first name it deems unsafe (a space is enough: "PLASTIC TOMATO.TTF"),
+# leaving every later attachment unextracted. One release here has 87 fonts and
+# yielded 4. Spaces are replaced so the name is always accepted; the manifest
+# records these on-disk names, so libass fetches what actually exists.
+#
+# `-t 0` stops ffmpeg decoding the file it is only being asked to read
+# attachments from: 66s -> 0.3s on a 356 MB HEVC episode.
 dump_fonts() {
 	local src="$1" outdir="$2"
 	mkdir -p "$outdir/fonts"
+
+	local -a dump_args=()
+	local idx name safe
+	while IFS=, read -r idx name; do
+		[[ -n "$idx" && -n "$name" ]] || continue
+		safe="${name// /_}"
+		dump_args+=(-dump_attachment:"$idx" "$safe")
+	done < <(ffprobe -v error -select_streams t \
+		-show_entries stream=index:stream_tags=filename \
+		-of csv=p=0 "$src" 2>/dev/null || true)
+
+	# Nothing attached: not an error, most releases outside anime have none.
+	[[ ${#dump_args[@]} -gt 0 ]] || return 0
+
 	(
 		cd "$outdir/fonts" || exit 1
-		# -dump_attachment needs an output that never gets written; -f null
-		# with no map reads the file and dumps attachments as a side effect.
-		ffmpeg -y -loglevel error -dump_attachment:t "" \
-			-i "$src" -f null - </dev/null 2>/dev/null || true
+		ffmpeg -y -loglevel error "${dump_args[@]}" \
+			-i "$src" -t 0 -f null - </dev/null 2>/dev/null || true
 	)
 	# Non-font attachments (rare) are not useful to libass.
 	find "$outdir/fonts" -type f \
@@ -120,7 +150,14 @@ while IFS= read -r src; do
 	outdir="$SUBS$rel"
 	manifest="$outdir/tracks.json"
 
-	if [[ -f "$manifest" && "$manifest" -nt "$src" ]]; then
+	# Up to date only if the manifest is newer than the source AND was written
+	# by this version of the script. The version gate is what makes an
+	# extraction *bug fix* reach the library: without it every already-present
+	# tracks.json is newer than its source, so the whole run is skipped and the
+	# fix silently reaches nothing. Bump EXTRACT_VERSION whenever the extracted
+	# artefacts change and the next run re-does them by itself.
+	if [[ -f "$manifest" && "$manifest" -nt "$src" ]] &&
+		[[ "$(jq -r '.extractVersion // 0' "$manifest" 2>/dev/null)" == "$EXTRACT_VERSION" ]]; then
 		skipped=$((skipped + 1))
 		continue
 	fi
@@ -193,7 +230,9 @@ while IFS= read -r src; do
 	# tracks.json is written LAST: it is the completion marker the skip check
 	# above tests, so a crash mid-extraction retries instead of half-skipping.
 	if ! printf '%s\n' "${entries[@]}" | jq -s --argjson fonts "$fonts_json" \
-		'{generatedMs: (now * 1000 | floor), fonts: $fonts, tracks: .}' >"$manifest"; then
+		--argjson v "$EXTRACT_VERSION" \
+		'{extractVersion: $v, generatedMs: (now * 1000 | floor),
+		  fonts: $fonts, tracks: .}' >"$manifest"; then
 		log "failed writing manifest: $src"
 		printf '%s\n' "$src" >>"$REPORT"
 		failed=$((failed + 1))

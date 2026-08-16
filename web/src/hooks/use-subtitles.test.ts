@@ -69,14 +69,27 @@ describe("useSubtitles", () => {
 
   it("resolves font URLs under the subtitles directory", () => {
     const { result } = run();
-    expect(result.current.fontKey).toBe(`${SUBS}/fonts/a.ttf ${SUBS}/fonts/b.ttf`);
+    // Percent-encoded per segment: this directory name contains spaces, and
+    // libass fetches these URLs verbatim.
+    expect(result.current.fonts).toEqual([
+      "/.subs/Media/Show%20-%2001.mkv/fonts/a.ttf",
+      "/.subs/Media/Show%20-%2001.mkv/fonts/b.ttf",
+    ]);
+  });
+
+  it("encodes font file names that themselves contain spaces", () => {
+    const { result } = run({
+      ...manifest,
+      fonts: ["PLASTIC TOMATO.TTF"],
+    });
+    expect(result.current.fonts).toEqual([
+      "/.subs/Media/Show%20-%2001.mkv/fonts/PLASTIC%20TOMATO.TTF",
+    ]);
   });
 
   it("has no fonts when the video has no extracted subtitles", () => {
-    const { result } = renderHook(() =>
-      useSubtitles(video, [], null, null),
-    );
-    expect(result.current.fontKey).toBe("");
+    const { result } = renderHook(() => useSubtitles(video, [], null, null));
+    expect(result.current.fonts).toEqual([]);
   });
 
   it("remembers a chosen language across videos", () => {

@@ -46,12 +46,7 @@ export function MediaViewer({
     subtitlesPath,
     subtitleManifest,
   );
-  useJassub(
-    videoEl,
-    subtitles.active,
-    subtitles.fontKey,
-    subtitles.offsetMs,
-  );
+  useJassub(videoEl, subtitles.active, subtitles.fonts, subtitles.offsetMs);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {

@@ -1,10 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import type { DirEntry, SubtitleManifest } from "../api/types.ts";
+import { encodePath } from "../lib/paths.ts";
 import {
   allTracks,
   pickDefaultSubtitle,
   type SubtitleTrack,
 } from "../lib/subtitles.ts";
+
+/** Shared empty list, so a video without extracted fonts hands the renderer the
+ * same array identity on every render instead of rebuilding it. */
+const EMPTY_FONTS: readonly string[] = [];
 
 /** Persisted across videos: which language the user last chose, and whether
  * they had subtitles off entirely. Storing the *language* rather than a track
@@ -48,8 +53,9 @@ interface Subtitles {
   readonly select: (track: SubtitleTrack | null) => void;
   readonly offsetMs: number;
   readonly setOffsetMs: (ms: number) => void;
-  /** Extracted font URLs, space-joined for {@link useJassub}. */
-  readonly fontKey: string;
+  /** Extracted font URLs for {@link useJassub}, percent-encoded and ready to
+   * fetch. Stable across renders, so it can be an effect dependency directly. */
+  readonly fonts: readonly string[];
 }
 
 /** Collects a video's subtitle tracks from both sources and owns the
@@ -95,10 +101,13 @@ export function useSubtitles(
     writePreference(track === null ? "off" : track.language);
   }, []);
 
-  const fontKey = useMemo(() => {
-    if (subtitlesPath === null || manifest === null) return "";
-    return manifest.fonts.map((f) => `${subtitlesPath}/fonts/${f}`).join(" ");
+  // Percent-encoded per segment, exactly as the client encodes every other
+  // cloud path: video directories and font files both routinely contain spaces
+  // and brackets, and libass fetches these URLs verbatim.
+  const fonts = useMemo(() => {
+    if (subtitlesPath === null || manifest === null) return EMPTY_FONTS;
+    return manifest.fonts.map((f) => encodePath(`${subtitlesPath}/fonts/${f}`));
   }, [subtitlesPath, manifest]);
 
-  return { tracks, active, select, offsetMs, setOffsetMs, fontKey };
+  return { tracks, active, select, offsetMs, setOffsetMs, fonts };
 }

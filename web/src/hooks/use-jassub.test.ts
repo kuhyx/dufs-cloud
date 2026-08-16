@@ -50,14 +50,14 @@ beforeEach(() => {
 describe("useJassub", () => {
   it("does nothing without a video element", () => {
     renderHook(() => {
-      useJassub(null, track(), "", 0);
+      useJassub(null, track(), [], 0);
     });
     expect(construct).not.toHaveBeenCalled();
   });
 
   it("does nothing when subtitles are off", () => {
     renderHook(() => {
-      useJassub(video(), null, "", 0);
+      useJassub(video(), null, [], 0);
     });
     expect(construct).not.toHaveBeenCalled();
   });
@@ -65,7 +65,7 @@ describe("useJassub", () => {
   it("builds a renderer for the selected track", () => {
     const el = video();
     renderHook(() => {
-      useJassub(el, track(), "", 0);
+      useJassub(el, track(), [], 0);
     });
     expect(construct).toHaveBeenCalledTimes(1);
     expect(construct).toHaveBeenCalledWith(
@@ -79,16 +79,57 @@ describe("useJassub", () => {
 
   it("passes the extracted font URLs through", () => {
     renderHook(() => {
-      useJassub(video(), track(), "/f/a.ttf /f/b.ttf", 0);
+      useJassub(video(), track(), ["/f/a.ttf", "/f/b.ttf"], 0);
     });
     expect(construct).toHaveBeenCalledWith(
       expect.objectContaining({ fonts: ["/f/a.ttf", "/f/b.ttf"] }),
     );
   });
 
+  it("keeps font URLs containing spaces intact", () => {
+    // Regression: these were joined and re-split on " ", which turned four
+    // real URLs into sixteen unfetchable fragments and left libass with no
+    // fonts at all. Percent-encoded paths keep %20, but a raw space must
+    // survive too — the split must never be on a space again.
+    const fonts = ["/.subs/Show - 01.mkv/fonts/PLASTIC TOMATO.TTF"];
+    renderHook(() => {
+      useJassub(video(), track(), fonts, 0);
+    });
+    expect(construct).toHaveBeenCalledWith(
+      expect.objectContaining({ fonts }),
+    );
+  });
+
+  it("does not rebuild when the font list is recreated with equal contents", () => {
+    const el = video();
+    const t = track();
+    const { rerender } = renderHook(
+      ({ f }: { f: readonly string[] }) => {
+        useJassub(el, t, f, 0);
+      },
+      { initialProps: { f: ["/f/a.ttf"] } },
+    );
+    rerender({ f: ["/f/a.ttf"] });
+    expect(construct).toHaveBeenCalledTimes(1);
+    expect(destroy).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds when the font list changes", () => {
+    const el = video();
+    const t = track();
+    const { rerender } = renderHook(
+      ({ f }: { f: readonly string[] }) => {
+        useJassub(el, t, f, 0);
+      },
+      { initialProps: { f: ["/f/a.ttf"] } },
+    );
+    rerender({ f: ["/f/a.ttf", "/f/b.ttf"] });
+    expect(construct).toHaveBeenCalledTimes(2);
+  });
+
   it("tears the renderer down on unmount", () => {
     const { unmount } = renderHook(() => {
-      useJassub(video(), track(), "", 0);
+      useJassub(video(), track(), [], 0);
     });
     unmount();
     expect(destroy).toHaveBeenCalledTimes(1);
@@ -97,7 +138,7 @@ describe("useJassub", () => {
   it("swallows a teardown that races the worker going away", () => {
     destroy.mockImplementationOnce(() => Promise.reject(new Error("gone")));
     const { unmount } = renderHook(() => {
-      useJassub(video(), track(), "", 0);
+      useJassub(video(), track(), [], 0);
     });
     expect(() => {
       unmount();
@@ -108,7 +149,7 @@ describe("useJassub", () => {
     const el = video();
     const { rerender } = renderHook(
       ({ t }: { t: SubtitleTrack }) => {
-        useJassub(el, t, "", 0);
+        useJassub(el, t, [], 0);
       },
       { initialProps: { t: track() } },
     );
@@ -123,7 +164,7 @@ describe("useJassub", () => {
     const t = track();
     const { rerender } = renderHook(
       ({ ms }: { ms: number }) => {
-        useJassub(el, t, "", ms);
+        useJassub(el, t, [], ms);
       },
       { initialProps: { ms: 0 } },
     );
@@ -137,7 +178,7 @@ describe("useJassub", () => {
     const t = track();
     const { rerender } = renderHook(
       ({ ms }: { ms: number }) => {
-        useJassub(el, t, "", ms);
+        useJassub(el, t, [], ms);
       },
       { initialProps: { ms: 0 } },
     );
@@ -148,7 +189,7 @@ describe("useJassub", () => {
   it("ignores an offset change while nothing is rendering", () => {
     const { rerender } = renderHook(
       ({ ms }: { ms: number }) => {
-        useJassub(null, null, "", ms);
+        useJassub(null, null, [], ms);
       },
       { initialProps: { ms: 0 } },
     );

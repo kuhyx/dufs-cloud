@@ -12,20 +12,29 @@ import type { SubtitleTrack } from "../lib/subtitles.ts";
  * tears the renderer down and builds a new one; that is what makes the effect's
  * dependency list the whole switching mechanism.
  *
- * `fontKey` is the video's own extracted font URLs joined by spaces. Releases
- * attach the exact faces their typesetting references, and without them libass
- * substitutes and signs render visibly wrong. It is passed pre-joined so this
- * hook depends on a value rather than an array identity that would change on
- * every render and rebuild the renderer continuously. */
+ * `fonts` is the video's own extracted font URLs. Releases attach the exact
+ * faces their typesetting references, and without them libass substitutes and
+ * signs render visibly wrong. The effect keys on the joined URLs rather than the
+ * array identity, which would change on every render and rebuild the renderer
+ * continuously — but the *array* is what reaches libass, because these URLs
+ * contain spaces (both the video directory and the font names do) and joining
+ * them into a single string would make them unfetchable. */
 export function useJassub(
   video: HTMLVideoElement | null,
   track: SubtitleTrack | null,
-  fontKey: string,
+  fonts: readonly string[],
   offsetMs: number,
 ): void {
   // Held in a ref so changing the offset nudges the live instance instead of
   // rebuilding the renderer (which would re-parse the whole subtitle file).
   const instance = useRef<JASSUB | null>(null);
+
+  // The effect depends on this rather than on `fonts`, whose identity changes
+  // every render and would rebuild the renderer continuously. Newline is the
+  // separator because a percent-encoded URL can never contain one, so the split
+  // below restores the exact list — unlike a space, which silently shredded
+  // every URL containing one (video directories and font names both do).
+  const fontKey = fonts.join("\n");
 
   useEffect(() => {
     if (video === null || track === null) return undefined;
@@ -33,7 +42,7 @@ export function useJassub(
     const renderer = new JASSUB({
       video,
       subUrl: track.url,
-      fonts: fontKey === "" ? [] : fontKey.split(" "),
+      fonts: fontKey === "" ? [] : fontKey.split("\n"),
     });
     instance.current = renderer;
 
