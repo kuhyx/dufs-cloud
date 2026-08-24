@@ -196,10 +196,24 @@ write_dufs_config() {
 	local hash
 	# Read the password from stdin so it never appears in the process argv (ps).
 	hash="$(printf '%s' "${DUFS_PASSWORD}" | openssl passwd -6 -stdin)"
-	# Serve the cloud_gallery SPA (render-spa) ONLY once it is deployed into the
-	# cloud root — a fresh dufs with no gallery keeps the default file listing.
+	# Serve the cloud_gallery SPA ONLY once it is deployed into the cloud root —
+	# a fresh dufs with no gallery keeps the default file listing.
+	# Use render-try-index, NOT render-spa: render-spa (and render-index) make
+	# EVERY directory without an index.html return 404 instead of a listing, so
+	# a browser GET on /RunnerUp broke while PROPFIND/PUT kept working.
+	# render-try-index serves index.html where one exists and falls back to the
+	# directory listing everywhere else.
 	local render=""
-	[[ -f "${CLOUD_ROOT}/index.html" ]] && render="render-spa: true"
+	[[ -f "${CLOUD_ROOT}/index.html" ]] && render="render-try-index: true"
+	# Preserve any extra scoped auth entries (e.g. the RunnerUp WebDAV inbox
+	# used by the phone) across re-runs. This block rewrites the whole file, so
+	# without this they would be silently dropped and phone uploads would start
+	# failing with RunnerUp's opaque "generic error".
+	local extra_auth=""
+	if [[ -f "${cfg}" ]]; then
+		extra_auth="$(sed -n 's/^\(  - "\)\(.*\)$/\1\2/p' "${cfg}" \
+			| grep -v "\"${DUFS_USER}:" || true)"
+	fi
 	ensure_dir "${cfg_dir}"
 	umask 077
 	cat >"${cfg}" <<EOF
@@ -212,6 +226,10 @@ ${render}
 auth:
   - "${DUFS_USER}:${hash}@/:rw"
 EOF
+	if [[ -n "${extra_auth}" ]]; then
+		printf '%s\n' "${extra_auth}" >>"${cfg}"
+		log_ok "Preserved $(printf '%s\n' "${extra_auth}" | wc -l) extra auth entry/entries"
+	fi
 	chmod 600 "${cfg}"
 	log_ok "Wrote ${cfg} (auth required, password hashed)"
 }
