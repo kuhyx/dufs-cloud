@@ -13,7 +13,7 @@ enforced by a gate that fails the commit, not by a note anyone can ignore.
 Why: a file that cannot be read in one piece forces re-reads and partial edits,
 which is the single largest avoidable cost in an LLM-assisted workflow. Aim by
 churn, not size alone — refactoring pays where code is read and changed often
-(Fowler, *refactoring economic benefit*).
+(Fowler, _refactoring economic benefit_).
 
 ## Scope in this repo
 
@@ -21,6 +21,7 @@ churn, not size alone — refactoring pays where code is read and changed often
 - **5,667 lines** sit in violation; longest file is **1089 lines**.
 
 Exempt (do NOT split these):
+
 - generated files — `*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `**/l10n/generated/**`,
   anything with a `GENERATED` header
 - markup — `.html`, `.css`, `.scss`
@@ -32,19 +33,19 @@ Exempt (do NOT split these):
 ROI = lines x commits in the last year. Work top-down; a long file nobody edits
 has near-zero payoff and should not be first.
 
-| lines | commits/yr | kind | file |
-|------:|-----------:|:-----|:-----|
-| 909 | 15 | code | `app/lib/screens/browser_screen.dart` |
-| 1089 | 12 | code | `app/test/browser_screen_test.dart` |
-| 1047 | 9 | code | `web/src/components/gallery.test.tsx` |
-| 622 | 9 | code | `web/src/components/gallery.tsx` |
-| 298 | 7 | code | `scripts/build_media_index.sh` |
-| 256 | 7 | code | `web/src/components/grid.test.tsx` |
-| 260 | 5 | code | `web/src/lib/filter-sort.test.ts` |
-| 257 | 4 | code | `app/test/dufs_client_test.dart` |
-| 298 | 3 | code | `app/lib/util/filter_sort.dart` |
-| 333 | 2 | code | `scripts/setup_dufs_cloud.sh` |
-| 298 | 2 | code | `app/test/pdf_screen_test.dart` |
+| lines | commits/yr | kind | file                                  |
+| ----: | ---------: | :--- | :------------------------------------ |
+|   909 |         15 | code | `app/lib/screens/browser_screen.dart` |
+|  1089 |         12 | code | `app/test/browser_screen_test.dart`   |
+|  1047 |          9 | code | `web/src/components/gallery.test.tsx` |
+|   622 |          9 | code | `web/src/components/gallery.tsx`      |
+|   298 |          7 | code | `scripts/build_media_index.sh`        |
+|   256 |          7 | code | `web/src/components/grid.test.tsx`    |
+|   260 |          5 | code | `web/src/lib/filter-sort.test.ts`     |
+|   257 |          4 | code | `app/test/dufs_client_test.dart`      |
+|   298 |          3 | code | `app/lib/util/filter_sort.dart`       |
+|   333 |          2 | code | `scripts/setup_dufs_cloud.sh`         |
+|   298 |          2 | code | `app/test/pdf_screen_test.dart`       |
 
 ## How to split
 
@@ -87,3 +88,5 @@ A refactor without a gate silently regrows. Before this task is done:
 ## Verify
 
 Run web tests and the Flutter app tests; the mobile client in `app/` is a separate surface from `web/`.
+
+REMOVE ME AFTER FINISH
