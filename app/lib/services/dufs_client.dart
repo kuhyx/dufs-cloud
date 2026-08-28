@@ -34,9 +34,9 @@ class DufsClient {
   /// HTTP Basic auth headers — also passed to `Image.network` and the video
   /// player so media requests are authenticated too.
   Map<String, String> get authHeaders => <String, String>{
-        'authorization':
-            'Basic ${base64Encode(utf8.encode('$username:$password'))}',
-      };
+    'authorization':
+        'Basic ${base64Encode(utf8.encode('$username:$password'))}',
+  };
 
   /// Builds the authenticated absolute URL of a cloud [path].
   Uri fileUri(String path) => _uri(path);
@@ -72,8 +72,11 @@ class DufsClient {
   /// Uploads [bytes] to [dirPath]/[name] with a WebDAV PUT.
   Future<void> upload(String dirPath, String name, List<int> bytes) async {
     final target = dirPath.endsWith('/') ? '$dirPath$name' : '$dirPath/$name';
-    final response = await _http.put(_uri(target),
-        headers: authHeaders, body: bytes);
+    final response = await _http.put(
+      _uri(target),
+      headers: authHeaders,
+      body: bytes,
+    );
     if (response.statusCode >= 400) {
       throw Exception('PUT $target -> ${response.statusCode}');
     }
@@ -147,8 +150,11 @@ class DufsClient {
 
   /// Writes [content] to a text file (WebDAV PUT).
   Future<void> writeText(String path, String content) async {
-    final response =
-        await _http.put(_uri(path), headers: authHeaders, body: content);
+    final response = await _http.put(
+      _uri(path),
+      headers: authHeaders,
+      body: content,
+    );
     if (response.statusCode >= 400) {
       throw Exception('PUT $path -> ${response.statusCode}');
     }
@@ -159,8 +165,10 @@ class DufsClient {
   /// JSON — the index is an optional enrichment, never a hard dependency.
   Future<MetaIndex> fetchMeta() async {
     try {
-      final response =
-          await _http.get(_uri('/.meta/index.json'), headers: authHeaders);
+      final response = await _http.get(
+        _uri('/.meta/index.json'),
+        headers: authHeaders,
+      );
       if (response.statusCode >= 400) return <String, MediaMeta>{};
       return metaIndexFromJson(jsonDecode(response.body));
     } on Exception {
@@ -178,23 +186,24 @@ List<DirEntry> parsePropfind(String xmlBody, String dirPath) {
   final self = _normalize(dirPath);
   final document = XmlDocument.parse(xmlBody);
   final entries = <DirEntry>[];
-  for (final response in document.findAllElements('response', namespace: '*')) {
+  final responses = document.findAllElements('response', namespaceUri: '*');
+  for (final response in responses) {
     final href = response
-        .findElements('href', namespace: '*')
+        .findElements('href', namespaceUri: '*')
         .firstOrNull
         ?.innerText;
     if (href == null || href.isEmpty) continue;
     final path = _normalize(Uri.decodeComponent(href));
     if (path == self) continue;
     final isDir = response
-        .findAllElements('collection', namespace: '*')
+        .findAllElements('collection', namespaceUri: '*')
         .isNotEmpty;
     final sizeText = response
-        .findAllElements('getcontentlength', namespace: '*')
+        .findAllElements('getcontentlength', namespaceUri: '*')
         .firstOrNull
         ?.innerText;
     final mtimeText = response
-        .findAllElements('getlastmodified', namespace: '*')
+        .findAllElements('getlastmodified', namespaceUri: '*')
         .firstOrNull
         ?.innerText;
     entries.add(

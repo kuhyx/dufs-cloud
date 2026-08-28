@@ -52,7 +52,10 @@ export function parsePropfind(xml: string, dirPath: string): DirEntry[] {
   for (const res of responses) {
     const hrefEl = res.getElementsByTagNameNS(DAV_NS, "href")[0];
     const rawHref = hrefEl?.textContent;
-    if (rawHref === null || rawHref === undefined || rawHref === "") continue;
+    // TypeScript 6 types `textContent` as `string`, so the optional chain
+    // above yields `string | undefined` and an explicit `=== null` arm is
+    // now unreachable. A falsy check still covers empty as it always did.
+    if (rawHref === undefined || rawHref === "") continue;
     // href is URL-encoded and absolute; decode and normalize.
     const path = normalize(decodeURIComponent(rawHref));
     if (path === self) continue; // skip the directory itself
@@ -62,14 +65,11 @@ export function parsePropfind(xml: string, dirPath: string): DirEntry[] {
     const sizeText = res
       .getElementsByTagNameNS(DAV_NS, "getcontentlength")[0]
       ?.textContent;
-    const size = sizeText !== null && sizeText !== undefined ? Number(sizeText) : 0;
+    const size = sizeText !== undefined ? Number(sizeText) : 0;
     const mtimeText = res
       .getElementsByTagNameNS(DAV_NS, "getlastmodified")[0]
       ?.textContent;
-    const mtimeMs =
-      mtimeText !== null && mtimeText !== undefined
-        ? Date.parse(mtimeText) || 0
-        : 0;
+    const mtimeMs = mtimeText !== undefined ? Date.parse(mtimeText) || 0 : 0;
     entries.push({
       name: basename(path),
       path,

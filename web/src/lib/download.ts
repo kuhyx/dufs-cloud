@@ -38,7 +38,7 @@ export async function buildSelectionZip(
   client: DufsClient,
   base: string,
   entries: readonly DirEntry[],
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const zipEntries: ZipEntry[] = [];
   for (const entry of entries) {
     for (const file of await gatherFiles(client, entry)) {
@@ -52,7 +52,11 @@ export async function buildSelectionZip(
 }
 
 /** Trigger a browser download of `bytes` as `filename` (DOM side effect). */
-export function saveBytes(bytes: Uint8Array, filename: string): void {
+export function saveBytes(bytes: Uint8Array<ArrayBuffer>, filename: string): void {
+  // The buffer type is spelled out because TypeScript 6 narrowed `BlobPart`:
+  // a bare `Uint8Array` may be backed by a SharedArrayBuffer, which a Blob
+  // cannot take. Everything here builds its bytes with `new Uint8Array(n)`,
+  // so this documents what was already true rather than copying to satisfy it.
   const blob = new Blob([bytes], { type: "application/zip" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

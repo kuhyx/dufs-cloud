@@ -29,7 +29,11 @@ const DOS_DATE = 0x21;
 const UTF8_FLAG = 0x0800;
 
 /** Build a STORE-method ZIP archive from `entries`. Pure. */
-export function zipStore(entries: readonly ZipEntry[]): Uint8Array {
+// The buffer type is spelled out because TypeScript 6 narrowed `BlobPart`:
+// a bare `Uint8Array` may be backed by a SharedArrayBuffer, which a Blob
+// cannot take. `out` below is `new Uint8Array(n)`, so this states what the
+// function already returns rather than forcing a copy at the call site.
+export function zipStore(entries: readonly ZipEntry[]): Uint8Array<ArrayBuffer> {
   const encoder = new TextEncoder();
   const files = entries.map((e) => ({
     nameBytes: encoder.encode(e.name),

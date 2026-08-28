@@ -21,7 +21,7 @@ jobs:
           version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "24.20.0"
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.44.6
+          flutter-version: 3.47.2
           channel: stable
       # media_kit reaches libmpv over dart:ffi, and the video player's tests
       # construct a real Player, so the runner needs the shared library the
@@ -91,7 +91,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.44.6
+          flutter-version: 3.47.2
           channel: stable
           cache: true
 
