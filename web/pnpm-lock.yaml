@@ -40,8 +40,8 @@ importers:
         specifier: 19.2.5
         version: 19.2.5(@types/react@19.2.18)
       '@vitejs/plugin-react':
-        specifier: 6.1.0
-        version: 6.1.0(vite@8.2.2)
+        specifier: 6.1.1
+        version: 6.1.1(vite@8.2.2)
       '@vitest/coverage-v8':
         specifier: 4.1.11
         version: 4.1.11(vitest@4.1.11)
@@ -280,7 +280,7 @@ packages:
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
   '@kuhyx/web-ui@https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425#path:/web_ui':
-    resolution: {gitHosted: true, path: /web_ui, tarball: https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425}
+    resolution: {gitHosted: true, integrity: sha512-jaYClL+dn3oPl3umd8IkeI9MSalBmu2++f9unbWX33PoLgjtl5uN2Ta9/wm83HDW6Wd2cIqeCAtDXYvySZi8rQ==, path: /web_ui, tarball: https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425}
     version: 0.3.1
     engines: {node: '>=24', pnpm: '>=10'}
     peerDependencies:
@@ -511,8 +511,8 @@ packages:
     resolution: {integrity: sha512-YR65gGdGvTUAWLldC3xLOvOzamdGzB4A5/N8rehEaHs3Zvoe39BhgY+u0SPch1OvrVTfLcc55wsSgK2NcnTS/A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@vitejs/plugin-react@6.1.0':
-    resolution: {integrity: sha512-qd2BzUBehkov86WFhg0JkEFEYyCLG9uPCe6qWTY/kRlss9OvJrOF2UbIWT7p+8IzZHkEu0DNGHc4HSv+JdDLsw==}
+  '@vitejs/plugin-react@6.1.1':
+    resolution: {integrity: sha512-yxLaQV9gkhS8ezJqCM6+ndU7mDY6gqAg75NQ+0IjwEI8IYOmQCgkRwHKVSfWXW076DsqMo0Dk+0FK1U+M5RgFw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       '@rolldown/plugin-babel': ^0.1.7 || ^0.2.0
@@ -1797,7 +1797,7 @@ snapshots:
       '@typescript-eslint/types': 8.68.0
       eslint-visitor-keys: 5.0.1
 
-  '@vitejs/plugin-react@6.1.0(vite@8.2.2)':
+  '@vitejs/plugin-react@6.1.1(vite@8.2.2)':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.2.2
