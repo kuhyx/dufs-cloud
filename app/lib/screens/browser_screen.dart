@@ -321,7 +321,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
       final dir = await getDir();
       final file = File(p.join(dir.path, entry.name));
       await file.writeAsBytes(bytes);
-      _snack('Saved ${entry.name} to app storage');
+      // Hand it straight to the share sheet, the way the zip download does.
+      // The documents directory is app-private: no file manager can open it,
+      // so "Saved to app storage" named a file you could not go and get.
+      // The sheet is where "Save to Files", Downloads and every other app
+      // live, so this is the first version where a download is retrievable.
+      final share = widget.shareSheet ?? SharePlus.instance.share;
+      await share(ShareParams(files: [XFile(file.path)]));
     } on Exception catch (e) {
       _snack('Download failed: $e');
     } finally {

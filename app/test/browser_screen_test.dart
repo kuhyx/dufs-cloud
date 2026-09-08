@@ -310,10 +310,23 @@ void main() {
     expect(find.byType(PdfScreen), findsOneWidget);
   });
 
-  testWidgets('tapping a non-media, non-text file downloads it',
+  testWidgets('tapping a non-media, non-text file hands it to the share sheet',
       (tester) async {
+    // It used to write the file into app-private storage and say so, which
+    // named a location no file manager can open -- "where is this file?" was
+    // the entirely fair reaction. The sheet is how a download reaches
+    // Downloads, Files, or another app.
     final settings = await _settings(configured: true);
-    await tester.pumpWidget(_browser(settings, _mock(), docs: _tmpDir));
+    final shared = <ShareParams>[];
+    await tester.pumpWidget(_browser(
+      settings,
+      _mock(),
+      docs: _tmpDir,
+      share: (params) async {
+        shared.add(params);
+        return const ShareResult('ok', ShareResultStatus.success);
+      },
+    ));
     await tester.pumpAndSettle();
     // The download does real temp-file I/O, so drive it in the real zone.
     await tester.runAsync(() async {
@@ -321,7 +334,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    expect(find.textContaining('Saved data.bin'), findsOneWidget);
+    expect(shared.single.files!.single.path, endsWith('data.bin'));
     await tester.pumpAndSettle();
   });
 
