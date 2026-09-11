@@ -29,7 +29,7 @@ die() { printf '\033[1;31m[cloud-gallery] ERROR:\033[0m %s\n' "$*" >&2; exit 1; 
 cloud_root() {
 	local sp=""
 	[[ -f "$DUFS_YAML" ]] && sp="$(sed -nE 's/^serve-path:[[:space:]]*//p' "$DUFS_YAML" | head -1)"
-	printf '%s' "${sp:-$HOME/cloud}"
+	printf '%s' "${sp:-$HOME/data/cloud}"
 }
 
 install_deps() {

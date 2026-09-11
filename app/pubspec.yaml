@@ -51,7 +51,7 @@ flutter:
     - assets/pdfjs/web/wasm/
 
 # Launcher icon generation. Source art is produced by the shared generator:
-#   PYTHONPATH=~/testsAndMisc python3 -m python_pkg.app_icons generate --app dufs_client
+#   PYTHONPATH=~/src/testsAndMisc python3 -m python_pkg.app_icons generate --app dufs_client
 # then run: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true

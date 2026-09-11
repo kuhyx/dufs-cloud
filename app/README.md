@@ -48,7 +48,7 @@ Then browse from the cloud root.
 `bash ~/.claude/scripts/phone_deploy.sh <this dir> --release --shot out.png`
 does the whole pipeline: focus-mode whitelist check (`com.kuhy.*` apps are
 otherwise killed ~1s after launch; the list lives in
-`~/phone-focus-mode/config.sh`), release build with a build number derived from
+`~/src/phone-focus-mode/config.sh`), release build with a build number derived from
 the installed one, `adb install -r` (NEVER uninstall — that wipes stored
 credentials), launch, screenshot. Then verify on-device (see the
 `phone-deploy` skill).

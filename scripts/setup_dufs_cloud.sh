@@ -30,7 +30,7 @@ readonly DUFS_PORT=5000
 
 # --- Existing host infrastructure (from setup_gitea.sh / install_joplin.sh) --
 readonly CADDY_CONTAINER="gitea-caddy"
-readonly CADDYFILE="${HOME}/gitea/Caddyfile"
+readonly CADDYFILE="${HOME}/services/gitea/Caddyfile"
 readonly CADDYFILE_IN_CONTAINER="/etc/caddy/Caddyfile"
 readonly DUCKDNS_UPDATER="${HOME}/.joplin-server/duckdns-update.sh"
 
@@ -112,8 +112,8 @@ prompt_config() {
 		DUFS_SUBDOMAIN="${DUFS_SUBDOMAIN:-kuhy-cloud.duckdns.org}"
 	fi
 	if [[ -z ${CLOUD_ROOT} ]]; then
-		read -r -p "cloud storage folder [${HOME}/cloud]: " CLOUD_ROOT
-		CLOUD_ROOT="${CLOUD_ROOT:-${HOME}/cloud}"
+		read -r -p "cloud storage folder [${HOME}/data/cloud]: " CLOUD_ROOT
+		CLOUD_ROOT="${CLOUD_ROOT:-${HOME}/data/cloud}"
 	fi
 }
 
@@ -304,7 +304,7 @@ ensure_firewall() {
 setup_autosync() {
 	log_info "Setting up KeePass auto-sync watcher"
 	# Mirror only the vault file (not the whole dir with local .backup_* vaults).
-	rsync -a "${HOME}/Keepass/Passwords.kdbx" "${CLOUD_ROOT}/Keepass/"
+	rsync -a "${HOME}/data/Keepass/Passwords.kdbx" "${CLOUD_ROOT}/Keepass/"
 	sudo systemctl enable --now keepass-cloud-sync.path
 	log_ok "Vault mirrored and watcher enabled"
 }

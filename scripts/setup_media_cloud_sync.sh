@@ -102,7 +102,7 @@ EOF
 
 	local cloud_root
 	cloud_root="$(sed -nE 's/^serve-path:[[:space:]]*//p' "$HOME/.config/dufs/dufs.yaml" 2>/dev/null | head -1)"
-	cloud_root="${cloud_root:-$HOME/cloud}"
+	cloud_root="${cloud_root:-$HOME/data/cloud}"
 	cat <<EOF
 
 ────────────────────────────────────────────────────────────────────────────

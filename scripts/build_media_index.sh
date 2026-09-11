@@ -78,7 +78,7 @@ cloud_root() {
     local sp=""
     [[ -f "$DUFS_YAML" ]] &&
         sp="$(sed -nE 's/^serve-path:[[:space:]]*//p' "$DUFS_YAML" | head -1)"
-    printf '%s' "${sp:-$HOME/cloud}"
+    printf '%s' "${sp:-$HOME/data/cloud}"
 }
 
 require_tools() {

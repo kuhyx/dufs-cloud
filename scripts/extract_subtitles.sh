@@ -40,7 +40,7 @@ CLOUD_ROOT="${CLOUD_ROOT:-}"
 if [[ -z "$CLOUD_ROOT" && -f "$HOME/.config/dufs/dufs.yaml" ]]; then
 	CLOUD_ROOT="$(sed -nE 's/^serve-path:[[:space:]]*//p' "$HOME/.config/dufs/dufs.yaml" | head -1)"
 fi
-CLOUD_ROOT="${CLOUD_ROOT:-$HOME/cloud}"
+CLOUD_ROOT="${CLOUD_ROOT:-$HOME/data/cloud}"
 readonly CLOUD_ROOT
 ROOT="${1:-$CLOUD_ROOT}"
 readonly ROOT

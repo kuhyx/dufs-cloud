@@ -1,6 +1,6 @@
 # Subtitle regression investigation — findings
 
-Measured 2026-08-15 against the deployed SPA (`~/cloud`, dufs), headless
+Measured 2026-08-15 against the deployed SPA (`~/data/cloud`, dufs), headless
 Chromium over CDP. Throwaway auth-free dufs on :8899 so measurement is not
 mixed up with auth. Target file: `Media/2026/08/[DB]Gekkan Shoujo
 Nozaki-kun_-_02_(Dual Audio_10bit_BD1080p_x265).mkv` (356 MB, HEVC, dual audio).
@@ -36,7 +36,7 @@ Total subtitle-attributable cost is well under ~150 ms. What actually varies is
 the media pipeline: a **bare `<video>` element with no React and no jassub**
 takes 203–1316 ms to reach `loadedmetadata` on this file, and `videoWidth`
 stays **0** — Chromium never decodes it, because it is HEVC. 46 of 74 mkvs are
-HEVC and need the opt-in `--re-encode` tier; `~/cloud/.proxies/` currently has
+HEVC and need the opt-in `--re-encode` tier; `~/data/cloud/.proxies/` currently has
 no proxy for this file.
 
 **Conclusion:** the slowness was the 356 MB HEVC original being range-fetched
@@ -45,7 +45,7 @@ and failing to decode, not the subtitle stack. Lazy-loading jassub would buy
 
 ### Resolved — the proxy was already there
 
-Correction to the paragraph above: `~/cloud/.proxies/` *does* hold an H.264
+Correction to the paragraph above: `~/data/cloud/.proxies/` *does* hold an H.264
 proxy for this file (450 MB, h264 + aac, full 1436.99 s), the metadata index
 carries its `proxyPath`, and `gallery.tsx:544` already prefers it. The earlier
 "no proxy for this file" reading came from listing only the top level of

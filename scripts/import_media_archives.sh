@@ -48,7 +48,7 @@ CLOUD_ROOT="${CLOUD_ROOT:-}"
 if [[ -z "$CLOUD_ROOT" && -f "$HOME/.config/dufs/dufs.yaml" ]]; then
 	CLOUD_ROOT="$(sed -nE 's/^serve-path:[[:space:]]*//p' "$HOME/.config/dufs/dufs.yaml" | head -1)"
 fi
-CLOUD_ROOT="${CLOUD_ROOT:-$HOME/cloud}"
+CLOUD_ROOT="${CLOUD_ROOT:-$HOME/data/cloud}"
 STAGE_PARENT="$(dirname "$CLOUD_ROOT")"
 readonly STAGE_PARENT
 
