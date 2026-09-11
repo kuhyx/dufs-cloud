@@ -18,8 +18,10 @@ apps talk to the same WebDAV endpoint.
 
 ## `web/` — the gallery SPA
 
-Browse folders, thumbnail grid, image lightbox (zoom), inline video, upload,
-download, delete, and a small `.txt`/`.md` editor. Lists directories with WebDAV
+Browse folders, thumbnail grid, image lightbox (zoom), inline video, upload
+(many files at once, XHR so a progress banner with Cancel can track each one),
+download (single files browser-native; multi-select as a client-side zip with
+per-file progress), delete, and a small `.txt`/`.md` editor. Lists directories with WebDAV
 PROPFIND and streams files with GET, so it runs under dufs `render-spa` behind
 the server's own auth.
 

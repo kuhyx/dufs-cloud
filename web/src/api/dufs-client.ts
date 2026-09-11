@@ -14,6 +14,14 @@ import {
 
 const DAV_NS = "DAV:";
 
+/** Progress + cancellation hooks for a streamed transfer. */
+export interface TransferOptions {
+  /** Called with the running byte count as the body moves. */
+  readonly onProgress?: (bytes: number) => void;
+  /** Aborting it cancels the request (an `AbortError` rejection). */
+  readonly signal?: AbortSignal;
+}
+
 /** Client over the dufs WebDAV + HTTP API (same-origin; browser supplies auth). */
 export interface DufsClient {
   /** List a directory via WebDAV PROPFIND (works under dufs `render-spa`). */
@@ -24,7 +32,9 @@ export interface DufsClient {
   thumbUrl(path: string): string;
   /** URL that downloads a directory as a zip (dufs `?zip`). */
   zipUrl(dirPath: string): string;
-  upload(dirPath: string, file: File): Promise<void>;
+  /** PUT `file` into `dirPath`, reporting upload progress (XHR: fetch has no
+   * upload progress events). */
+  upload(dirPath: string, file: File, opts?: TransferOptions): Promise<void>;
   remove(path: string): Promise<void>;
   /** Create a directory at `path` (WebDAV MKCOL). */
   createDir(path: string): Promise<void>;
@@ -39,8 +49,9 @@ export interface DufsClient {
   /** The subtitle manifest in `dir` (a video's `subtitlesPath`), or null when
    * it is absent or unreadable. Tolerant by the same contract as fetchMeta. */
   fetchSubtitleManifest(dir: string): Promise<SubtitleManifest | null>;
-  /** Download a file's raw bytes (used to build multi-file zips). */
-  downloadBytes(path: string): Promise<Uint8Array>;
+  /** Download a file's raw bytes (used to build multi-file zips), reading
+   * the body chunk by chunk so progress can be reported as it arrives. */
+  downloadBytes(path: string, opts?: TransferOptions): Promise<Uint8Array>;
 }
 
 /** Parse a dufs PROPFIND multistatus XML body into entries under `dirPath`. */
@@ -89,7 +100,10 @@ export function sortEntries(entries: readonly DirEntry[]): DirEntry[] {
   });
 }
 
-export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
+export function createDufsClient(
+  fetchImpl: typeof fetch = fetch,
+  xhrFactory: () => XMLHttpRequest = () => new XMLHttpRequest(),
+): DufsClient {
   // `method` is always supplied by callers, so the error message and the fetch
   // options never need to fall back — keeping it a required arg avoids an
   // unreachable default branch.
@@ -125,8 +139,33 @@ export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
     zipUrl(dirPath) {
       return `${encodePath(dirPath)}?zip`;
     },
-    async upload(dirPath, file) {
-      await request("PUT", joinPath(dirPath, file.name), { body: file });
+    upload(dirPath, file, opts = {}) {
+      const path = joinPath(dirPath, file.name);
+      return new Promise<void>((resolve, reject) => {
+        const xhr = xhrFactory();
+        xhr.open("PUT", encodePath(path));
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (e) => {
+          opts.onProgress?.(e.loaded);
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 400) {
+            reject(new Error(`PUT ${path} → ${xhr.status}`));
+          } else {
+            resolve();
+          }
+        };
+        xhr.onerror = () => {
+          reject(new Error(`PUT ${path} → network error`));
+        };
+        xhr.onabort = () => {
+          reject(new DOMException("upload cancelled", "AbortError"));
+        };
+        opts.signal?.addEventListener("abort", () => {
+          xhr.abort();
+        });
+        xhr.send(file);
+      });
     },
     async remove(path) {
       await request("DELETE", path);
@@ -181,9 +220,27 @@ export function createDufsClient(fetchImpl: typeof fetch = fetch): DufsClient {
         return null;
       }
     },
-    async downloadBytes(path) {
-      const res = await request("GET", path);
-      return new Uint8Array(await res.arrayBuffer());
+    async downloadBytes(path, opts = {}) {
+      const res = await request("GET", path, { signal: opts.signal });
+      // jsdom (and any Response built without a body) has no stream to read.
+      if (res.body === null) return new Uint8Array(await res.arrayBuffer());
+      const reader = res.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let received = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.byteLength;
+        opts.onProgress?.(received);
+      }
+      const out = new Uint8Array(received);
+      let offset = 0;
+      for (const chunk of chunks) {
+        out.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return out;
     },
   };
 }

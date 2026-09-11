@@ -27,6 +27,7 @@ import {
   sizeValues,
 } from "../lib/cloud-stats.ts";
 import { buildSelectionZip, saveBytes } from "../lib/download.ts";
+import { isAbort, type TransferProgress } from "../lib/transfer.ts";
 import { useHashPath } from "../lib/use-hash-path.ts";
 import { useListing } from "../hooks/use-listing.ts";
 import { useMeta } from "../hooks/use-meta.ts";
@@ -39,6 +40,7 @@ import { TextEditor } from "./text-editor.tsx";
 import { ConfirmDialog } from "./confirm-dialog.tsx";
 import { PromptDialog } from "./prompt-dialog.tsx";
 import { FolderPicker } from "./folder-picker.tsx";
+import { TransferBanner } from "./transfer-banner.tsx";
 
 export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.Element {
   const [path, navigate] = useHashPath();
@@ -50,6 +52,10 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
   const [deleteEntry, setDeleteEntry] = useState<DirEntry | null>(null);
   const [renameEntry, setRenameEntry] = useState<DirEntry | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // The in-flight upload/zip batch shown in the banner, and the controller
+  // its Cancel button aborts.
+  const [transfer, setTransfer] = useState<TransferProgress | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
@@ -181,20 +187,72 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
     setViewerIndex((cur) => (cur + delta + media.length) % media.length);
   }
 
+  // Starts a banner-tracked batch; returns the controller Cancel aborts.
+  function beginTransfer(): AbortController {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setBusy(null);
+    return controller;
+  }
+
+  function endTransfer(message: string | null): void {
+    abortRef.current = null;
+    setTransfer(null);
+    setBusy(message);
+  }
+
+  function cancelTransfer(): void {
+    abortRef.current?.abort();
+  }
+
   function uploadInto(destDir: string, files: FileList | null): void {
     if (files === null || files.length === 0) return;
-    setBusy(`Uploading ${files.length} file(s)…`);
+    const list = Array.from(files);
+    const controller = beginTransfer();
     void (async () => {
-      try {
-        for (const file of Array.from(files)) {
-          await client.upload(destDir, file);
+      // One bad file must not abort the batch; failures are named at the end.
+      const failed: string[] = [];
+      let done = 0;
+      for (const [i, file] of list.entries()) {
+        const progress: TransferProgress = {
+          kind: "upload",
+          index: i + 1,
+          total: list.length,
+          name: file.name,
+          done: 0,
+          size: file.size,
+        };
+        setTransfer(progress);
+        try {
+          await client.upload(destDir, file, {
+            signal: controller.signal,
+            onProgress: (sent) => {
+              setTransfer({ ...progress, done: sent });
+            },
+          });
+          done++;
+        } catch (err: unknown) {
+          if (isAbort(err)) {
+            // dufs writes a PUT as it arrives, so the aborted file exists on
+            // the server truncated, looking real. Best effort: remove it.
+            try {
+              await client.remove(joinPath(destDir, file.name));
+            } catch {
+              // Leaving a partial behind is the lesser evil here.
+            }
+            refreshAll();
+            endTransfer(`Cancelled after ${done} of ${list.length}`);
+            return;
+          }
+          failed.push(file.name);
         }
-        refreshAll();
-      } catch (err: unknown) {
-        setBusy(err instanceof Error ? err.message : String(err));
-        return;
       }
-      setBusy(null);
+      refreshAll();
+      endTransfer(
+        failed.length === 0
+          ? null
+          : `${failed.length} of ${list.length} failed: ${failed.join(", ")}`,
+      );
     })();
   }
 
@@ -308,18 +366,26 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
     // Global results span folders, so their archive paths are relative to the
     // cloud root; a folder view zips relative to the folder itself.
     const zipBase = globalMode ? "/" : path;
+    const controller = beginTransfer();
     void (async () => {
       try {
         // Folders are gathered recursively and zipped in the browser: dufs's
         // server ?zip 404s for subfolders under render-spa (the prod config).
-        const bytes = await buildSelectionZip(client, zipBase, selectedEntries);
+        const bytes = await buildSelectionZip(client, zipBase, selectedEntries, {
+          signal: controller.signal,
+          onProgress: setTransfer,
+        });
         const base = basename(zipBase);
         saveBytes(bytes, `${base === "/" ? "cloud" : base}.zip`);
       } catch (err: unknown) {
-        setBusy(err instanceof Error ? err.message : String(err));
+        if (isAbort(err)) {
+          endTransfer("Zip cancelled");
+          return;
+        }
+        endTransfer(err instanceof Error ? err.message : String(err));
         return;
       }
-      setBusy(null);
+      endTransfer(null);
       clearSelection();
     })();
   }
@@ -382,6 +448,10 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           />
         </div>
       </header>
+
+      {transfer !== null && (
+        <TransferBanner progress={transfer} onCancel={cancelTransfer} />
+      )}
 
       {showListing && (
         <FilterBar

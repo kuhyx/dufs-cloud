@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { buildSelectionZip, saveBytes } from "./download.ts";
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
+import type { TransferProgress } from "./transfer.ts";
 
 function file(path: string): DirEntry {
   const name = path.slice(path.lastIndexOf("/") + 1);
@@ -39,6 +40,35 @@ afterEach(() => {
 });
 
 describe("buildSelectionZip", () => {
+  it("reports index/total per file and bytes as they arrive", async () => {
+    // downloadBytes drives its onProgress hook like the real client does.
+    const client = makeClient({
+      downloadBytes: vi.fn(
+        (p: string, opts?: { onProgress?: (n: number) => void }) => {
+          opts?.onProgress?.(4);
+          return Promise.resolve(new TextEncoder().encode(`data-for${p}`));
+        },
+      ),
+    });
+    const seen: string[] = [];
+    const signal = new AbortController().signal;
+    await buildSelectionZip(client, "/", [file("/a.txt"), file("/b.txt")], {
+      signal,
+      onProgress: (p: TransferProgress) =>
+        seen.push(`${p.kind} ${p.index}/${p.total} ${p.name} ${p.done}/${p.size}`),
+    });
+    expect(seen).toEqual([
+      "download 1/2 a.txt 0/3",
+      "download 1/2 a.txt 4/3",
+      "download 2/2 b.txt 0/3",
+      "download 2/2 b.txt 4/3",
+    ]);
+    expect(client.downloadBytes).toHaveBeenCalledWith(
+      "/a.txt",
+      expect.objectContaining({ signal }),
+    );
+  });
+
   it("packs selected root files as flat STORE entries", async () => {
     const client = makeClient();
     const zip = await buildSelectionZip(client, "/", [
@@ -73,7 +103,10 @@ describe("buildSelectionZip", () => {
     const names = new TextDecoder().decode(zip);
     expect(names).toContain("Media/forest.jpg");
     expect(names).toContain("Media/2026/pic.jpg");
-    expect(client.downloadBytes).toHaveBeenCalledWith("/Media/2026/pic.jpg");
+    expect(client.downloadBytes).toHaveBeenCalledWith(
+      "/Media/2026/pic.jpg",
+      expect.anything(),
+    );
   });
 
   it("names entries relative to a non-root base directory", async () => {

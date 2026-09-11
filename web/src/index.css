@@ -89,6 +89,42 @@ button {
   font-size: 0.85rem;
 }
 
+/* Transfer banner: raised by a fill step, never a shadow (dark surfaces get
+   no shadow). Same 8px/16px padding pair as the toolbar buttons. */
+.transfer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
+.transfer-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.transfer-title,
+.transfer-detail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.transfer-title {
+  font-size: 0.9rem;
+}
+.transfer-detail {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: var(--space-1);
+}
+.transfer-bar {
+  display: block;
+  width: 100%;
+  height: var(--space-2);
+  margin-top: var(--space-2);
+  accent-color: var(--accent);
+}
+
 /* Every button shares one padding pair, 8px/16px — half of the app-wide
    canonical 12px/24px but the same exact 2x ratio (rule 22), deliberately
    sized down for this toolbar's information density. */

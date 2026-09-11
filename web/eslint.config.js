@@ -32,6 +32,13 @@ export default tseslint.config(
         "error",
         { allowNumber: true },
       ],
+      // Declaration merging is spelled as an empty interface with one
+      // `extends` (src/test/jest-dom.d.ts augments vitest's Assertion); the
+      // rule's own option exists for exactly that shape.
+      "@typescript-eslint/no-empty-object-type": [
+        "error",
+        { allowInterfaces: "with-single-extends" },
+      ],
     },
   },
   {

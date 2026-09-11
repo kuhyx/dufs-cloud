@@ -1,5 +1,6 @@
-import type { DufsClient } from "../api/dufs-client.ts";
+import type { DufsClient, TransferOptions } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
+import type { TransferProgress } from "./transfer.ts";
 import { zipStore, type ZipEntry } from "./zip.ts";
 
 /** The archive path of `full` relative to directory `base` (no trailing slash). */
@@ -33,20 +34,39 @@ async function gatherFiles(
  * folder is reproduced as a nested tree (e.g. `Media/2026/pic.jpg`). Delegates
  * its network reads to the client, so it can be built and asserted without a
  * browser — kept separate from {@link saveBytes} (the DOM trigger).
+ * `onProgress` reports per-file progress; `signal` aborts the in-flight fetch.
  */
 export async function buildSelectionZip(
   client: DufsClient,
   base: string,
   entries: readonly DirEntry[],
+  opts: {
+    readonly onProgress?: (p: TransferProgress) => void;
+    readonly signal?: AbortSignal;
+  } = {},
 ): Promise<Uint8Array<ArrayBuffer>> {
+  // Gathered up front so `index/total` is right from the first byte.
+  const files: DirEntry[] = [];
+  for (const entry of entries) files.push(...(await gatherFiles(client, entry)));
   const zipEntries: ZipEntry[] = [];
-  for (const entry of entries) {
-    for (const file of await gatherFiles(client, entry)) {
-      zipEntries.push({
-        name: relativeTo(base, file.path),
-        data: await client.downloadBytes(file.path),
-      });
-    }
+  for (const [i, file] of files.entries()) {
+    const progress: TransferProgress = {
+      kind: "download",
+      index: i + 1,
+      total: files.length,
+      name: file.name,
+      done: 0,
+      size: file.size,
+    };
+    opts.onProgress?.(progress);
+    const transfer: TransferOptions = {
+      signal: opts.signal,
+      onProgress: (done) => opts.onProgress?.({ ...progress, done }),
+    };
+    zipEntries.push({
+      name: relativeTo(base, file.path),
+      data: await client.downloadBytes(file.path, transfer),
+    });
   }
   return zipStore(zipEntries);
 }

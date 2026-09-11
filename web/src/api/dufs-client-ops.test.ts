@@ -36,17 +36,41 @@ describe("dufs-client operations", () => {
     expect(headers.Overwrite).toBe("F");
   });
 
-  it("downloadBytes returns the response bytes", async () => {
+  it("downloadBytes falls back to arrayBuffer when there is no body stream", async () => {
     const buf = new Uint8Array([7, 8, 9]).buffer;
     const fetchImpl = vi.fn<typeof fetch>(() =>
       Promise.resolve(
-        okResponse({ arrayBuffer: () => Promise.resolve(buf) }),
+        okResponse({ body: null, arrayBuffer: () => Promise.resolve(buf) }),
       ),
     );
     const client = createDufsClient(fetchImpl);
     expect(await client.downloadBytes("/f.bin")).toEqual(
       new Uint8Array([7, 8, 9]),
     );
+  });
+
+  it("downloadBytes reads the body stream chunk by chunk with progress", async () => {
+    const chunks = [new Uint8Array([1, 2]), new Uint8Array([3])];
+    const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
+      start(controller) {
+        for (const c of chunks) controller.enqueue(c);
+        controller.close();
+      },
+    });
+    const signal = new AbortController().signal;
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(okResponse({ body })),
+    );
+    const client = createDufsClient(fetchImpl);
+    const seen: number[] = [];
+    const out = await client.downloadBytes("/f.bin", {
+      onProgress: (n) => seen.push(n),
+      signal,
+    });
+    expect(out).toEqual(new Uint8Array([1, 2, 3]));
+    expect(seen).toEqual([2, 3]);
+    // The abort signal rides along on the fetch so Cancel can tear it down.
+    expect(fetchImpl.mock.calls.at(0)?.[1]?.signal).toBe(signal);
   });
 
   describe("fetchMeta", () => {
