@@ -103,9 +103,13 @@ class _PdfScreenState extends State<PdfScreen> {
       final base = await (widget.tempDir ?? getTemporaryDirectory)();
       final root = Directory('${base.path}/$_pdfjsDir');
       await _extractViewerOnce(root);
-      final bytes = await widget.client.download(widget.path);
       final pdfFile = File('${root.path}/web/target.pdf');
-      await pdfFile.writeAsBytes(bytes, flush: true);
+      final sink = pdfFile.openWrite();
+      try {
+        await widget.client.download(widget.path, onChunk: sink.add);
+      } finally {
+        await sink.close();
+      }
 
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       unawaited(_serve(server, root));

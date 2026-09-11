@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:archive/archive.dart';
 import 'package:dufs_client/models/dir_entry.dart';
+import 'package:dufs_client/models/transfer_progress.dart';
 import 'package:dufs_client/services/download_zip.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -70,6 +71,42 @@ void main() {
           _client(const {}), '/Media', [_f('/Media/forest.jpg')]);
       expect(
           ZipDecoder().decodeBytes(zip).files.single.name, 'forest.jpg');
+    });
+
+    test('reports index/total per file and bytes as they arrive', () async {
+      final seen = <String>[];
+      await buildSelectionZip(
+        _client(const {}),
+        '/',
+        [_f('/a.txt'), _f('/b.txt')],
+        onProgress: (p) => seen.add('${p.index}/${p.total} ${p.name} ${p.done}'),
+      );
+      // "data-/a.txt" is 11 bytes; PROPFIND size (3) is the denominator.
+      expect(seen, [
+        '1/2 a.txt 0',
+        '1/2 a.txt 11',
+        '2/2 b.txt 0',
+        '2/2 b.txt 11',
+      ]);
+    });
+
+    test('cancel aborts before the next file is fetched', () async {
+      final cancel = TransferCancel();
+      final fetched = <String>[];
+      await expectLater(
+        buildSelectionZip(
+          _client(const {}),
+          '/',
+          [_f('/a.txt'), _f('/b.txt')],
+          cancel: cancel,
+          onProgress: (p) {
+            fetched.add(p.name);
+            cancel.cancel();
+          },
+        ),
+        throwsA(isA<TransferCancelled>()),
+      );
+      expect(fetched, ['a.txt']);
     });
   });
 }

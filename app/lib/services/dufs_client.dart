@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show HttpDate;
 
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/models/media_meta.dart';
+import 'package:dufs_client/models/transfer_progress.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
@@ -69,26 +71,104 @@ class DufsClient {
     return parsePropfind(body, dirPath);
   }
 
-  /// Uploads [bytes] to [dirPath]/[name] with a WebDAV PUT.
-  Future<void> upload(String dirPath, String name, List<int> bytes) async {
+  /// Uploads [length] bytes of [data] to [dirPath]/[name] with a WebDAV PUT,
+  /// streaming the body so a large file never sits in memory whole. Reports
+  /// the running byte count through [onProgress]; [cancel] is checked between
+  /// chunks and aborts the request with [TransferCancelled].
+  Future<void> upload(
+    String dirPath,
+    String name,
+    Stream<List<int>> data,
+    int length, {
+    void Function(int sent)? onProgress,
+    TransferCancel? cancel,
+  }) async {
     final target = dirPath.endsWith('/') ? '$dirPath$name' : '$dirPath/$name';
-    final response = await _http.put(
-      _uri(target),
-      headers: authHeaders,
-      body: bytes,
-    );
-    if (response.statusCode >= 400) {
+    // A known length goes out as Content-Length; an unknown one (a provider
+    // that reported 0 for a file it is still writing) as chunked encoding,
+    // since a wrong Content-Length aborts the request mid-body.
+    final request = http.StreamedRequest('PUT', _uri(target))
+      ..headers.addAll(authHeaders)
+      ..contentLength = length > 0 ? length : null;
+    // The sink must be fed concurrently with send(): draining the source into
+    // it first would buffer the whole file, which is what this replaces. An
+    // early error response (e.g. 401) stops the pump through [abort] so it
+    // does not keep buffering into a dead connection.
+    final abort = TransferCancel();
+    final sent = _http.send(request)..ignore();
+    final pump = _pump(data, request.sink, onProgress, [abort, ?cancel]);
+    final response = await Future.any<http.StreamedResponse?>([
+      sent,
+      pump.then((_) => null),
+    ]);
+    if (response != null && response.statusCode >= 400) {
+      abort.cancel();
       throw Exception('PUT $target -> ${response.statusCode}');
+    }
+    await pump;
+    final finished = response ?? await sent;
+    if (finished.statusCode >= 400) {
+      throw Exception('PUT $target -> ${finished.statusCode}');
     }
   }
 
-  /// Downloads the raw bytes of a file.
-  Future<List<int>> download(String path) async {
-    final response = await _http.get(_uri(path), headers: authHeaders);
+  // Feeds [data] into [sink] with backpressure: addStream pauses the source
+  // whenever the socket is full, so at most a socket buffer's worth of the
+  // file is ever in memory (plain sink.add would buffer without bound).
+  // A cancel ends the counted stream early rather than throwing inside it,
+  // because addStream forwards stream errors to the sink instead of raising
+  // them here; the flag is checked afterwards and rethrown as the typed
+  // exception the UI distinguishes from a failure.
+  static Future<void> _pump(
+    Stream<List<int>> data,
+    StreamSink<List<int>> sink,
+    void Function(int sent)? onProgress,
+    List<TransferCancel> cancels,
+  ) async {
+    var cancelled = false;
+    Stream<List<int>> counted() async* {
+      var sent = 0;
+      await for (final chunk in data) {
+        if (cancels.any((c) => c.cancelled)) {
+          cancelled = true;
+          return;
+        }
+        sent += chunk.length;
+        onProgress?.call(sent);
+        yield chunk;
+      }
+    }
+
+    await sink.addStream(counted());
+    if (cancelled) sink.addError(TransferCancelled());
+    // Not awaited: the close future only completes once the consumer has
+    // drained the body, which never happens for an aborted request.
+    unawaited(sink.close());
+    if (cancelled) throw TransferCancelled();
+  }
+
+  /// Downloads a file chunk by chunk into [onChunk], never holding the whole
+  /// body in memory. [onProgress] gets the running byte count; [cancel] is
+  /// checked between chunks and tears down the connection.
+  Future<void> download(
+    String path, {
+    required void Function(List<int> chunk) onChunk,
+    void Function(int received)? onProgress,
+    TransferCancel? cancel,
+  }) async {
+    final request = http.Request('GET', _uri(path))
+      ..headers.addAll(authHeaders);
+    final response = await _http.send(request);
     if (response.statusCode >= 400) {
       throw Exception('GET $path -> ${response.statusCode}');
     }
-    return response.bodyBytes;
+    var received = 0;
+    await for (final chunk in response.stream) {
+      cancel?.check();
+      onChunk(chunk);
+      received += chunk.length;
+      onProgress?.call(received);
+    }
   }
 
   /// Deletes a file or directory.

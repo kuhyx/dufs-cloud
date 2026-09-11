@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:dufs_client/models/upload_source.dart';
 import 'package:dufs_client/screens/audio_screen.dart';
 import 'package:dufs_client/screens/browser_screen.dart';
 import 'package:dufs_client/screens/image_screen.dart';
@@ -9,6 +9,7 @@ import 'package:dufs_client/screens/pdf_screen.dart';
 import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/widgets/filter_sheet.dart';
@@ -16,10 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:share_plus/share_plus.dart'
-    show ShareParams, ShareResult, ShareResultStatus;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -103,15 +101,80 @@ Future<Settings> _settings({required bool configured}) async {
     configured ? {'dufs_url': 'https://h', 'dufs_user': 'u'} : {},
   );
   installSecureStorageMock();
-  return Settings.load();
+  return await Settings.load();
+}
+
+// Stands in for the MediaStore channel: records what was staged, answers
+// with a renamed file (as MediaStore does on collision), and reports whether
+// a viewer took the Open.
+class _FakeDownloads extends PublicDownloads {
+  _FakeDownloads({this.openOk = true, this.failSave = false});
+
+  final bool openOk;
+  final bool failSave;
+  final List<String> staged = <String>[];
+  final List<SavedFile> opened = <SavedFile>[];
+
+  @override
+  Future<SavedFile> save(String tempPath, String name) async {
+    if (failSave) throw Exception('MediaStore insert returned null');
+    staged.add(tempPath);
+    return SavedFile(
+      uri: 'content://media/downloads/1',
+      name: '$name (1)',
+      relativePath: 'Download/',
+      mime: 'application/octet-stream',
+    );
+  }
+
+  @override
+  Future<bool> open(SavedFile file) async {
+    opened.add(file);
+    return openOk;
+  }
+}
+
+UploadSource _src(String name, List<int> bytes) => UploadSource(
+      name: name,
+      size: bytes.length,
+      open: () => Stream.value(bytes),
+    );
+
+// A GET whose body dribbles out slowly, so a test can cancel mid-stream.
+http.StreamedResponse _slowBody(int status) {
+  Stream<List<int>> body() async* {
+    for (var i = 0; i < 60; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      yield [i];
+    }
+  }
+
+  return http.StreamedResponse(body(), status);
+}
+
+MockClient _mockSlowGet() {
+  return MockClient.streaming((req, body) async {
+    if (req.method == 'PROPFIND') {
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(_listing(_root))),
+        207,
+      );
+    }
+    if (req.method == 'GET' && req.url.path.endsWith('index.json')) {
+      return http.StreamedResponse(const Stream.empty(), 404);
+    }
+    if (req.method == 'GET') return _slowBody(200);
+    await body.drain<void>();
+    return http.StreamedResponse(const Stream.empty(), 201);
+  });
 }
 
 Widget _browser(
   Settings settings,
   http.Client mock, {
-  Future<XFile?> Function()? pick,
-  Future<Directory> Function()? docs,
-  Future<ShareResult> Function(ShareParams)? share,
+  Future<List<UploadSource>> Function()? pick,
+  Future<Directory> Function()? tmp,
+  PublicDownloads? downloads,
 }) {
   return MaterialApp(
     home: BrowserScreen(
@@ -127,15 +190,26 @@ Widget _browser(
         password: password,
         httpClient: mock,
       ),
-      pickMedia: pick,
-      documentsDir: docs,
-      shareSheet: share,
+      pickUploads: pick,
+      tempDir: tmp,
+      publicDownloads: downloads,
     ),
   );
 }
 
-Future<Directory> _tmpDir() async =>
-    Directory.systemTemp.createTemp('dufs_test');
+Future<Directory> _tmpDir() => Directory.systemTemp.createTemp('dufs_test');
+
+// Lets a flow that was started in the fake zone cross several real-I/O
+// awaits: each round lets the event loop deliver one completion, then a
+// pump runs its continuation up to the next await.
+Future<void> _settleIo(WidgetTester tester, {int rounds = 6}) async {
+  for (var i = 0; i < rounds; i++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -310,23 +384,17 @@ void main() {
     expect(find.byType(PdfScreen), findsOneWidget);
   });
 
-  testWidgets('tapping a non-media, non-text file hands it to the share sheet',
-      (tester) async {
+  testWidgets('tapping a non-media, non-text file saves it to Download/ '
+      'and offers to open it', (tester) async {
     // It used to write the file into app-private storage and say so, which
-    // named a location no file manager can open -- "where is this file?" was
-    // the entirely fair reaction. The sheet is how a download reaches
-    // Downloads, Files, or another app.
+    // named a location no file manager can open. Now the bytes are staged in
+    // the temp dir, moved into the public Download/ collection, and the toast
+    // names the spot MediaStore actually chose (renamed on collision).
     final settings = await _settings(configured: true);
-    final shared = <ShareParams>[];
-    await tester.pumpWidget(_browser(
-      settings,
-      _mock(),
-      docs: _tmpDir,
-      share: (params) async {
-        shared.add(params);
-        return const ShareResult('ok', ShareResultStatus.success);
-      },
-    ));
+    final downloads = _FakeDownloads();
+    await tester.pumpWidget(
+      _browser(settings, _mock(), tmp: _tmpDir, downloads: downloads),
+    );
     await tester.pumpAndSettle();
     // The download does real temp-file I/O, so drive it in the real zone.
     await tester.runAsync(() async {
@@ -334,8 +402,85 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    expect(shared.single.files!.single.path, endsWith('data.bin'));
+    expect(downloads.staged.single, endsWith('data.bin'));
+    expect(File(downloads.staged.single).readAsBytesSync(), [1, 2, 3]);
+    expect(find.text('Saved to Download/data.bin (1)'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1)); // snackbar slides in
+    await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
+    expect(downloads.opened.single.name, 'data.bin (1)');
+    expect(find.textContaining('No app can open'), findsNothing);
+  });
+
+  testWidgets('Open with no viewer says so', (tester) async {
+    final settings = await _settings(configured: true);
+    final downloads = _FakeDownloads(openOk: false);
+    await tester.pumpWidget(
+      _browser(settings, _mock(), tmp: _tmpDir, downloads: downloads),
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('data.bin'));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1)); // snackbar slides in
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.text('No app can open data.bin (1)'), findsOneWidget);
+  });
+
+  testWidgets('a MediaStore failure is a download failure', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(
+      settings,
+      _mock(),
+      tmp: _tmpDir,
+      downloads: _FakeDownloads(failSave: true),
+    ));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('data.bin'));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    expect(find.textContaining('Download failed'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('a download shows progress and can be cancelled',
+      (tester) async {
+    final settings = await _settings(configured: true);
+    final downloads = _FakeDownloads();
+    // Sync: an awaited real I/O future never completes in the fake zone.
+    final tmp = Directory.systemTemp.createTempSync('dufs_test');
+    await tester.pumpWidget(_browser(
+      settings,
+      _mockSlowGet(),
+      tmp: () async => tmp,
+      downloads: downloads,
+    ));
+    await tester.pumpAndSettle();
+    // pump() must stay outside runAsync, so the cancel is a second block;
+    // the body keeps dribbling in real time in between.
+    await tester.runAsync(() async {
+      await tester.tap(find.text('data.bin'));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pump();
+    expect(find.text('Downloading 1/1 · data.bin'), findsOneWidget);
+    expect(find.textContaining('% · '), findsOneWidget);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Cancel'));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pump();
+    expect(find.text('Download cancelled'), findsOneWidget);
+    expect(find.text('Cancel'), findsNothing);
+    expect(downloads.staged, isEmpty);
+    // The half-written staging file is gone, so nothing partial lingers.
+    expect(tmp.listSync(), isEmpty);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('tapping a text file opens the editor', (tester) async {
@@ -352,15 +497,18 @@ void main() {
       (tester) async {
     final settings = await _settings(configured: true);
     await tester.pumpWidget(
-      _browser(settings, _mock(downloadFail: true), docs: _tmpDir),
+      _browser(settings, _mock(downloadFail: true), tmp: _tmpDir),
     );
     await tester.pumpAndSettle();
     // The last tile is a file (folders sort first); open its menu.
     await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Download'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    // Staging dir, sink close and partial delete are all real I/O.
+    await _settleIo(tester);
     expect(find.textContaining('Download failed'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('delete confirmed reloads; cancel does nothing', (tester) async {
@@ -529,51 +677,162 @@ void main() {
     expect(find.textContaining('Create failed'), findsOneWidget);
   });
 
-  testWidgets('upload a picked file, then a cancelled pick', (tester) async {
+  testWidgets('uploads every picked file, then a cancelled pick',
+      (tester) async {
     final settings = await _settings(configured: true);
     final puts = <String>[];
-    final mock = MockClient((req) async {
-      if (req.method == 'PUT') puts.add(req.url.path);
-      if (req.method == 'PROPFIND') {
-        return http.Response(_listing(_root), 207);
+    final bodies = <String, List<int>>{};
+    final mock = MockClient.streaming((req, body) async {
+      if (req.method == 'PUT') {
+        puts.add(req.url.path);
+        bodies[req.url.path] = await body.expand((c) => c).toList();
       }
-      return http.Response('', 201);
+      if (req.method == 'PROPFIND') {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode(_listing(_root))),
+          207,
+        );
+      }
+      return http.StreamedResponse(const Stream.empty(), 201);
     });
-    final tmp = Directory.systemTemp.createTempSync('dufs_pick');
-    final file = File('${tmp.path}/up.png')..writeAsBytesSync([1, 2, 3]);
-    final picked = XFile(file.path);
-    var returnFile = true;
-    await tester.pumpWidget(
-      _browser(settings, mock, pick: () async => returnFile ? picked : null),
-    );
+    var files = [
+      _src('up.png', [1, 2, 3]),
+      _src('note.txt', [4]),
+    ];
+    await tester.pumpWidget(_browser(settings, mock, pick: () async => files));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
       await tester.tap(find.byType(FloatingActionButton));
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pumpAndSettle();
-    expect(puts, contains('/up.png'));
+    expect(puts, ['/up.png', '/note.txt']);
+    expect(bodies['/up.png'], [1, 2, 3]);
+    expect(find.text('Uploaded 2 files'), findsOneWidget);
 
-    // Cancelled pick returns null and uploads nothing further.
-    returnFile = false;
+    // Cancelled pick returns nothing and uploads nothing further.
+    files = [];
     await tester.runAsync(() async {
       await tester.tap(find.byType(FloatingActionButton));
       await Future<void>.delayed(const Duration(milliseconds: 100));
     });
     await tester.pumpAndSettle();
-    expect(puts.length, 1);
+    expect(puts.length, 2);
   });
 
-  testWidgets('upload error shows a snackbar', (tester) async {
+  testWidgets('one failed upload does not abort the batch and is named',
+      (tester) async {
     final settings = await _settings(configured: true);
-    final picked = XFile.fromData(Uint8List.fromList([1]), name: 'u.png');
-    await tester.pumpWidget(
-      _browser(settings, _mock(uploadFail: true), pick: () async => picked),
-    );
+    final mock = MockClient((req) async {
+      if (req.method == 'PUT' && req.url.path == '/bad.bin') {
+        return http.Response('', 500);
+      }
+      if (req.method == 'PROPFIND') return http.Response(_listing(_root), 207);
+      return http.Response('', 201);
+    });
+    await tester.pumpWidget(_browser(
+      settings,
+      mock,
+      pick: () async => [
+        _src('a.png', [1]),
+        _src('bad.bin', [2]),
+        _src('c.png', [3]),
+      ],
+    ));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Upload failed'), findsOneWidget);
+    expect(find.text('1 of 3 failed: bad.bin'), findsOneWidget);
+  });
+
+  testWidgets('a single upload reports in the singular', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(
+      settings,
+      _mock(),
+      pick: () async => [
+        _src('a.png', [1]),
+      ],
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Uploaded 1 file'), findsOneWidget);
+  });
+
+  // Cancels a two-file batch during the first (slow) file. With [deleteFail]
+  // the server refuses to remove the partial, which must not change the
+  // outcome the user sees.
+  Future<void> cancelUpload(WidgetTester tester,
+      {required bool deleteFail}) async {
+    final settings = await _settings(configured: true);
+    final methods = <String>[];
+    final mock = MockClient.streaming((req, body) async {
+      methods.add('${req.method} ${req.url.path}');
+      if (req.method == 'PROPFIND') {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode(_listing(_root))),
+          207,
+        );
+      }
+      if (req.method == 'DELETE' && deleteFail) {
+        return http.StreamedResponse(const Stream.empty(), 500);
+      }
+      await body.drain<void>();
+      return http.StreamedResponse(const Stream.empty(), 201);
+    });
+    Stream<List<int>> slow() async* {
+      for (var i = 0; i < 60; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        yield [i];
+      }
+    }
+
+    await tester.pumpWidget(_browser(
+      settings,
+      mock,
+      pick: () async => [
+        UploadSource(name: 'slow.bin', size: 60, open: slow),
+        _src('never.bin', [1]),
+      ],
+    ));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.byType(FloatingActionButton));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pump();
+    expect(find.text('Uploading 1/2 · slow.bin'), findsOneWidget);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Cancel'));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    expect(find.text('Cancelled after 0 of 2'), findsOneWidget);
+    expect(methods, contains('DELETE /slow.bin'));
+    expect(methods, isNot(contains('PUT /never.bin')));
+    await tester.pump(const Duration(seconds: 5));
+  }
+
+  testWidgets('cancelling an upload stops the batch and removes the partial',
+      (tester) => cancelUpload(tester, deleteFail: false));
+
+  testWidgets('a partial that cannot be removed still reads as cancelled',
+      (tester) => cancelUpload(tester, deleteFail: true));
+
+  testWidgets('upload error shows a snackbar', (tester) async {
+    final settings = await _settings(configured: true);
+    await tester.pumpWidget(_browser(
+      settings,
+      _mock(uploadFail: true),
+      pick: () async => [
+        _src('u.png', [1]),
+      ],
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(find.text('1 of 1 failed: u.png'), findsOneWidget);
   });
 
   testWidgets('a listing error is surfaced', (tester) async {
@@ -1050,19 +1309,13 @@ void main() {
     expect(methods.where((m) => m == 'MOVE').length, 1);
   });
 
-  testWidgets('download selected as a zip hands a file to the share sheet',
+  testWidgets('download selected as a zip lands in Download/',
       (tester) async {
     final settings = await _settings(configured: true);
-    final shared = <ShareParams>[];
-    await tester.pumpWidget(_browser(
-      settings,
-      _mock(),
-      docs: _tmpDir,
-      share: (params) async {
-        shared.add(params);
-        return const ShareResult('ok', ShareResultStatus.success);
-      },
-    ));
+    final downloads = _FakeDownloads();
+    await tester.pumpWidget(
+      _browser(settings, _mock(), tmp: _tmpDir, downloads: downloads),
+    );
     await tester.pumpAndSettle();
 
     await tester.longPress(find.text('data.bin'));
@@ -1074,9 +1327,34 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 400));
     });
     await tester.pump();
-    expect(shared, hasLength(1));
-    expect(shared.first.files!.single.name, 'dufs-selection.zip');
+    expect(downloads.staged.single, endsWith('dufs-selection.zip'));
+    expect(find.text('Saved to Download/dufs-selection.zip (1)'), findsOneWidget);
     expect(find.text('1 selected'), findsNothing); // selection cleared
+  });
+
+  testWidgets('a zip download can be cancelled mid-file', (tester) async {
+    final settings = await _settings(configured: true);
+    final downloads = _FakeDownloads();
+    await tester.pumpWidget(
+      _browser(settings, _mockSlowGet(), tmp: _tmpDir, downloads: downloads),
+    );
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('data.bin'));
+    await tester.pump();
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Download zip'));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pump();
+    expect(find.text('Downloading 1/1 · data.bin'), findsOneWidget);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Cancel'));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pump();
+    expect(find.text('Zip cancelled'), findsOneWidget);
+    expect(downloads.staged, isEmpty);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('a zip build failure shows a snackbar', (tester) async {
@@ -1084,9 +1362,8 @@ void main() {
     await tester.pumpWidget(_browser(
       settings,
       _mock(downloadFail: true),
-      docs: _tmpDir,
-      share: (params) async =>
-          const ShareResult('ok', ShareResultStatus.success),
+      tmp: _tmpDir,
+      downloads: _FakeDownloads(),
     ));
     await tester.pumpAndSettle();
     await tester.longPress(find.text('data.bin'));

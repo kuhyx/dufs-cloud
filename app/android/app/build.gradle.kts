@@ -36,7 +36,9 @@ android {
         applicationId = "com.kuhy.dufs_client"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Downloads land in the public Download/ collection through
+        // MediaStore.Downloads, which only exists from API 29 (Android 10).
+        minSdk = 29
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

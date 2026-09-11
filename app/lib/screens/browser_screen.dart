@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/models/media_meta.dart';
+import 'package:dufs_client/models/transfer_progress.dart';
+import 'package:dufs_client/models/upload_source.dart';
 import 'package:dufs_client/screens/audio_screen.dart';
 import 'package:dufs_client/screens/image_screen.dart';
 import 'package:dufs_client/screens/pdf_screen.dart';
@@ -10,8 +12,10 @@ import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/screens/text_editor_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/cloud_index.dart';
+import 'package:dufs_client/services/device_picker.dart';
 import 'package:dufs_client/services/download_zip.dart';
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:dufs_client/util/cloud_stats.dart';
 import 'package:dufs_client/util/filter_sort.dart';
@@ -19,11 +23,10 @@ import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/entry_tile.dart';
 import 'package:dufs_client/widgets/filter_sheet.dart';
 import 'package:dufs_client/widgets/folder_picker.dart';
+import 'package:dufs_client/widgets/transfer_banner.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 /// Builds a [DufsClient] from resolved credentials (injectable for tests).
 typedef ClientFactory = DufsClient Function({
@@ -32,21 +35,21 @@ typedef ClientFactory = DufsClient Function({
   required String password,
 });
 
-/// Opens the platform share sheet for [params]; injectable so tests avoid the
-/// share_plus platform channel.
-typedef ShareFn = Future<ShareResult> Function(ShareParams params);
+/// Opens the file picker and returns the chosen files (empty on cancel);
+/// injectable so tests avoid the file_picker platform channel.
+typedef PickUploads = Future<List<UploadSource>> Function();
 
 /// The main screen: browse the cloud, open media, upload, download and delete.
 class BrowserScreen extends StatefulWidget {
   /// Creates the browser backed by [settings]. The [clientFactory],
-  /// [pickMedia] and [documentsDir] seams default to real implementations and
-  /// are overridden in tests to avoid platform channels.
+  /// [pickUploads], [tempDir] and [publicDownloads] seams default to real
+  /// implementations and are overridden in tests to avoid platform channels.
   const BrowserScreen({
     required this.settings,
     this.clientFactory,
-    this.pickMedia,
-    this.documentsDir,
-    this.shareSheet,
+    this.pickUploads,
+    this.tempDir,
+    this.publicDownloads,
     super.key,
   });
 
@@ -56,15 +59,15 @@ class BrowserScreen extends StatefulWidget {
   /// Overrides how the dufs client is constructed.
   final ClientFactory? clientFactory;
 
-  /// Overrides the media picker (returns the picked file, or null if
-  /// the user cancelled).
-  final Future<XFile?> Function()? pickMedia;
+  /// Overrides the file picker (defaults to [DevicePicker.pick]).
+  final PickUploads? pickUploads;
 
-  /// Overrides where downloads are written.
-  final Future<Directory> Function()? documentsDir;
+  /// Overrides where a download is staged before it moves to Download/.
+  final Future<Directory> Function()? tempDir;
 
-  /// Overrides the share sheet (defaults to [SharePlus]).
-  final ShareFn? shareSheet;
+  /// Overrides the Download/ mover + opener (defaults to the platform
+  /// channel in `MainActivity.kt`).
+  final PublicDownloads? publicDownloads;
 
   @override
   State<BrowserScreen> createState() => _BrowserScreenState();
@@ -77,6 +80,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
   bool _loading = true;
   String? _error;
   bool _busy = false;
+
+  // The in-flight upload/download batch shown in the banner, and its
+  // cancel flag (shared with every streaming loop of that batch).
+  TransferProgress? _transfer;
+  TransferCancel? _cancel;
 
   MetaIndex _meta = <String, MediaMeta>{};
   FilterState _filter = defaultFilter;
@@ -311,45 +319,161 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
+  // Starts a banner-tracked batch and returns its cancel flag, which every
+  // streaming loop in the batch checks between chunks.
+  TransferCancel _beginTransfer() {
+    final cancel = TransferCancel();
+    // Snackbars queue: a stale "Saved to …" from the last batch must not
+    // delay this batch's own outcome by its remaining seconds.
+    ScaffoldMessenger.of(context).clearSnackBars();
+    setState(() {
+      _busy = true;
+      _cancel = cancel;
+    });
+    return cancel;
+  }
+
+  void _report(TransferProgress progress) {
+    if (mounted) setState(() => _transfer = progress);
+  }
+
+  void _endTransfer() {
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _transfer = null;
+      _cancel = null;
+    });
+  }
+
+  // Where a download is staged before MediaStore moves it to Download/.
+  Future<File> _stageFile(String name) async {
+    final getDir = widget.tempDir ?? getTemporaryDirectory;
+    return File(p.join((await getDir()).path, name));
+  }
+
+  Future<void> _discard(File? staged) async {
+    if (staged != null && staged.existsSync()) await staged.delete();
+  }
+
+  // Moves a fully staged file into the public Download/ folder and names
+  // the spot it landed in, with an Open action. The old app-private
+  // documents dir was a place no file manager could reach.
+  Future<void> _publish(File staged) async {
+    final downloads = widget.publicDownloads ?? PublicDownloads();
+    final saved = await downloads.save(staged.path, p.basename(staged.path));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saved to ${saved.location}'),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(
+          label: 'Open',
+          onPressed: () async {
+            if (!await downloads.open(saved)) {
+              _snack('No app can open ${saved.name}');
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _download(DirEntry entry) async {
     final client = _client;
     if (client == null) return;
-    setState(() => _busy = true);
+    final cancel = _beginTransfer();
+    final progress = TransferProgress(
+      kind: TransferKind.download,
+      index: 1,
+      total: 1,
+      name: entry.name,
+      done: 0,
+      size: entry.size,
+    );
+    _report(progress);
+    File? staged;
     try {
-      final bytes = await client.download(entry.path);
-      final getDir = widget.documentsDir ?? getApplicationDocumentsDirectory;
-      final dir = await getDir();
-      final file = File(p.join(dir.path, entry.name));
-      await file.writeAsBytes(bytes);
-      // Hand it straight to the share sheet, the way the zip download does.
-      // The documents directory is app-private: no file manager can open it,
-      // so "Saved to app storage" named a file you could not go and get.
-      // The sheet is where "Save to Files", Downloads and every other app
-      // live, so this is the first version where a download is retrievable.
-      final share = widget.shareSheet ?? SharePlus.instance.share;
-      await share(ShareParams(files: [XFile(file.path)]));
+      staged = await _stageFile(entry.name);
+      final sink = staged.openWrite();
+      try {
+        await client.download(
+          entry.path,
+          onChunk: sink.add,
+          onProgress: (n) => _report(progress.withDone(n)),
+          cancel: cancel,
+        );
+      } finally {
+        await sink.close();
+      }
+      await _publish(staged);
+    } on TransferCancelled {
+      await _discard(staged);
+      _snack('Download cancelled');
     } on Exception catch (e) {
+      await _discard(staged);
       _snack('Download failed: $e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      _endTransfer();
     }
   }
 
   Future<void> _upload() async {
     final client = _client;
     if (client == null) return;
-    final picked = await (widget.pickMedia ?? ImagePicker().pickMedia)();
-    if (picked == null) return;
-    setState(() => _busy = true);
+    final files = await (widget.pickUploads ?? DevicePicker().pick)();
+    if (files.isEmpty) return;
+    final cancel = _beginTransfer();
+    final failed = <String>[];
+    var done = 0;
     try {
-      await client.upload(_path, picked.name, await picked.readAsBytes());
-      _snack('Uploaded ${picked.name}');
-      _index = null;
-      await _load(_path);
-    } on Exception catch (e) {
-      _snack('Upload failed: $e');
+      for (final (i, file) in files.indexed) {
+        final progress = TransferProgress(
+          kind: TransferKind.upload,
+          index: i + 1,
+          total: files.length,
+          name: file.name,
+          done: 0,
+          size: file.size,
+        );
+        _report(progress);
+        try {
+          await client.upload(
+            _path,
+            file.name,
+            file.open(),
+            file.size,
+            onProgress: (n) => _report(progress.withDone(n)),
+            cancel: cancel,
+          );
+          done++;
+        } on TransferCancelled {
+          // dufs writes a PUT as it arrives, so the aborted file exists on
+          // the server truncated, looking real. Best effort: remove it.
+          try {
+            await client.delete(paths.joinPath(_path, file.name));
+          } on Exception {
+            // Leaving a partial behind is the lesser evil here.
+          }
+          rethrow;
+        } on Exception {
+          // One bad file must not abort the batch; it is named at the end.
+          failed.add(file.name);
+        }
+      }
+      _snack(
+        failed.isEmpty
+            ? 'Uploaded $done file${done == 1 ? '' : 's'}'
+            : '${failed.length} of ${files.length} failed: '
+                  '${failed.join(', ')}',
+      );
+    } on TransferCancelled {
+      _snack('Cancelled after $done of ${files.length}');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      // Whatever landed is on the server now, so the listing must reflect it.
+      _index = null;
+      if (mounted) await _load(_path);
+      _endTransfer();
     }
   }
 
@@ -559,20 +683,27 @@ class _BrowserScreenState extends State<BrowserScreen> {
   Future<void> _downloadSelectedZip() async {
     final client = _client;
     if (client == null || _selected.isEmpty) return;
-    setState(() => _busy = true);
+    final cancel = _beginTransfer();
+    File? staged;
     try {
-      final bytes = await buildSelectionZip(client, _path, _selectedEntries);
-      final getDir = widget.documentsDir ?? getApplicationDocumentsDirectory;
-      final dir = await getDir();
-      final file = File(p.join(dir.path, 'dufs-selection.zip'));
-      await file.writeAsBytes(bytes);
-      final share = widget.shareSheet ?? SharePlus.instance.share;
-      await share(ShareParams(files: [XFile(file.path)]));
+      final bytes = await buildSelectionZip(
+        client,
+        _path,
+        _selectedEntries,
+        onProgress: _report,
+        cancel: cancel,
+      );
+      staged = await _stageFile('dufs-selection.zip');
+      await staged.writeAsBytes(bytes);
+      await _publish(staged);
       _exitSelect();
+    } on TransferCancelled {
+      _snack('Zip cancelled');
     } on Exception catch (e) {
+      await _discard(staged);
       _snack('Zip failed: $e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      _endTransfer();
     }
   }
 
@@ -632,7 +763,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
               onPressed: _busy ? null : _upload,
               child: const Icon(Icons.upload),
             ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          if (_transfer != null)
+            TransferBanner(progress: _transfer!, onCancel: _cancel!.cancel),
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 

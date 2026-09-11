@@ -33,8 +33,10 @@ pnpm run build
 
 ## `app/` — the mobile client
 
-Browse, view images (pinch-zoom), play videos (streaming/seek), upload from the
-gallery, download, and delete — all over WebDAV with HTTP Basic auth. Password
+Browse, view images (pinch-zoom), play videos (streaming/seek), multi-upload
+any file type, download into the phone's `Download/` folder (with progress,
+Cancel, and an Open action on the toast), and delete — all over WebDAV with
+HTTP Basic auth. Password
 is kept in the Android keystore (`flutter_secure_storage`).
 
 Video and audio play through `media_kit` (libmpv + libass), so embedded ASS

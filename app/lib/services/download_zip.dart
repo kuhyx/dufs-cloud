@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:dufs_client/models/dir_entry.dart';
+import 'package:dufs_client/models/transfer_progress.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 
 /// The archive path of [full] relative to directory [base].
@@ -26,17 +27,40 @@ Future<List<DirEntry>> gatherFiles(DufsClient client, DirEntry entry) async {
 /// so a selected folder is reproduced as a nested tree. Folders are zipped
 /// on-device because dufs's server `?zip` 404s for subfolders under render-spa
 /// (the production config). Media is already compressed, so STORE adds no size.
+///
+/// Every file is gathered first so [onProgress] can report `index/total`
+/// from the very first byte; [cancel] aborts between chunks.
 Future<Uint8List> buildSelectionZip(
   DufsClient client,
   String base,
-  List<DirEntry> entries,
-) async {
+  List<DirEntry> entries, {
+  void Function(TransferProgress progress)? onProgress,
+  TransferCancel? cancel,
+}) async {
+  final files = <DirEntry>[
+    for (final entry in entries) ...await gatherFiles(client, entry),
+  ];
   final archive = Archive();
-  for (final entry in entries) {
-    for (final file in await gatherFiles(client, entry)) {
-      final bytes = await client.download(file.path);
-      archive.addFile(ArchiveFile.bytes(_relativeTo(base, file.path), bytes));
-    }
+  for (final (i, file) in files.indexed) {
+    final progress = TransferProgress(
+      kind: TransferKind.download,
+      index: i + 1,
+      total: files.length,
+      name: file.name,
+      done: 0,
+      size: file.size,
+    );
+    onProgress?.call(progress);
+    final bytes = BytesBuilder(copy: false);
+    await client.download(
+      file.path,
+      onChunk: bytes.add,
+      onProgress: (n) => onProgress?.call(progress.withDone(n)),
+      cancel: cancel,
+    );
+    archive.addFile(
+      ArchiveFile.bytes(_relativeTo(base, file.path), bytes.takeBytes()),
+    );
   }
   // STORE (no compression): cloud media is already compressed.
   return ZipEncoder().encodeBytes(archive, level: DeflateLevel.none);

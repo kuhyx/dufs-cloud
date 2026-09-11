@@ -12,7 +12,7 @@ void main() {
   Future<Settings> makeSettings(Map<String, Object> prefs) async {
     SharedPreferences.setMockInitialValues(prefs);
     installSecureStorageMock();
-    return Settings.load();
+    return await Settings.load();
   }
 
   testWidgets('prefills, edits and saves, popping true', (tester) async {
