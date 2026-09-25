@@ -46,8 +46,9 @@ install_deps() {
 	command -v node >/dev/null || die "node missing after install"
 	command -v pnpm >/dev/null || die "pnpm missing after install"
 	OK "dependencies present ($(node -v), pnpm $(pnpm -v))"
-	command -v ffmpeg >/dev/null && ffmpeg -version >/dev/null 2>&1 \
-		|| WARN "ffmpeg is present but not runnable — video posters will be skipped (fix ffmpeg, e.g. full system upgrade)"
+	if ! { command -v ffmpeg >/dev/null && ffmpeg -version >/dev/null 2>&1; }; then
+		WARN "ffmpeg is present but not runnable — video posters will be skipped (fix ffmpeg, e.g. full system upgrade)"
+	fi
 }
 
 build_spa() {

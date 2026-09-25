@@ -37,3 +37,17 @@ repos:
           |Cargo\.(toml|lock)|go\.(mod|sum)
           |\.fvmrc|\.nvmrc|\.python-version
           |\.github/workflows/.*\.ya?ml)$
+
+      # Every script shellchecked, and the login script's bats suite run
+      # whenever it or its tests change. Both read-only.
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        files: ^scripts/.*\.sh$
+      - id: bats-add-dufs-login
+        name: bats (add_dufs_login.sh)
+        entry: bats scripts/tests
+        language: system
+        pass_filenames: false
+        files: ^scripts/(add_dufs_login\.sh|tests/.*\.bats)$

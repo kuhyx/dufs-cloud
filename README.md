@@ -63,8 +63,26 @@ flutter build apk --debug
   images/videos into `Media/YYYY/MM` (deduplicated), on a timer + path watcher.
 - `import_media_archives.sh` — fold `media_archive_*.zip` snapshots into the cloud.
 - `generate_thumbnails.sh` — image thumbnails (ImageMagick) + video posters (ffmpeg).
+- `add_dufs_login.sh` — a login scoped to one folder for an app (see below).
 
 The scripts target an Arch Linux host and self-install their dependencies.
+
+### Adding an app login
+
+Each app that writes to the cloud gets its own login, scoped to one folder,
+so a leaked phone credential cannot reach anything else (e.g. Keepass):
+
+```bash
+scripts/add_dufs_login.sh todo /todo-images rw      # rw or ro
+scripts/add_dufs_login.sh todo /todo-images --rotate  # new password
+```
+
+It adds a hashed entry to `~/.config/dufs/dufs.yaml` (the form
+`setup_dufs_cloud.sh` preserves), restarts dufs, **proves** the scope (207 on
+the folder, 403 just outside it — otherwise it restores the old config and
+fails), writes `~/.config/dufs/logins/<user>.env` (0600) and puts the
+32-character alphanumeric password on the clipboard. Re-running is a no-op.
+Tests: `bats scripts/tests`.
 
 ## CI
 
