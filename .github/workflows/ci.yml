@@ -38,6 +38,19 @@ jobs:
       - run: shellcheck scripts/*.sh
       - run: bats scripts/tests
 
+  python:
+    name: python (firebase_backup)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.7"
+      - run: pip install -e '.[dev]'
+      - run: ruff check firebase_backup
+      - run: ruff format --check firebase_backup
+      - run: python -m pytest -q # pyproject enforces 100% branch coverage
+
   app:
     name: app (Flutter)
     runs-on: ubuntu-latest

@@ -15,6 +15,7 @@ apps talk to the same WebDAV endpoint.
 | `web/`     | React 19 + Vite + TypeScript SPA — the browser UI (served by dufs itself)  |
 | `app/`     | Flutter Android client (`com.kuhy.dufs_client`) over WebDAV + Basic auth   |
 | `scripts/` | Bash installers/daemons: set up dufs, deploy the gallery, sync media, etc. |
+| `firebase_backup/` | Python: daily backup of the kuhy-syncs Firebase RTDB into the cloud, plus restore |
 
 ## `web/` — the gallery SPA
 
@@ -55,6 +56,40 @@ flutter test --coverage                          # 100% line coverage
 flutter build apk --debug
 ```
 
+## `firebase_backup/` — daily Firebase backup and restore
+
+Every app syncs through one Firebase Realtime Database (`kuhy-syncs`), so a
+root export is all of their data. Once a day a systemd **user** timer writes
+`~/data/cloud/firebase_backups/kuhy-syncs-<UTC time>.json.gz` (0600, dir
+0700; dufs serves it to the `kuhy` login only). Snapshots are kept forever.
+
+```bash
+scripts/setup_firebase_backup.sh          # install + enable firebase-backup.timer
+scripts/seed_firebase_backup_session.sh   # one Google consent: the job's own session
+systemctl --user start firebase-backup    # run one backup now
+python3 -m firebase_backup.restore latest # dry run: per-namespace diff vs live
+python3 -m firebase_backup.restore <file> --namespace todo-sync --yes
+```
+
+A run fails if the export is empty or a namespace from the previous snapshot
+has vanished (the new snapshot is still written). Any failure -- including
+an import error or a timeout -- triggers `firebase-backup-failure.service`,
+which appends to `~/.local/state/firebase-backup/failures.log`, sends a
+critical notification, and writes `prompts/TODO-firebase-backup-failure.md`:
+a ready-to-paste Claude prompt with the failure class, the fix, and the
+journal excerpt (tokens redacted). Every run is logged to `backup.log` there.
+
+Restore is a dry run unless `--yes`. With `--yes` it first writes a
+`-pre-restore` snapshot of the live data, then PUTs each changed namespace on
+its own (never the root, so namespaces newer than the snapshot survive) and
+reads each back to verify.
+
+```bash
+pip install -e '.[dev]'
+ruff check firebase_backup && python3 -m pytest   # 100% branch coverage
+bats scripts/tests                                # the failure handler
+```
+
 ## `scripts/` — setup & daemons
 
 - `setup_dufs_cloud.sh` — install and configure dufs (serve-path, auth, service).
@@ -64,6 +99,8 @@ flutter build apk --debug
 - `import_media_archives.sh` — fold `media_archive_*.zip` snapshots into the cloud.
 - `generate_thumbnails.sh` — image thumbnails (ImageMagick) + video posters (ffmpeg).
 - `add_dufs_login.sh` — a login scoped to one folder for an app (see below).
+- `setup_firebase_backup.sh`, `seed_firebase_backup_session.sh`,
+  `firebase_backup_on_failure.sh` — the Firebase backup (see above).
 
 The scripts target an Arch Linux host and self-install their dependencies.
 

@@ -38,16 +38,37 @@ repos:
           |\.fvmrc|\.nvmrc|\.python-version
           |\.github/workflows/.*\.ya?ml)$
 
-      # Every script shellchecked, and the login script's bats suite run
-      # whenever it or its tests change. Both read-only.
+      # Every script shellchecked, and the bats suites run whenever a tested
+      # script or its tests change. Both read-only.
       - id: shellcheck
         name: shellcheck
         entry: shellcheck
         language: system
         files: ^scripts/.*\.sh$
-      - id: bats-add-dufs-login
-        name: bats (add_dufs_login.sh)
+      - id: bats-scripts
+        name: bats (scripts/tests)
         entry: bats scripts/tests
         language: system
         pass_filenames: false
-        files: ^scripts/(add_dufs_login\.sh|tests/.*\.bats)$
+        files: ^scripts/(add_dufs_login\.sh|firebase_backup_on_failure\.sh|tests/.*\.bats)$
+
+      # firebase_backup/ (the daily RTDB backup): ruff ALL + format, and the
+      # suite with its 100% branch-coverage floor from pyproject.toml.
+      - id: ruff
+        name: ruff
+        entry: ruff check
+        language: system
+        types: [python]
+        files: ^firebase_backup/
+      - id: ruff-format
+        name: ruff format
+        entry: ruff format --check
+        language: system
+        types: [python]
+        files: ^firebase_backup/
+      - id: pytest-firebase-backup
+        name: pytest (firebase_backup, 100% branch coverage)
+        entry: python3 -m pytest -q -p no:cacheprovider
+        language: system
+        pass_filenames: false
+        files: ^(firebase_backup/|pyproject\.toml$)

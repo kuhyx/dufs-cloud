@@ -1,0 +1,6 @@
+[Unit]
+Description=Report a failed Firebase backup (log, notify, write fix prompt)
+
+[Service]
+Type=oneshot
+ExecStart=%h/src/dufs-cloud/scripts/firebase_backup_on_failure.sh firebase-backup.service

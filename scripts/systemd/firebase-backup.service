@@ -1,0 +1,17 @@
+[Unit]
+Description=Back up the kuhy-syncs Firebase RTDB into the dufs cloud
+Documentation=file://%h/src/dufs-cloud/README.md
+# Logs, notifies and writes a Claude fix prompt on ANY failure -- including
+# the ones the Python never sees (import error, timeout, OOM kill).
+OnFailure=firebase-backup-failure.service
+
+[Service]
+Type=oneshot
+# `-m` from the repo root: `git pull` is the deploy, like the other apps.
+# crdt_sync + requests come from /usr/bin/python3's user site-packages.
+WorkingDirectory=%h/src/dufs-cloud
+ExecStart=/usr/bin/python3 -m firebase_backup.backup
+# Covers the in-run retries (15 s + 60 s + 180 s) plus a slow export.
+TimeoutStartSec=900
+Nice=19
+IOSchedulingClass=idle

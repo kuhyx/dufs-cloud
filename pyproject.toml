@@ -1,0 +1,50 @@
+[project]
+name = "dufs-cloud-firebase-backup"
+version = "1.0.0"
+description = "Daily backup of the kuhy-syncs Firebase RTDB into the dufs cloud, plus restore"
+requires-python = ">=3.14"
+dependencies = [
+    "crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.9.1#subdirectory=crdt-sync",
+    "requests==2.34.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.16.9",
+]
+
+# Only the Python package; app/ (Flutter) and web/ (React) are not Python.
+[tool.setuptools.packages.find]
+include = ["firebase_backup*"]
+
+[tool.ruff]
+target-version = "py314"
+include = ["firebase_backup/**/*.py"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D203", "D213", "COM812", "ISC001", "S603"]
+
+[tool.ruff.lint.per-file-ignores]
+# pytest's assert is the test idiom, and test names are their own docs. Every
+# other rule applies to tests unchanged.
+"**/tests/**/*.py" = ["D", "S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["firebase_backup"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.pytest.ini_options]
+testpaths = ["firebase_backup/tests"]
+addopts = "--cov=firebase_backup --cov-branch --cov-report=term-missing --cov-fail-under=100"
+
+[tool.coverage.run]
+omit = ["firebase_backup/tests/*"]

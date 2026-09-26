@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Firebase RTDB backup into the dufs cloud
+Documentation=file://%h/src/dufs-cloud/README.md
+
+[Timer]
+OnCalendar=daily
+# Missed while the PC was off -> runs right after the next boot/login.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
