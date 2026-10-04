@@ -9,7 +9,7 @@ environment:
 
 dependencies:
   archive: 4.3.0
-  cupertino_icons: 1.0.9
+  cupertino_icons: 2.0.0
   flutter:
     sdk: flutter
   flutter_secure_storage: 11.2.0
@@ -22,7 +22,7 @@ dependencies:
   path_provider: 2.1.6
   shared_preferences: 2.5.5
   webview_flutter: 4.14.1
-  xml: 7.0.1
+  xml: 7.1.0
 
 dev_dependencies:
   # Generates the Android launcher icons from assets/icon/ (see
