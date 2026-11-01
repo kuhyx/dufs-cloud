@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:design_system/design_system.dart';
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/models/media_meta.dart';
 import 'package:dufs_client/models/transfer_progress.dart';
@@ -74,6 +75,10 @@ class BrowserScreen extends StatefulWidget {
   @override
   State<BrowserScreen> createState() => _BrowserScreenState();
 }
+
+// Height under each preview square for the name and size lines (16px + 12px
+// text plus the tile's padding).
+const double _tileLabelHeight = 52;
 
 class _BrowserScreenState extends State<BrowserScreen> {
   DufsClient? _client;
@@ -930,7 +935,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
     return RefreshIndicator(
       onRefresh: () => _load(_path),
-      child: _grid(_entries, selectable: true),
+      child: _fitGrid(_entries),
     );
   }
 
@@ -1002,22 +1007,65 @@ class _BrowserScreenState extends State<BrowserScreen> {
               ),
             ),
           ),
-          if (!_collapsed.contains(g.folder))
-            _grid(g.entries, shrinkWrap: true),
+          if (!_collapsed.contains(g.folder)) _groupGrid(g.entries),
         ],
       ],
     );
   }
 
-  Widget _grid(
-    List<DirEntry> entries, {
-    bool shrinkWrap = false,
-    bool selectable = false,
-  }) {
-    final client = _client!;
+  // One entry's tile, with the select-mode gestures when [selectable].
+  Widget _entryTile(DirEntry entry, {required bool selectable}) {
+    // While selecting, a tap toggles the item instead of opening it.
+    final tile = EntryTile(
+      client: _client!,
+      entry: entry,
+      onTap: () => selectable && _selecting
+          ? _toggleSelect(entry)
+          : unawaited(_open(entry)),
+      // Long-press enters select mode; once selecting it starts a drag
+      // instead, so the two gestures never compete for the same press.
+      onLongPress: selectable && !_selecting ? () => _enterSelect(entry) : null,
+      selected: selectable && _selecting
+          ? _selected.contains(entry.path)
+          : null,
+      onToggleSelect: selectable ? () => _toggleSelect(entry) : null,
+      onDownload: entry.isDir ? null : () => unawaited(_download(entry)),
+      onRename: () => unawaited(_rename(entry)),
+      onDelete: () => unawaited(_delete(entry)),
+    );
+    if (!selectable || !_selecting) return tile;
+    return _draggableTile(entry, tile);
+  }
+
+  // The folder view: a fixed 3-column grid that always fits the screen, the
+  // overflow on horizontal pages. Wrapped so pull-to-refresh still has a
+  // vertical scrollable to overscroll (it has nothing to scroll: it is
+  // exactly as tall as the screen).
+  Widget _fitGrid(List<DirEntry> entries) {
+    return LayoutBuilder(
+      builder: (context, box) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: box.maxHeight,
+          child: FitGrid(
+            itemCount: entries.length,
+            itemBuilder: (context, i) =>
+                _entryTile(entries[i], selectable: true),
+            labelHeight: _tileLabelHeight,
+            minSquare: 0.6,
+            padding: const EdgeInsets.all(AppSpacing.sm),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Search results are grouped by folder under headers, so the group list
+  // itself scrolls; each group's tiles still use the same tile.
+  Widget _groupGrid(List<DirEntry> entries) {
     return GridView.builder(
-      shrinkWrap: shrinkWrap,
-      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(8),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 150,
@@ -1026,31 +1074,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         mainAxisSpacing: 8,
       ),
       itemCount: entries.length,
-      itemBuilder: (context, i) {
-        final entry = entries[i];
-        // While selecting, a tap toggles the item instead of opening it.
-        final tile = EntryTile(
-          client: client,
-          entry: entry,
-          onTap: () => selectable && _selecting
-              ? _toggleSelect(entry)
-              : unawaited(_open(entry)),
-          // Long-press enters select mode; once selecting it starts a drag
-          // instead, so the two gestures never compete for the same press.
-          onLongPress: selectable && !_selecting
-              ? () => _enterSelect(entry)
-              : null,
-          selected: selectable && _selecting
-              ? _selected.contains(entry.path)
-              : null,
-          onToggleSelect: selectable ? () => _toggleSelect(entry) : null,
-          onDownload: entry.isDir ? null : () => unawaited(_download(entry)),
-          onRename: () => unawaited(_rename(entry)),
-          onDelete: () => unawaited(_delete(entry)),
-        );
-        if (!selectable || !_selecting) return tile;
-        return _draggableTile(entry, tile);
-      },
+      itemBuilder: (context, i) => _entryTile(entries[i], selectable: false),
     );
   }
 
