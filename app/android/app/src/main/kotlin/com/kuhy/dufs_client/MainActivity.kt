@@ -15,7 +15,6 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
-import java.io.InputStream
 import java.util.concurrent.Executors
 
 // Platform side of `com.kuhy.dufs_client/downloads` (Dart: services/
@@ -33,8 +32,7 @@ import java.util.concurrent.Executors
 class MainActivity : FlutterActivity() {
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
-    private val readers = HashMap<Int, InputStream>()
-    private var nextReader = 1
+    private val chunkReaders by lazy { ChunkReaders(contentResolver) }
     private var pendingPick: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -66,7 +64,7 @@ class MainActivity : FlutterActivity() {
                         if (uri == null) {
                             result.error("args", "uri is required", null)
                         } else {
-                            background(result) { openRead(Uri.parse(uri)) }
+                            background(result) { chunkReaders.openRead(Uri.parse(uri)) }
                         }
                     }
                     "readChunk" -> {
@@ -75,7 +73,7 @@ class MainActivity : FlutterActivity() {
                         if (handle == null || size == null) {
                             result.error("args", "handle and size are required", null)
                         } else {
-                            background(result) { readChunk(handle, size) }
+                            background(result) { chunkReaders.readChunk(handle, size) }
                         }
                     }
                     "closeRead" -> {
@@ -83,7 +81,7 @@ class MainActivity : FlutterActivity() {
                         if (handle == null) {
                             result.error("args", "handle is required", null)
                         } else {
-                            background(result) { closeRead(handle) }
+                            background(result) { chunkReaders.closeRead(handle) }
                         }
                     }
                     else -> result.notImplemented()
@@ -231,37 +229,6 @@ class MainActivity : FlutterActivity() {
             }
         }
         return mapOf("uri" to uri.toString(), "name" to name, "size" to size)
-    }
-
-    private fun openRead(uri: Uri): Int {
-        val stream = contentResolver.openInputStream(uri)
-            ?: throw IllegalStateException("cannot open $uri")
-        val handle = synchronized(readers) {
-            val h = nextReader++
-            readers[h] = stream
-            h
-        }
-        return handle
-    }
-
-    // Up to [size] bytes; an empty array means end of file.
-    private fun readChunk(handle: Int, size: Int): ByteArray {
-        val stream = synchronized(readers) { readers[handle] }
-            ?: throw IllegalStateException("unknown reader $handle")
-        val buffer = ByteArray(size)
-        var filled = 0
-        while (filled < size) {
-            val n = stream.read(buffer, filled, size - filled)
-            if (n < 0) break
-            filled += n
-        }
-        return if (filled == size) buffer else buffer.copyOf(filled)
-    }
-
-    private fun closeRead(handle: Int): Boolean {
-        val stream = synchronized(readers) { readers.remove(handle) } ?: return false
-        stream.close()
-        return true
     }
 
     companion object {

@@ -1,0 +1,136 @@
+#!/bin/bash
+# dufs_config.sh — config, safety guards, served folder and dufs.yaml steps of
+# setup_dufs_cloud.sh. Sourced by that script (not run directly): it relies on
+# the globals/constants and log_*/die helpers the entry script defines.
+
+set -euo pipefail
+
+# --- Step 2: configuration (gitignored .conf, prompt when empty) -------------
+load_config() {
+	if [[ -f ${CONFIG_FILE} ]]; then
+		# shellcheck source=/dev/null
+		source "${CONFIG_FILE}"
+	fi
+	DUFS_USER="${DUFS_USER:-}"
+	DUFS_PASSWORD="${DUFS_PASSWORD:-}"
+	DUFS_SUBDOMAIN="${DUFS_SUBDOMAIN:-}"
+	CLOUD_ROOT="${CLOUD_ROOT:-}"
+}
+
+prompt_config() {
+	if [[ -z ${DUFS_USER} ]]; then
+		read -r -p "dufs web username [${SYS_USER}]: " DUFS_USER
+		DUFS_USER="${DUFS_USER:-${SYS_USER}}"
+	fi
+	if [[ -z ${DUFS_PASSWORD} ]]; then
+		read -r -s -p "dufs web password: " DUFS_PASSWORD
+		echo
+		[[ -n ${DUFS_PASSWORD} ]] || die "A password is required (this server is public)."
+	fi
+	if [[ -z ${DUFS_SUBDOMAIN} ]]; then
+		read -r -p "public subdomain [kuhy-cloud.duckdns.org]: " DUFS_SUBDOMAIN
+		DUFS_SUBDOMAIN="${DUFS_SUBDOMAIN:-kuhy-cloud.duckdns.org}"
+	fi
+	if [[ -z ${CLOUD_ROOT} ]]; then
+		read -r -p "cloud storage folder [${HOME}/data/cloud]: " CLOUD_ROOT
+		CLOUD_ROOT="${CLOUD_ROOT:-${HOME}/data/cloud}"
+	fi
+}
+
+# Paranoid guard: never persist the plaintext password unless git is certain
+# the file is ignored. This is checked against the live .gitignore, so a broken
+# or removed ignore rule stops the write instead of leaking the secret.
+assert_config_gitignored() {
+	[[ -n ${REPO_ROOT} ]] || die "Not inside a git repo — refusing to write the secret config."
+	if ! git -C "${REPO_ROOT}" check-ignore -q "${CONFIG_FILE}"; then
+		die "Refusing to write ${CONFIG_FILE}: it is NOT gitignored. Restore the .gitignore rule first — will not risk leaking the password."
+	fi
+}
+
+save_config() {
+	assert_config_gitignored
+	# 0600, gitignored — holds the plaintext web password so re-runs stay
+	# non-interactive. Never committed (see .gitignore + the check-no-dufs-conf
+	# pre-commit hook, which blocks it even against `git add -f`).
+	umask 077
+	{
+		printf 'DUFS_USER=%q\n' "${DUFS_USER}"
+		printf 'DUFS_PASSWORD=%q\n' "${DUFS_PASSWORD}"
+		printf 'DUFS_SUBDOMAIN=%q\n' "${DUFS_SUBDOMAIN}"
+		printf 'CLOUD_ROOT=%q\n' "${CLOUD_ROOT}"
+	} >"${CONFIG_FILE}"
+	chmod 600 "${CONFIG_FILE}"
+	log_ok "Saved config to ${CONFIG_FILE} (0600)"
+}
+
+# Paranoid guard: never let dufs serve a directory that would expose secrets
+# (home root, ~/.ssh, ~/.config — which holds dufs.yaml — ~/.gnupg, / , or the
+# git repo which holds the gitignored .dufs_cloud.conf).
+assert_cloud_root_safe() {
+	local resolved home_r
+	resolved="$(readlink -m "${CLOUD_ROOT}")"
+	home_r="$(readlink -m "${HOME}")"
+	case "${resolved}" in
+	"${home_r}" | / | "${home_r}/.ssh" | "${home_r}/.ssh/"* \
+		| "${home_r}/.config" | "${home_r}/.config/"* \
+		| "${home_r}/.gnupg" | "${home_r}/.gnupg/"*)
+		die "Unsafe cloud folder '${CLOUD_ROOT}' — it would expose sensitive files. Use a dedicated folder like ${HOME}/cloud." ;;
+	esac
+	if [[ -n ${REPO_ROOT} && (${resolved} == "${REPO_ROOT}" || ${resolved} == "${REPO_ROOT}/"*) ]]; then
+		die "Unsafe cloud folder '${CLOUD_ROOT}' — it is inside the git repo (which holds the secret config). Use a dedicated folder."
+	fi
+}
+
+# --- Step 4: served folder ---------------------------------------------------
+create_serve_dir() {
+	assert_cloud_root_safe
+	ensure_dir "${CLOUD_ROOT}"
+	ensure_dir "${CLOUD_ROOT}/Keepass"
+	chmod 700 "${CLOUD_ROOT}"
+	log_ok "Cloud folder ${CLOUD_ROOT} ready"
+}
+
+# --- Step 5: dufs config (SHA-512 hashed password, no anonymous access) -------
+write_dufs_config() {
+	local cfg_dir="${HOME}/.config/dufs"
+	local cfg="${cfg_dir}/dufs.yaml"
+	local hash
+	# Read the password from stdin so it never appears in the process argv (ps).
+	hash="$(printf '%s' "${DUFS_PASSWORD}" | openssl passwd -6 -stdin)"
+	# Serve the cloud_gallery SPA ONLY once it is deployed into the cloud root —
+	# a fresh dufs with no gallery keeps the default file listing.
+	# Use render-try-index, NOT render-spa: render-spa (and render-index) make
+	# EVERY directory without an index.html return 404 instead of a listing, so
+	# a browser GET on /RunnerUp broke while PROPFIND/PUT kept working.
+	# render-try-index serves index.html where one exists and falls back to the
+	# directory listing everywhere else.
+	local render=""
+	[[ -f "${CLOUD_ROOT}/index.html" ]] && render="render-try-index: true"
+	# Preserve any extra scoped auth entries (e.g. the RunnerUp WebDAV inbox
+	# used by the phone) across re-runs. This block rewrites the whole file, so
+	# without this they would be silently dropped and phone uploads would start
+	# failing with RunnerUp's opaque "generic error".
+	local extra_auth=""
+	if [[ -f "${cfg}" ]]; then
+		extra_auth="$(sed -n 's/^\(  - "\)\(.*\)$/\1\2/p' "${cfg}" \
+			| grep -v "\"${DUFS_USER}:" || true)"
+	fi
+	ensure_dir "${cfg_dir}"
+	umask 077
+	cat >"${cfg}" <<EOF
+# Generated by setup_dufs_cloud.sh — do not edit by hand.
+serve-path: ${CLOUD_ROOT}
+bind: 127.0.0.1
+port: ${DUFS_PORT}
+allow-all: true
+${render}
+auth:
+  - "${DUFS_USER}:${hash}@/:rw"
+EOF
+	if [[ -n "${extra_auth}" ]]; then
+		printf '%s\n' "${extra_auth}" >>"${cfg}"
+		log_ok "Preserved $(printf '%s\n' "${extra_auth}" | wc -l) extra auth entry/entries"
+	fi
+	chmod 600 "${cfg}"
+	log_ok "Wrote ${cfg} (auth required, password hashed)"
+}

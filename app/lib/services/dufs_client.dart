@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show HttpDate;
 
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/models/media_meta.dart';
 import 'package:dufs_client/models/transfer_progress.dart';
+import 'package:dufs_client/services/propfind.dart';
+import 'package:dufs_client/services/upload_pump.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:http/http.dart' as http;
-import 'package:xml/xml.dart';
+
+export 'package:dufs_client/services/propfind.dart';
 
 /// Client for the dufs server over HTTP + WebDAV, adding HTTP Basic auth to
 /// every request (the mobile app supplies credentials explicitly, unlike the
@@ -96,7 +98,7 @@ class DufsClient {
     // does not keep buffering into a dead connection.
     final abort = TransferCancel();
     final sent = _http.send(request)..ignore();
-    final pump = _pump(data, request.sink, onProgress, [abort, ?cancel]);
+    final pump = pumpUpload(data, request.sink, onProgress, [abort, ?cancel]);
     final response = await Future.any<http.StreamedResponse?>([
       sent,
       pump.then((_) => null),
@@ -110,41 +112,6 @@ class DufsClient {
     if (finished.statusCode >= 400) {
       throw Exception('PUT $target -> ${finished.statusCode}');
     }
-  }
-
-  // Feeds [data] into [sink] with backpressure: addStream pauses the source
-  // whenever the socket is full, so at most a socket buffer's worth of the
-  // file is ever in memory (plain sink.add would buffer without bound).
-  // A cancel ends the counted stream early rather than throwing inside it,
-  // because addStream forwards stream errors to the sink instead of raising
-  // them here; the flag is checked afterwards and rethrown as the typed
-  // exception the UI distinguishes from a failure.
-  static Future<void> _pump(
-    Stream<List<int>> data,
-    StreamSink<List<int>> sink,
-    void Function(int sent)? onProgress,
-    List<TransferCancel> cancels,
-  ) async {
-    var cancelled = false;
-    Stream<List<int>> counted() async* {
-      var sent = 0;
-      await for (final chunk in data) {
-        if (cancels.any((c) => c.cancelled)) {
-          cancelled = true;
-          return;
-        }
-        sent += chunk.length;
-        onProgress?.call(sent);
-        yield chunk;
-      }
-    }
-
-    await sink.addStream(counted());
-    if (cancelled) sink.addError(TransferCancelled());
-    // Not awaited: the close future only completes once the consumer has
-    // drained the body, which never happens for an aborted request.
-    unawaited(sink.close());
-    if (cancelled) throw TransferCancelled();
   }
 
   /// Downloads a file chunk by chunk into [onChunk], never holding the whole
@@ -258,67 +225,4 @@ class DufsClient {
 
   /// Releases the underlying HTTP client.
   void close() => _http.close();
-}
-
-/// Parses a dufs WebDAV multistatus body into the entries under [dirPath],
-/// dropping the directory's own self entry. Exposed for testing.
-List<DirEntry> parsePropfind(String xmlBody, String dirPath) {
-  final self = _normalize(dirPath);
-  final document = XmlDocument.parse(xmlBody);
-  final entries = <DirEntry>[];
-  final responses = document.findAllElements('response', namespaceUri: '*');
-  for (final response in responses) {
-    final href = response
-        .findElements('href', namespaceUri: '*')
-        .firstOrNull
-        ?.innerText;
-    if (href == null || href.isEmpty) continue;
-    final path = _normalize(Uri.decodeComponent(href));
-    if (path == self) continue;
-    final isDir = response
-        .findAllElements('collection', namespaceUri: '*')
-        .isNotEmpty;
-    final sizeText = response
-        .findAllElements('getcontentlength', namespaceUri: '*')
-        .firstOrNull
-        ?.innerText;
-    final mtimeText = response
-        .findAllElements('getlastmodified', namespaceUri: '*')
-        .firstOrNull
-        ?.innerText;
-    entries.add(
-      DirEntry(
-        name: _basename(path),
-        path: path,
-        kind: isDir ? EntryKind.dir : EntryKind.file,
-        size: int.tryParse(sizeText ?? '') ?? 0,
-        mtimeMs: _parseHttpDateMs(mtimeText),
-      ),
-    );
-  }
-  entries.sort((a, b) {
-    if (a.isDir != b.isDir) return a.isDir ? -1 : 1;
-    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-  });
-  return entries;
-}
-
-int _parseHttpDateMs(String? text) {
-  if (text == null || text.isEmpty) return 0;
-  try {
-    return HttpDate.parse(text).millisecondsSinceEpoch;
-  } on Exception {
-    return 0;
-  }
-}
-
-String _normalize(String path) {
-  final parts = path.split('/').where((p) => p.isNotEmpty && p != '.');
-  return '/${parts.join('/')}';
-}
-
-String _basename(String path) {
-  final n = _normalize(path);
-  if (n == '/') return '/';
-  return n.substring(n.lastIndexOf('/') + 1);
 }

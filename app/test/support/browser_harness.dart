@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:dufs_client/models/upload_source.dart';
 import 'package:dufs_client/screens/browser_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -44,8 +48,15 @@ Future<Settings> testSettings({required bool configured}) async {
   return await Settings.load();
 }
 
-/// A [BrowserScreen] wired to [mock] instead of the network.
-Widget browserApp(Settings settings, http.Client mock) {
+/// A [BrowserScreen] wired to [mock] instead of the network. The optional
+/// seams stand in for the file picker, temp dir and MediaStore.
+Widget browserApp(
+  Settings settings,
+  http.Client mock, {
+  Future<List<UploadSource>> Function()? pick,
+  Future<Directory> Function()? tmp,
+  PublicDownloads? downloads,
+}) {
   return MaterialApp(
     home: BrowserScreen(
       settings: settings,
@@ -57,6 +68,9 @@ Widget browserApp(Settings settings, http.Client mock) {
                 password: password,
                 httpClient: mock,
               ),
+      pickUploads: pick,
+      tempDir: tmp,
+      publicDownloads: downloads,
     ),
   );
 }

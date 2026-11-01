@@ -59,10 +59,19 @@ set -euo pipefail
 DUFS_YAML="${DUFS_YAML:-$HOME/.config/dufs/dufs.yaml}"
 readonly DUFS_YAML
 
-C() { printf '\033[1;34m[media-index]\033[0m %s\n' "$*"; }
-OK() { printf '\033[1;32m  ✓\033[0m %s\n' "$*"; }
-WARN() { printf '\033[1;33m[media-index] WARN:\033[0m %s\n' "$*" >&2; }
-die() { printf '\033[1;31m[media-index] ERROR:\033[0m %s\n' "$*" >&2; exit 1; }
+# Implementation lives in lib/. Resolve it through any symlink so the entry
+# works when invoked via a link or from another directory.
+LIB_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib"
+readonly LIB_DIR
+readonly VIDEO_RE='\.(mp4|mkv|mov|avi|webm|m4v|3gp|ogv|mpg|mpeg|mts|m2ts|vob|wmv|flv)$'
+readonly IMAGE_RE='\.(jpg|jpeg|png|gif|bmp|tiff|tif|webp|heic|heif|avif)$'
+
+# shellcheck source=lib/media_index_common.sh
+source "$LIB_DIR/media_index_common.sh"
+# shellcheck source=lib/media_index_probe.sh
+source "$LIB_DIR/media_index_probe.sh"
+# shellcheck source=lib/media_index_emit.sh
+source "$LIB_DIR/media_index_emit.sh"
 
 TMP_TSV=""
 TMP_OUT=""
@@ -73,76 +82,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Resolve the dufs serve path (the cloud root) from its config, else default.
-cloud_root() {
-    local sp=""
-    [[ -f "$DUFS_YAML" ]] &&
-        sp="$(sed -nE 's/^serve-path:[[:space:]]*//p' "$DUFS_YAML" | head -1)"
-    printf '%s' "${sp:-$HOME/data/cloud}"
-}
-
-require_tools() {
-    local missing=()
-    command -v ffprobe >/dev/null || missing+=(ffmpeg)
-    command -v jq >/dev/null || missing+=(jq)
-    command -v fd >/dev/null || missing+=(fd)
-    command -v identify >/dev/null || missing+=(imagemagick)
-    if ((${#missing[@]} > 0)); then
-        command -v pacman >/dev/null ||
-            die "missing: ${missing[*]} (install them and re-run)"
-        C "Installing: ${missing[*]}"
-        sudo pacman -S --needed --noconfirm "${missing[@]}"
-    fi
-}
-
-readonly VIDEO_RE='\.(mp4|mkv|mov|avi|webm|m4v|3gp|ogv|mpg|mpeg|mts|m2ts|vob|wmv|flv)$'
-readonly IMAGE_RE='\.(jpg|jpeg|png|gif|bmp|tiff|tif|webp|heic|heif|avif)$'
-
-# Prior-index lookup tables, keyed by the entry's cloud path.
-declare -A PRIOR_CREATED PRIOR_UPLOADED PRIOR_W PRIOR_H PRIOR_DUR
-
-# Read the whole prior index in ONE jq call instead of one per file. A key
-# containing a tab or newline comes back escaped by @tsv and therefore fails to
-# match its real path — such a file simply misses the cache and is re-probed,
-# so correctness is preserved either way.
-load_prior_index() {
-    local index="$1" k c u w h d
-    [[ -f "$index" ]] || return 0
-    while IFS=$'\t' read -r k c u w h d; do
-        [[ -n "$k" ]] || continue
-        PRIOR_CREATED["$k"]="$c"
-        PRIOR_UPLOADED["$k"]="$u"
-        PRIOR_W["$k"]="$w"
-        PRIOR_H["$k"]="$h"
-        PRIOR_DUR["$k"]="$d"
-    done < <(jq --raw-output '
-        (.entries // {}) | to_entries[] |
-        [ .key,
-          (.value.createdMs  // "null"),
-          (.value.uploadedMs // "null"),
-          (.value.width      // "null"),
-          (.value.height     // "null"),
-          (.value.durationMs // "null") ] | @tsv' "$index" 2>/dev/null || true)
-}
-
-# A cached entry is usable when the file has not been modified since it was
-# indexed and the cached geometry is actually present (a prior probe failure
-# stored nulls, and should be retried rather than cached forever).
-cache_is_fresh() {
-    local rel="$1" mtime_ms="$2" kind="$3"
-    [[ -n "${PRIOR_CREATED[$rel]:-}" ]] || return 1
-    [[ "${PRIOR_CREATED[$rel]}" == "$mtime_ms" ]] || return 1
-    [[ "${PRIOR_W[$rel]:-null}" != "null" && "${PRIOR_H[$rel]:-null}" != "null" ]] || return 1
-    # Videos additionally need a duration; images legitimately have none.
-    [[ "$kind" != "video" || "${PRIOR_DUR[$rel]:-null}" != "null" ]]
-}
-
 main() {
     local force=0
     while (($# > 0)); do
         case "$1" in
             -h | --help)
-                grep -E '^#( |$)' "$0" | sed -E 's/^# ?//'
+                # Header block only (everything above `set -euo pipefail`).
+                sed '/^set -euo pipefail/q' "$0" | grep -E '^#( |$)' | sed -E 's/^# ?//'
                 exit 0
                 ;;
             -f | --force)
@@ -163,57 +109,20 @@ main() {
     local now_ms; now_ms="$(date +%s%3N)"
     load_prior_index "$out"
 
-    # Collect the file list once; fd already prunes the dirs we never index.
-    local -a all=()
-    mapfile -d '' -t all < <(fd --type f --absolute-path \
-        --exclude .meta --exclude .thumbs --exclude _thumbs --exclude assets \
-        --exclude .proxies \
-        . "$root" --print0)
-
-    # Keep only media, and drop paths that would corrupt the TSV hand-off
-    # below. (A tab or newline in a media filename is pathological; skipping
-    # it loudly beats silently mangling the index.)
-    local -a media=() kinds=()
-    local abs kind
-    for abs in "${all[@]}"; do
-        if [[ "$abs" =~ $VIDEO_RE ]]; then kind="video"
-        elif [[ "$abs" =~ $IMAGE_RE ]]; then kind="image"
-        else continue; fi
-        if [[ "$abs" == *$'\t'* || "$abs" == *$'\n'* ]]; then
-            WARN "skipping path with tab/newline: ${abs@Q}"
-            continue
-        fi
-        media+=("$abs")
-        kinds+=("$kind")
-    done
-
+    collect_media "$root"
     if ((${#media[@]} == 0)); then
         printf '{"generatedMs":%s,"entries":{}}\n' "$now_ms" >"$out"
         OK "no media found under $root → $out"
         return 0
     fi
-
-    # One batched stat for every mtime, instead of one fork per file. Output is
-    # one line per argument in order, so no filename parsing is needed. xargs
-    # keeps this safe if the library ever outgrows ARG_MAX.
-    local -a mtimes=()
-    mapfile -t mtimes < <(printf '%s\0' "${media[@]}" |
-        xargs -0 -r stat --printf '%Y\n' 2>/dev/null || true)
-    if ((${#mtimes[@]} != ${#media[@]})); then
-        # A file vanished mid-scan, so the batched output no longer lines up
-        # with the input. Fall back to per-file stat rather than misattribute.
-        WARN "file list changed during scan — falling back to per-file stat"
-        mtimes=()
-        for abs in "${media[@]}"; do
-            mtimes+=("$(stat -c %Y "$abs" 2>/dev/null || echo 0)")
-        done
-    fi
+    load_mtimes
 
     C "Probing media under $root (excluding .meta, .thumbs, assets)"
     TMP_TSV="$(mktemp)"
 
-    local i rel mtime_ms uploaded_ms dur_ms width height proxy_rel probe
-    local app_proxy_rel
+    # width/height/dur_ms are assigned by probe_* (dynamic scope); the rest
+    # reach emit_row as arguments.
+    local i abs kind rel mtime_ms uploaded_ms dur_ms width height
     local probed=0 reused=0
     for i in "${!media[@]}"; do
         abs="${media[$i]}"
@@ -223,8 +132,8 @@ main() {
         mtime_ms=$(( mtimes[i] * 1000 ))
 
         # Preserve an existing first-seen time, else stamp it now.
-        uploaded_ms="${PRIOR_UPLOADED[$rel]:-}"
-        [[ -n "$uploaded_ms" && "$uploaded_ms" != "null" ]] || uploaded_ms="$now_ms"
+        resolve_uploaded_ms "$rel" "$now_ms"
+        uploaded_ms="$REPLY"
 
         dur_ms=null width=null height=null
 
@@ -234,98 +143,18 @@ main() {
             dur_ms="${PRIOR_DUR[$rel]}"
             reused=$((reused + 1))
         elif [[ "$kind" == "video" ]]; then
-            probe="$(ffprobe -v quiet -print_format json \
-                -show_entries format=duration:stream=width,height \
-                -select_streams v:0 "$abs" 2>/dev/null || true)"
-            if [[ -n "$probe" ]]; then
-                # One jq emits all three values; splitting them into three
-                # calls was three forks per video for no benefit.
-                # `read` returns 1 at EOF without a delimiter, which under
-                # `set -e` would abort the whole run — and the unit ignores
-                # this script's exit status, so it would fail silently. Hence
-                # the trailing newline on the fallback AND the `|| :`.
-                IFS=$'\t' read -r dur_ms width height < <(jq --raw-output '
-                    [ ((.format.duration // 0) | tonumber * 1000 | floor),
-                      (.streams[0].width  // "null"),
-                      (.streams[0].height // "null") ] | @tsv' \
-                    <<<"$probe" 2>/dev/null || printf 'null\tnull\tnull\n') || :
-                : "${dur_ms:=null}" "${width:=null}" "${height:=null}"
-            fi
+            probe_video "$abs"
             probed=$((probed + 1))
         else
-            # ImageMagick is authoritative for image dimensions (ffprobe is
-            # unreliable on stills); [0] takes the first frame of multi-frame
-            # images (e.g. GIFs) so the geometry is a single "W H".
-            local dims; dims="$(identify -format '%w %h' "${abs}[0]" 2>/dev/null || true)"
-            if [[ "$dims" =~ ^([0-9]+)\ ([0-9]+)$ ]]; then
-                width="${BASH_REMATCH[1]}"
-                height="${BASH_REMATCH[2]}"
-            fi
+            probe_image "$abs"
             probed=$((probed + 1))
         fi
 
-        # Deliberately OUTSIDE the cache branch: generate_video_proxies.sh can
-        # add a proxy long after the source file was last modified, so this
-        # must be re-tested every run. It is a fork-free file test.
-        proxy_rel=""
-        [[ "$kind" == "video" && -f "$root/.proxies$rel.mp4" ]] &&
-            proxy_rel="/.proxies$rel.mp4"
-        # Same treatment for the app-side Matroska proxy, which only exists for
-        # audio the app's libmpv cannot decode (see generate_video_proxies.sh).
-        app_proxy_rel=""
-        [[ "$kind" == "video" && -f "$root/.proxies$rel.app.mkv" ]] &&
-            app_proxy_rel="/.proxies$rel.app.mkv"
-        # Likewise re-tested every run: extract_subtitles.sh writes tracks.json
-        # as its completion marker long after the source's mtime, so caching
-        # this would pin subtitlesPath to null forever. The SPA fetches that
-        # manifest to learn which embedded tracks exist.
-        subs_rel=""
-        [[ "$kind" == "video" && -f "$root/.subs$rel/tracks.json" ]] &&
-            subs_rel="/.subs$rel"
-        # Only dual-audio videos are segmented, and manifest.mpd is written
-        # last, so its presence means the whole segment set is ready. Re-tested
-        # every run for the same reason as the two above.
-        dash_rel=""
-        [[ "$kind" == "video" && -f "$root/.dash$rel/manifest.mpd" ]] &&
-            dash_rel="/.dash$rel"
-
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-            "$rel" "$width" "$height" "$dur_ms" \
-            "$mtime_ms" "$uploaded_ms" "$proxy_rel" "$app_proxy_rel" \
-            "$subs_rel" "$dash_rel" >>"$TMP_TSV"
+        emit_row "$rel" "$kind" "$width" "$height" "$dur_ms" \
+            "$mtime_ms" "$uploaded_ms" "$root"
     done
 
-    # One jq builds the whole document. The previous version re-serialised the
-    # entire growing index once per file, which is O(n²) writes.
-    TMP_OUT="$(mktemp -p "$meta_dir")"
-    jq --raw-input --slurp --argjson ms "$now_ms" '
-        def num: if . == "null" or . == "" then null else tonumber end;
-        { generatedMs: $ms,
-          entries: ( split("\n")
-                     | map(select(length > 0))
-                     | map(split("\t"))
-                     | map({ key: .[0],
-                             value: { width:      (.[1] | num),
-                                      height:     (.[2] | num),
-                                      durationMs: (.[3] | num),
-                                      createdMs:  (.[4] | num),
-                                      uploadedMs: (.[5] | num),
-                                      proxyPath:  (if .[6] == "" then null else .[6] end),
-                                      appProxyPath:
-                                        (if (.[7] // "") == "" then null
-                                         else .[7] end),
-                                      subtitlesPath:
-                                        (if (.[8] // "") == "" then null
-                                         else .[8] end),
-                                      dashPath:
-                                        (if (.[9] // "") == "" then null
-                                         else .[9] end) } })
-                     | from_entries ) }' "$TMP_TSV" >"$TMP_OUT" ||
-        die "failed to build index JSON"
-
-    chmod 644 "$TMP_OUT"
-    mv "$TMP_OUT" "$out"
-    TMP_OUT=""
+    write_index_json "$meta_dir" "$now_ms" "$out"
     OK "indexed $((probed + reused)) media file(s) ($probed probed, $reused cached) → $out"
 }
 

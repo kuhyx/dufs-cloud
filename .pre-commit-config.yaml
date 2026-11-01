@@ -16,6 +16,14 @@ repos:
         language: system
         files: \.(md|markdown)$
 
+      # No file over 250 lines (code and prose alike). Checks the files in the
+      # commit, never the whole tree, so unrelated commits cannot break. The
+      # shared gate in ~/src/utils owns the cap and the exemption list.
+      - id: file-length
+        name: file length <= 250 lines
+        entry: scripts/check_file_length.sh
+        language: system
+
       # Every dependency on its ecosystem's newest STABLE release, exact-pinned
       # so the question is mechanically answerable at all.
       #
