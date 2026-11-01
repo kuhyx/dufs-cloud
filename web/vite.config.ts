@@ -14,6 +14,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Real CSS text for the motion-css test (the default replaces CSS with "").
+    css: { include: [/index\.css/] },
     setupFiles: ["./src/test/setup.ts"],
     coverage: {
       provider: "v8",

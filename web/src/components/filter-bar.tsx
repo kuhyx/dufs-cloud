@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_FILTER,
   isFilterActive,
@@ -6,6 +7,7 @@ import {
   type SortState,
   type TypeFilter,
 } from "../lib/filter-sort.ts";
+import type { IndexProgress } from "../hooks/use-cloud-index.ts";
 import { SizeRange } from "./size-range.tsx";
 import { DurationRange } from "./duration-range.tsx";
 import { ResolutionRange } from "./resolution-range.tsx";
@@ -26,7 +28,15 @@ interface FilterBarProps {
   readonly indexing: boolean;
   /** Fired on first interaction so the parent can start the lazy index walk. */
   readonly onActivate: () => void;
+  /** Live counts of the index walk, shown as icon + number while `indexing`. */
+  readonly indexProgress?: IndexProgress;
+  /** Stops the index walk; the cancel control shows only while `indexing`. */
+  readonly onCancelIndex?: () => void;
 }
+
+/** Quiet time after the last keystroke before the query reaches the filter, so
+ * a large index is not re-filtered on every character. */
+const QUERY_DEBOUNCE_MS = 200;
 
 const TYPE_OPTIONS: readonly { value: TypeFilter; label: string }[] = [
   { value: "all", label: "All types" },
@@ -69,7 +79,27 @@ export function FilterBar({
   durationValues,
   indexing,
   onActivate,
+  indexProgress,
+  onCancelIndex,
 }: FilterBarProps): React.JSX.Element {
+  const [draft, setDraft] = useState(filter.query);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // The parent can change the query itself (Clear, folder change): follow it.
+  const [seen, setSeen] = useState(filter.query);
+  if (filter.query !== seen) {
+    setSeen(filter.query);
+    setDraft(filter.query);
+  }
+  useEffect(() => () => {
+    clearTimeout(timer.current);
+  }, []);
+  const editQuery = (query: string): void => {
+    setDraft(query);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      onFilter({ ...filter, query });
+    }, QUERY_DEBOUNCE_MS);
+  };
   return (
     <div className="filterbar" onFocus={onActivate}>
       <input
@@ -77,9 +107,9 @@ export function FilterBar({
         type="search"
         placeholder="Filter by name…"
         aria-label="Filter by name"
-        value={filter.query}
+        value={draft}
         onChange={(e) => {
-          onFilter({ ...filter, query: e.target.value });
+          editQuery(e.target.value);
         }}
       />
       <select
@@ -157,12 +187,33 @@ export function FilterBar({
       >
         {sort.dir === "asc" ? "▲" : "▼"}
       </button>
-      {indexing && <span className="busy">Indexing cloud…</span>}
+      {indexing && (
+        <span className="busy">
+          Indexing cloud…
+          {indexProgress !== undefined && (
+            <>
+              <span aria-label="Folders indexed"> 📁 {indexProgress.folders}</span>
+              <span aria-label="Entries found"> 📄 {indexProgress.entries}</span>
+            </>
+          )}
+        </span>
+      )}
+      {indexing && onCancelIndex !== undefined && (
+        <button
+          type="button"
+          className="filter-clear"
+          aria-label="Cancel indexing"
+          onClick={onCancelIndex}
+        >
+          ✕
+        </button>
+      )}
       {isFilterActive(filter) && (
         <button
           type="button"
           className="filter-clear"
           onClick={() => {
+            clearTimeout(timer.current);
             onFilter(DEFAULT_FILTER);
           }}
         >

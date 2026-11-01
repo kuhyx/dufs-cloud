@@ -1,3 +1,4 @@
+import 'package:dufs_client/models/transfer_progress.dart';
 import 'package:dufs_client/services/cloud_index.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,16 +11,20 @@ String _xml(String self, List<(String, bool)> children) {
   final selfHref = self == '/' ? '/' : '$self/';
   final base = self == '/' ? '' : self;
   final sb = StringBuffer('<D:multistatus xmlns:D="DAV:">')
-    ..write('<D:response><D:href>$selfHref</D:href><D:propstat><D:prop>'
-        '<D:resourcetype><D:collection/></D:resourcetype>'
-        '</D:prop></D:propstat></D:response>');
+    ..write(
+      '<D:response><D:href>$selfHref</D:href><D:propstat><D:prop>'
+      '<D:resourcetype><D:collection/></D:resourcetype>'
+      '</D:prop></D:propstat></D:response>',
+    );
   for (final (name, isDir) in children) {
     final href = isDir ? '$base/$name/' : '$base/$name';
     final rt = isDir ? '<D:collection/>' : '';
-    sb.write('<D:response><D:href>$href</D:href><D:propstat><D:prop>'
-        '<D:resourcetype>$rt</D:resourcetype>'
-        '<D:getcontentlength>10</D:getcontentlength>'
-        '</D:prop></D:propstat></D:response>');
+    sb.write(
+      '<D:response><D:href>$href</D:href><D:propstat><D:prop>'
+      '<D:resourcetype>$rt</D:resourcetype>'
+      '<D:getcontentlength>10</D:getcontentlength>'
+      '</D:prop></D:propstat></D:response>',
+    );
   }
   sb.write('</D:multistatus>');
   return sb.toString();
@@ -29,41 +34,47 @@ DufsClient _client(
   Map<String, List<(String, bool)>> tree, {
   Set<String> fail = const {},
   List<String>? seen,
-}) =>
-    DufsClient(
-      baseUrl: 'https://host',
-      username: 'u',
-      password: 'p',
-      httpClient: MockClient((req) async {
-        final path = Uri.decodeComponent(req.url.path);
-        seen?.add(path);
-        if (fail.contains(path)) return http.Response('', 500);
-        return http.Response(_xml(path, tree[path] ?? const []), 207);
-      }),
-    );
+}) => DufsClient(
+  baseUrl: 'https://host',
+  username: 'u',
+  password: 'p',
+  httpClient: MockClient((req) async {
+    final path = Uri.decodeComponent(req.url.path);
+    seen?.add(path);
+    if (fail.contains(path)) return http.Response('', 500);
+    return http.Response(_xml(path, tree[path] ?? const []), 207);
+  }),
+);
 
 void main() {
   group('buildCloudIndex', () {
-    test('walks the tree, skipping app/meta/thumbs/Keepass at any depth',
-        () async {
-      final seen = <String>[];
-      final client = _client(
-        {
-          '/': [('Media', true), ('.thumbs', true), ('Keepass', true), ('root.txt', false)],
+    test(
+      'walks the tree, skipping app/meta/thumbs/Keepass at any depth',
+      () async {
+        final seen = <String>[];
+        final client = _client({
+          '/': [
+            ('Media', true),
+            ('.thumbs', true),
+            ('Keepass', true),
+            ('root.txt', false),
+          ],
           '/Media': [('pic.jpg', false), ('assets', true)],
-        },
-        seen: seen,
-      );
-      final entries = await buildCloudIndex(client);
-      final paths = entries.map((e) => e.path).toList();
-      expect(paths, containsAll(<String>['/root.txt', '/Media', '/Media/pic.jpg']));
-      expect(paths, isNot(contains('/.thumbs')));
-      expect(paths, isNot(contains('/Keepass')));
-      expect(paths, isNot(contains('/Media/assets')));
-      // Skip-named dirs are never descended into.
-      expect(seen, isNot(contains('/.thumbs')));
-      expect(seen, isNot(contains('/Media/assets')));
-    });
+        }, seen: seen);
+        final entries = await buildCloudIndex(client);
+        final paths = entries.map((e) => e.path).toList();
+        expect(
+          paths,
+          containsAll(<String>['/root.txt', '/Media', '/Media/pic.jpg']),
+        );
+        expect(paths, isNot(contains('/.thumbs')));
+        expect(paths, isNot(contains('/Keepass')));
+        expect(paths, isNot(contains('/Media/assets')));
+        // Skip-named dirs are never descended into.
+        expect(seen, isNot(contains('/.thumbs')));
+        expect(seen, isNot(contains('/Media/assets')));
+      },
+    );
 
     test('skips a folder whose listing fails, keeps the rest', () async {
       final client = _client(
@@ -79,6 +90,49 @@ void main() {
     test('root failure yields an empty index', () async {
       final client = _client(const {}, fail: {'/'});
       expect(await buildCloudIndex(client), isEmpty);
+    });
+
+    test('reports true folder/entry counts as it walks', () async {
+      final client = _client({
+        '/': [('A', true), ('r.txt', false)],
+        '/A': [('x.txt', false)],
+      });
+      final reports = <IndexProgress>[];
+      final entries = await buildCloudIndex(client, onProgress: reports.add);
+      expect(entries, hasLength(3));
+      expect(reports.last.folders, 2);
+      expect(reports.last.entries, 3);
+      expect(reports.last.path, '/A');
+      // Counts only ever grow: no fabricated or backwards progress.
+      for (var i = 1; i < reports.length; i++) {
+        expect(
+          reports[i].folders,
+          greaterThanOrEqualTo(reports[i - 1].folders),
+        );
+        expect(
+          reports[i].entries,
+          greaterThanOrEqualTo(reports[i - 1].entries),
+        );
+      }
+    });
+
+    test('cancel stops descending and keeps what was found', () async {
+      final seen = <String>[];
+      final client = _client({
+        '/': [('A', true), ('B', true)],
+        '/A': [('x.txt', false)],
+        '/B': [('y.txt', false)],
+      }, seen: seen);
+      final cancel = TransferCancel();
+      final entries = await buildCloudIndex(
+        client,
+        cancel: cancel,
+        onProgress: (p) {
+          if (p.folders == 1) cancel.cancel();
+        },
+      );
+      expect(entries.map((e) => e.path), ['/A', '/B']);
+      expect(seen, ['/']);
     });
   });
 }

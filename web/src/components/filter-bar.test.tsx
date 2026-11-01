@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FilterBar } from "./filter-bar.tsx";
 import {
@@ -39,7 +39,9 @@ describe("FilterBar", () => {
   it("reports a name-query edit", async () => {
     const { onFilter } = renderBar();
     await userEvent.type(screen.getByLabelText("Filter by name"), "a");
-    expect(onFilter).toHaveBeenLastCalledWith({ ...DEFAULT_FILTER, query: "a" });
+    await waitFor(() => {
+      expect(onFilter).toHaveBeenLastCalledWith({ ...DEFAULT_FILTER, query: "a" });
+    });
   });
 
   it("fires onActivate when a control is focused", async () => {

@@ -25,6 +25,7 @@ import 'package:dufs_client/widgets/filter_sheet.dart';
 import 'package:dufs_client/widgets/folder_picker.dart';
 import 'package:dufs_client/widgets/transfer_banner.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -96,6 +97,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
   // use, cached, invalidated (set null) on mutations.
   List<DirEntry>? _index;
   bool _indexing = false;
+  // Live counts of the index walk, its cancel switch, and whether the last
+  // walk was cancelled (so `_index` holds only what was found).
+  IndexProgress _indexProgress = IndexProgress.none;
+  TransferCancel? _indexCancel;
+  bool _indexPartial = false;
   final Set<String> _collapsed = <String>{};
 
   // Multi-select mode (long-press to enter). Scoped to the current folder's
@@ -194,12 +200,25 @@ class _BrowserScreenState extends State<BrowserScreen> {
   Future<void> _ensureIndex() async {
     final client = _client;
     if (_index != null || _indexing || client == null) return;
-    setState(() => _indexing = true);
-    final index = await buildCloudIndex(client);
+    final cancel = TransferCancel();
+    setState(() {
+      _indexing = true;
+      _indexProgress = IndexProgress.none;
+      _indexCancel = cancel;
+    });
+    final index = await buildCloudIndex(
+      client,
+      cancel: cancel,
+      onProgress: (p) {
+        if (mounted) setState(() => _indexProgress = p);
+      },
+    );
     if (!mounted) return;
     setState(() {
       _index = index;
       _indexing = false;
+      _indexPartial = cancel.cancelled;
+      _indexCancel = null;
     });
   }
 
@@ -602,6 +621,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   // Long-press enters multi-select with the pressed entry already selected.
   void _enterSelect(DirEntry entry) {
+    unawaited(HapticFeedback.selectionClick());
     setState(() {
       _selecting = true;
       _selectAnchor = entry.path;
@@ -888,22 +908,22 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
     if (_filterActive) {
       if (_index == null) {
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 12),
-              Text('Indexing the cloud…'),
-            ],
-          ),
-        );
+        return _indexingView();
       }
       final groups = _groups;
       if (groups.isEmpty) {
         return const Center(child: Text('Nothing matches your filters.'));
       }
-      return _buildGroups(groups);
+      if (!_indexPartial) return _buildGroups(groups);
+      return Column(
+        children: [
+          Semantics(
+            label: 'Partial index',
+            child: const Icon(Icons.warning_amber_outlined),
+          ),
+          Expanded(child: _buildGroups(groups)),
+        ],
+      );
     }
     if (_entries.isEmpty) {
       return const Center(child: Text('This folder is empty.'));
@@ -911,6 +931,47 @@ class _BrowserScreenState extends State<BrowserScreen> {
     return RefreshIndicator(
       onRefresh: () => _load(_path),
       child: _grid(_entries, selectable: true),
+    );
+  }
+
+  // The walk's honest progress: counts of what has been listed so far (never a
+  // fraction: the total is unknown) and a way out.
+  Widget _indexingView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          const Text('Indexing the cloud…'),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.folder_outlined),
+              Text(
+                '${_indexProgress.folders}',
+                key: const Key('index-folders'),
+              ),
+              const SizedBox(width: 16),
+              const Icon(Icons.insert_drive_file_outlined),
+              Text(
+                '${_indexProgress.entries}',
+                key: const Key('index-entries'),
+              ),
+            ],
+          ),
+          Semantics(
+            label: 'Cancel indexing',
+            button: true,
+            excludeSemantics: true,
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _indexCancel?.cancel,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

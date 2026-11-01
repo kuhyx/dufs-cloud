@@ -583,9 +583,14 @@ describe("Gallery", () => {
     await screen.findByText("pic.jpg");
     await userEvent.type(screen.getByLabelText("Filter by name"), "pcj");
     // Two pic.jpg results (root + /Media); select the one under /Media.
-    const boxes = await screen.findAllByLabelText("Select pic.jpg");
-    expect(boxes).toHaveLength(2);
-    const [, underMedia] = boxes;
+    // The query is debounced, so wait for the filter to reach the index.
+    await waitFor(
+      () => {
+        expect(screen.getAllByLabelText("Select pic.jpg")).toHaveLength(2);
+      },
+      { timeout: 3000 },
+    );
+    const [, underMedia] = screen.getAllByLabelText("Select pic.jpg");
     if (underMedia === undefined) throw new Error("expected two checkboxes");
     await userEvent.click(underMedia);
     await userEvent.click(screen.getByRole("button", { name: "Download" }));
@@ -700,6 +705,13 @@ describe("Gallery", () => {
     // the shift-click below must fall back to a plain toggle of notes.txt
     // instead of throwing or ranging against a stale index.
     await userEvent.type(screen.getByLabelText("Filter by name"), "notes");
+    // The query is debounced: wait until clip.mp4 has actually left the view.
+    await waitFor(
+      () => {
+        expect(screen.queryByLabelText("Select clip.mp4")).toBeNull();
+      },
+      { timeout: 3000 },
+    );
     const notesBoxes = await screen.findAllByLabelText(
       "Select notes.txt",
       {},

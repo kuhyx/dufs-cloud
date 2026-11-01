@@ -167,8 +167,8 @@ importers:
   .:
     dependencies:
       '@kuhyx/web-ui':
-        specifier: github:kuhyx/utils#web_ui-v0.3.1&path:/web_ui
-        version: https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425#path:/web_ui(react@19.3.0)
+        specifier: github:kuhyx/utils#web_ui-v0.3.2&path:/web_ui
+        version: git+https://github.com/kuhyx/utils.git#f7418969cf7e059fdcef92c3686947a6373cc920&path:/web_ui(react@19.3.0)
       jassub:
         specifier: 2.5.16
         version: 2.5.16
@@ -452,9 +452,9 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@kuhyx/web-ui@https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425#path:/web_ui':
-    resolution: {gitHosted: true, integrity: sha512-jaYClL+dn3oPl3umd8IkeI9MSalBmu2++f9unbWX33PoLgjtl5uN2Ta9/wm83HDW6Wd2cIqeCAtDXYvySZi8rQ==, path: /web_ui, tarball: https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425}
-    version: 0.3.1
+  '@kuhyx/web-ui@git+https://github.com/kuhyx/utils.git#f7418969cf7e059fdcef92c3686947a6373cc920&path:/web_ui':
+    resolution: {commit: f7418969cf7e059fdcef92c3686947a6373cc920, path: /web_ui, repo: https://github.com/kuhyx/utils.git, type: git}
+    version: 0.3.2
     engines: {node: '>=24', pnpm: '>=10'}
     peerDependencies:
       react: '>=19'
@@ -1756,7 +1756,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@kuhyx/web-ui@https://codeload.github.com/kuhyx/utils/tar.gz/6714d131983f05a0e67f55ac836e3e8d57045425#path:/web_ui(react@19.3.0)':
+  '@kuhyx/web-ui@git+https://github.com/kuhyx/utils.git#f7418969cf7e059fdcef92c3686947a6373cc920&path:/web_ui(react@19.3.0)':
     dependencies:
       react: 19.3.0
 

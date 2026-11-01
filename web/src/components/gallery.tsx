@@ -463,6 +463,8 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
           sizeValues={sizeVals}
           durationValues={durVals}
           indexing={filterActive && cloudIndex.loading}
+          indexProgress={cloudIndex.progress}
+          onCancelIndex={cloudIndex.cancel}
           onActivate={() => {
             setIndexEnabled(true);
           }}
@@ -527,6 +529,11 @@ export function Gallery({ client }: { readonly client: DufsClient }): React.JSX.
         {/* Global (whole-cloud) search: an active filter, once indexed. */}
         {showListing && filterActive && !cloudIndex.ready && (
           <p className="muted">Indexing the whole cloud…</p>
+        )}
+        {showListing && filterActive && cloudIndex.partial && (
+          <p className="muted" aria-label="Partial index">
+            ⚠
+          </p>
         )}
         {showListing && filterActive && cloudIndex.ready && cloudIndex.error !== null && (
           <p className="error">Could not index the cloud: {cloudIndex.error}</p>

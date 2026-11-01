@@ -573,7 +573,7 @@ button.danger {
   display: flex;
   gap: 0.25rem;
   opacity: 0;
-  transition: opacity 0.12s;
+  transition: opacity var(--duration-fast) var(--ease-standard);
 }
 .tile:hover .tile-actions,
 .tile:focus-within .tile-actions {
@@ -839,4 +839,17 @@ button.danger {
 .subtitle-offset-value {
   margin-left: auto;
   font-family: var(--font-mono);
+}
+
+/* Reduced motion: no transitions or animations at all. The shared tokens already
+   collapse --duration-* to 0ms under this setting; this block also covers any
+   future rule that forgets to use them. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }
