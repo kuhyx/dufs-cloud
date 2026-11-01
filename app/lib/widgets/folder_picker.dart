@@ -71,6 +71,17 @@ class _FolderPickerState extends State<FolderPicker> {
   @override
   Widget build(BuildContext context) {
     final n = widget.count;
+    // System back climbs a folder; at the root it closes (cancels) the picker.
+    return PopScope<String>(
+      canPop: _dir == '/',
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _go(paths.parentPath(_dir));
+      },
+      child: _buildScaffold(n),
+    );
+  }
+
+  Widget _buildScaffold(int n) {
     return Scaffold(
       appBar: AppBar(title: Text('Move $n item${n == 1 ? '' : 's'} to…')),
       persistentFooterButtons: [

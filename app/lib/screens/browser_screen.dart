@@ -29,11 +29,12 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 /// Builds a [DufsClient] from resolved credentials (injectable for tests).
-typedef ClientFactory = DufsClient Function({
-  required String baseUrl,
-  required String username,
-  required String password,
-});
+typedef ClientFactory =
+    DufsClient Function({
+      required String baseUrl,
+      required String username,
+      required String password,
+    });
 
 /// Opens the file picker and returns the chosen files (empty on cancel);
 /// injectable so tests avoid the file_picker platform channel.
@@ -184,8 +185,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
   List<FolderGroup> get _groups {
     if (!_globalMode) return const [];
     final wantFolders = _filter.type == TypeFilter.folder;
-    final pool =
-        _scoped.where((e) => wantFolders ? e.isDir : !e.isDir).toList();
+    final pool = _scoped
+        .where((e) => wantFolders ? e.isDir : !e.isDir)
+        .toList();
     return groupByFolder(applyFilterSort(pool, _meta, _filter, _sort));
   }
 
@@ -221,30 +223,51 @@ class _BrowserScreenState extends State<BrowserScreen> {
     unawaited(_load(path));
   }
 
+  // System back (gesture or button) peels one layer per press: selection,
+  // then an active filter, then one folder up; only at a bare root does the
+  // app exit.
+  bool get _canExit => !_selecting && !_filterActive && _path == '/';
+
+  void _onBack() {
+    if (_selecting) {
+      _exitSelect();
+    } else if (_filterActive) {
+      _search.clear();
+      setState(() {
+        _filter = defaultFilter;
+        _collapsed.clear();
+      });
+    } else {
+      _navigate(_parent);
+    }
+  }
+
   void _openFilterSheet() {
     unawaited(_ensureIndex());
-    unawaited(showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => StatefulBuilder(
-        builder: (_, setSheet) => FilterSheet(
-          filter: _filter,
-          sort: _sort,
-          extensions: availableExtensions(_scoped),
-          sizeValues: sizeValues(_scoped),
-          durationValues: durationValues(_scoped, _meta),
-          resolutionValues: resolutionValues(_scoped, _meta),
-          onFilter: (f) {
-            _setFilter(f);
-            setSheet(() {});
-          },
-          onSort: (s) {
-            setState(() => _sort = s);
-            setSheet(() {});
-          },
+    unawaited(
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => StatefulBuilder(
+          builder: (_, setSheet) => FilterSheet(
+            filter: _filter,
+            sort: _sort,
+            extensions: availableExtensions(_scoped),
+            sizeValues: sizeValues(_scoped),
+            durationValues: durationValues(_scoped, _meta),
+            resolutionValues: resolutionValues(_scoped, _meta),
+            onFilter: (f) {
+              _setFilter(f);
+              setSheet(() {});
+            },
+            onSort: (s) {
+              setState(() => _sort = s);
+              setSheet(() {});
+            },
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Future<void> _open(DirEntry entry) async {
@@ -255,11 +278,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
     } else if (entry.isImage) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => ImageScreen(
-            client: client,
-            path: entry.path,
-            title: entry.name,
-          ),
+          builder: (_) =>
+              ImageScreen(client: client, path: entry.path, title: entry.name),
         ),
       );
     } else if (entry.isVideo) {
@@ -287,21 +307,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
     } else if (entry.isAudio) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => AudioScreen(
-            client: client,
-            path: entry.path,
-            title: entry.name,
-          ),
+          builder: (_) =>
+              AudioScreen(client: client, path: entry.path, title: entry.name),
         ),
       );
     } else if (entry.isPdf) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => PdfScreen(
-            client: client,
-            path: entry.path,
-            title: entry.name,
-          ),
+          builder: (_) =>
+              PdfScreen(client: client, path: entry.path, title: entry.name),
         ),
       );
     } else if (entry.isText) {
@@ -749,12 +763,23 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _canExit,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onBack();
+      },
+      child: _buildScaffold(),
+    );
+  }
+
+  Widget _buildScaffold() {
     return Scaffold(
       appBar: _selecting ? _selectAppBar() : _browseAppBar(),
       floatingActionButton: _client == null || _selecting
@@ -807,10 +832,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             tooltip: 'New folder',
             onPressed: _busy ? null : _newFolder,
           ),
-        IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: _openSettings,
-        ),
+        IconButton(icon: const Icon(Icons.settings), onPressed: _openSettings),
       ],
     );
   }
@@ -828,9 +850,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         IconButton(
           icon: Icon(
             Icons.checklist_rtl,
-            color: _rangeArmed
-                ? Theme.of(context).colorScheme.primary
-                : null,
+            color: _rangeArmed ? Theme.of(context).colorScheme.primary : null,
           ),
           tooltip: _rangeArmed
               ? 'Range select armed — tap an item'
