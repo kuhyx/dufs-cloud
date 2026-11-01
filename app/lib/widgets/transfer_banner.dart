@@ -1,5 +1,5 @@
+import 'package:design_system/design_system.dart';
 import 'package:dufs_client/models/transfer_progress.dart';
-import 'package:dufs_client/ui/theme.dart';
 import 'package:flutter/material.dart';
 
 /// A strip pinned above the listing while files move: a determinate bar for
