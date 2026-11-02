@@ -15,6 +15,8 @@ import "../index.css";
   <body>
     <cloud-app></cloud-app>
     <script>
+      // Every element must be defined before <cloud-app> upgrades: keep this last.
+      import "../elements/all.ts";
       import "../elements/cloud-app.ts";
     </script>
   </body>

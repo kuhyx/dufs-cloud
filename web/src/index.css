@@ -841,6 +841,49 @@ button.danger {
   font-family: var(--font-mono);
 }
 
+/* listing skeleton: grid-shaped placeholders while a folder loads */
+.cue-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-muted);
+}
+.skeleton-tile {
+  pointer-events: none;
+}
+.skeleton-tile .tile-preview,
+.skeleton-line {
+  animation: skeleton-pulse 1.2s var(--ease-standard) infinite alternate;
+}
+.skeleton-line {
+  display: block;
+  height: 1rem;
+  margin: var(--space-2);
+  width: 70%;
+  border-radius: var(--radius-sm);
+  background: var(--border);
+}
+@keyframes skeleton-pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-tile .tile-preview,
+  .skeleton-line {
+    animation: none;
+  }
+}
+
+cloud-app,
+cloud-gallery,
+gallery-topbar,
+filter-bar,
+cloud-grid,
+result-groups {
+  display: contents;
+}
+
 /* Reduced motion: no transitions or animations at all. The shared tokens already
    collapse --duration-* to 0ms under this setting; this block also covers any
    future rule that forgets to use them. */
