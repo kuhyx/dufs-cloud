@@ -8,6 +8,7 @@ import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/entry_tile.dart';
 import 'package:dufs_client/widgets/folder_group_list.dart';
 import 'package:dufs_client/widgets/indexing_view.dart';
+import 'package:dufs_client/widgets/listing_skeleton.dart';
 import 'package:flutter/material.dart';
 
 // Height under each preview square for the name and size lines (16px + 12px
@@ -18,7 +19,7 @@ const double _tileLabelHeight = 52;
 mixin BrowserBody on BrowserOpener {
   /// The body for the current loading, error, filter or folder state.
   Widget buildBody() {
-    if (loading) return const Center(child: CircularProgressIndicator());
+    if (loading) return const ListingSkeleton();
     if (loadError != null) {
       return Center(
         child: Padding(
