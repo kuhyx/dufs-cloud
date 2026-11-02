@@ -896,3 +896,25 @@ result-groups {
     scroll-behavior: auto !important;
   }
 }
+
+/* folder picker loading placeholder */
+.picker-list li.skeleton-row {
+  height: 1.6rem;
+  margin: var(--space-1) 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .picker-list li.skeleton-row {
+    animation: skeleton-pulse calc(var(--duration-slow) * 4) ease-in-out infinite
+      alternate;
+  }
+}
+@keyframes skeleton-pulse {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
