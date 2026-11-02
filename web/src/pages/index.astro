@@ -1,3 +1,9 @@
+---
+import "@kuhyx/web-ui/tokens.css";
+import "@kuhyx/web-ui/range-slider.css";
+import "../index.css";
+---
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -7,7 +13,9 @@
     <title>Cloud</title>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <cloud-app></cloud-app>
+    <script>
+      import "../elements/cloud-app.ts";
+    </script>
   </body>
 </html>

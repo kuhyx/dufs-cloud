@@ -1,5 +1,4 @@
 import { vi, beforeEach, afterEach } from "vitest";
-import { act } from "@testing-library/react";
 import {
   FakeMediaSource,
   FakeSourceBuffer,
@@ -124,9 +123,7 @@ export function buffers(): { video: FakeSourceBuffer; audio: FakeSourceBuffer } 
  * identically every run. waitFor cannot: it polls on real timers, which made
  * these tests pass alone and fail under the full suite's parallel load. */
 export async function flush(): Promise<void> {
-  await act(async () => {
-    for (let i = 0; i < 200; i++) await Promise.resolve();
-  });
+  for (let i = 0; i < 200; i++) await Promise.resolve();
 }
 
 export async function started(): Promise<{

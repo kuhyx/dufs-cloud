@@ -9,7 +9,7 @@ on:
 
 jobs:
   web:
-    name: web (React SPA)
+    name: web (Astro SPA)
     runs-on: ubuntu-latest
     defaults:
       run:
