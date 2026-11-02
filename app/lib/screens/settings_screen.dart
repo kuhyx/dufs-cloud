@@ -20,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _user;
   final TextEditingController _pass = TextEditingController();
   bool _saving = false;
+  late bool _cue = widget.settings.completionSound;
 
   @override
   void initState() {
@@ -79,6 +80,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               controller: _pass,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Password'),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Completion sound'),
+              value: _cue,
+              onChanged: (v) {
+                setState(() => _cue = v);
+                unawaited(widget.settings.setCompletionSound(enabled: v));
+              },
             ),
             const SizedBox(height: 24),
             FilledButton(

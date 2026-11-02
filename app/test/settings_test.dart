@@ -33,4 +33,12 @@ void main() {
     expect(reloaded.isConfigured, isTrue);
     expect(await reloaded.password(), 'secret');
   });
+
+  test('completion sound defaults on and persists when switched off', () async {
+    final settings = await Settings.load();
+    expect(settings.completionSound, isTrue);
+    await settings.setCompletionSound(enabled: false);
+    expect(settings.completionSound, isFalse);
+    expect((await Settings.load()).completionSound, isFalse);
+  });
 }

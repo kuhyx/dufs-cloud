@@ -37,6 +37,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        registerCompletionCue(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -85,6 +86,18 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun registerCompletionCue(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CUE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "playCompletionCue") {
+                    CompletionCue.play(applicationContext)
+                    result.success(null)
+                } else {
+                    result.notImplemented()
                 }
             }
     }
@@ -234,5 +247,6 @@ class MainActivity : FlutterActivity() {
     companion object {
         const val CHANNEL = "com.kuhy.dufs_client/downloads"
         const val REQ_PICK = 4101
+        const val CUE_CHANNEL = "com.kuhy.dufs_client/completion"
     }
 }

@@ -11,6 +11,7 @@ import 'package:dufs_client/screens/browser/browser_mutations.dart';
 import 'package:dufs_client/screens/browser/browser_opener.dart';
 import 'package:dufs_client/screens/browser/browser_selection.dart';
 import 'package:dufs_client/screens/browser/browser_transfers.dart';
+import 'package:dufs_client/services/completion_cue.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
@@ -32,14 +33,16 @@ typedef PickUploads = Future<List<UploadSource>> Function();
 /// The main screen: browse the cloud, open media, upload, download and delete.
 class BrowserScreen extends StatefulWidget {
   /// Creates the browser backed by [settings]. The [clientFactory],
-  /// [pickUploads], [tempDir] and [publicDownloads] seams default to real
-  /// implementations and are overridden in tests to avoid platform channels.
+  /// [pickUploads], [tempDir], [publicDownloads] and [completionCue] seams
+  /// default to real implementations and are overridden in tests to avoid
+  /// platform channels.
   const BrowserScreen({
     required this.settings,
     this.clientFactory,
     this.pickUploads,
     this.tempDir,
     this.publicDownloads,
+    this.completionCue,
     super.key,
   });
 
@@ -58,6 +61,10 @@ class BrowserScreen extends StatefulWidget {
   /// Overrides the Download/ mover + opener (defaults to the platform
   /// channel in `MainActivity.kt`).
   final PublicDownloads? publicDownloads;
+
+  /// Overrides the completion cue (defaults to the platform sound, gated by
+  /// the settings toggle).
+  final CompletionCue? completionCue;
 
   @override
   State<BrowserScreen> createState() => _BrowserScreenState();

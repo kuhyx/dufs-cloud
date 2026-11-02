@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dufs_client/models/dir_entry.dart';
@@ -123,6 +124,7 @@ mixin BrowserTransfers on BrowserLoading {
     final files = await (widget.pickUploads ?? DevicePicker().pick)();
     if (files.isEmpty) return;
     final cancel = beginTransfer();
+    final run = cue.begin();
     final failed = <String>[];
     var done = 0;
     try {
@@ -160,6 +162,7 @@ mixin BrowserTransfers on BrowserLoading {
           failed.add(file.name);
         }
       }
+      if (failed.isEmpty) unawaited(run.succeeded());
       snack(
         failed.isEmpty
             ? 'Uploaded $done file${done == 1 ? '' : 's'}'
@@ -181,6 +184,7 @@ mixin BrowserTransfers on BrowserLoading {
     final client = dufsClient;
     if (client == null || selected.isEmpty) return;
     final cancel = beginTransfer();
+    final run = cue.begin();
     File? staged;
     try {
       final bytes = await buildSelectionZip(
@@ -193,6 +197,7 @@ mixin BrowserTransfers on BrowserLoading {
       staged = await stageFile('dufs-selection.zip');
       await staged.writeAsBytes(bytes);
       await publish(staged);
+      unawaited(run.succeeded());
       exitSelect();
     } on TransferCancelled {
       snack('Zip cancelled');

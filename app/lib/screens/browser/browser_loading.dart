@@ -67,6 +67,7 @@ mixin BrowserLoading on BrowserSelection {
       indexProgress = IndexProgress.none;
       indexCancel = cancel;
     });
+    final run = cue.begin();
     final index = await buildCloudIndex(
       client,
       cancel: cancel,
@@ -81,6 +82,7 @@ mixin BrowserLoading on BrowserSelection {
       indexPartial = cancel.cancelled;
       indexCancel = null;
     });
+    if (!cancel.cancelled) await run.succeeded();
   }
 
   /// Applies [f] and starts the index build the filter needs.

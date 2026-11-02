@@ -9,6 +9,7 @@ class Settings {
   static const String _kUrl = 'dufs_url';
   static const String _kUser = 'dufs_user';
   static const String _kPass = 'dufs_pass';
+  static const String _kCue = 'completion_sound';
   static const FlutterSecureStorage _secure = FlutterSecureStorage();
 
   final SharedPreferences _prefs;
@@ -41,5 +42,14 @@ class Settings {
     await _prefs.setString(_kUrl, baseUrl.trim());
     await _prefs.setString(_kUser, username.trim());
     await _secure.write(key: _kPass, value: password);
+  }
+
+  /// Whether a long operation plays a completion cue when it finishes
+  /// (on by default).
+  bool get completionSound => _prefs.getBool(_kCue) ?? true;
+
+  /// Persists the completion-sound toggle.
+  Future<void> setCompletionSound({required bool enabled}) async {
+    await _prefs.setBool(_kCue, enabled);
   }
 }

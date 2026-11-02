@@ -3,6 +3,7 @@ import 'package:dufs_client/models/media_meta.dart';
 import 'package:dufs_client/models/transfer_progress.dart';
 import 'package:dufs_client/screens/browser_screen.dart';
 import 'package:dufs_client/services/cloud_index.dart';
+import 'package:dufs_client/services/completion_cue.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/util/cloud_stats.dart';
 import 'package:dufs_client/util/filter_sort.dart';
@@ -14,6 +15,11 @@ import 'package:flutter/material.dart';
 mixin BrowserFields on State<BrowserScreen> {
   /// The dufs client; null until the settings are configured.
   DufsClient? dufsClient;
+
+  /// Plays the completion cue after a long operation succeeds.
+  late final CompletionCue cue =
+      widget.completionCue ??
+      CompletionCue(enabled: () => widget.settings.completionSound);
 
   /// The folder being shown.
   String currentPath = '/';

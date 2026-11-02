@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dufs_client/models/upload_source.dart';
 import 'package:dufs_client/screens/browser_screen.dart';
+import 'package:dufs_client/services/completion_cue.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
@@ -56,6 +57,7 @@ Widget browserApp(
   Future<List<UploadSource>> Function()? pick,
   Future<Directory> Function()? tmp,
   PublicDownloads? downloads,
+  CompletionCue? cue,
 }) {
   return MaterialApp(
     home: BrowserScreen(
@@ -71,6 +73,7 @@ Widget browserApp(
       pickUploads: pick,
       tempDir: tmp,
       publicDownloads: downloads,
+      completionCue: cue,
     ),
   );
 }

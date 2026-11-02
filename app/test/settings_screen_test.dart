@@ -72,4 +72,39 @@ void main() {
     expect(find.text('https://existing'), findsOneWidget);
     expect(find.text('alice'), findsOneWidget);
   });
+
+  testWidgets('completion sound switch is on by default and persists', (
+    tester,
+  ) async {
+    final settings = await makeSettings({});
+    await tester.pumpWidget(
+      MaterialApp(home: SettingsScreen(settings: settings)),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = find.widgetWithText(SwitchListTile, 'Completion sound');
+    expect(tile, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
+
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+    expect((await Settings.load()).completionSound, isFalse);
+
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect((await Settings.load()).completionSound, isTrue);
+  });
+
+  testWidgets('completion sound switch reflects a stored off value', (
+    tester,
+  ) async {
+    final settings = await makeSettings({'completion_sound': false});
+    await tester.pumpWidget(
+      MaterialApp(home: SettingsScreen(settings: settings)),
+    );
+    await tester.pumpAndSettle();
+    final tile = find.widgetWithText(SwitchListTile, 'Completion sound');
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+  });
 }
