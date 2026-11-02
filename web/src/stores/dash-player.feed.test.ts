@@ -156,6 +156,37 @@ describe("createDashPlayer feeding", () => {
     expect(vBuf.appended).toBe(0);
   });
 
+  it("attaches no listeners when disposed mid-startup", async () => {
+    const pending: ((v: unknown) => void)[] = [];
+    let released = false;
+    const bytes = {
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("manifest.mpd") || released) {
+          return Promise.resolve(url.endsWith("manifest.mpd") ? manifestResponse() : bytes);
+        }
+        return new Promise((resolve) => {
+          pending.push(resolve);
+        });
+      }),
+    );
+    const el = video();
+    const player = open(el);
+    await flush();
+    const { video: vBuf } = buffers();
+    player.dispose();
+    released = true;
+    for (const resolve of pending) resolve(bytes);
+    await flush();
+    el.dispatchEvent(new Event("timeupdate"));
+    await flush();
+    expect(vBuf.removed).toBe(0);
+  });
+
   it("keeps feeding the first track after moving to another video", async () => {
     const el = video();
     const player = open(el, "/.dash/a.mkv");

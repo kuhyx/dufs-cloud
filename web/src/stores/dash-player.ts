@@ -148,6 +148,8 @@ export function createDashPlayer(): DashPlayer {
         if (aInit !== null) await append(aBuf, aInit);
         await feed(vBuf, root, vStream, 0, BUFFER_AHEAD, abort.signal);
         await feed(aBuf, root, first, 0, BUFFER_AHEAD + 1, abort.signal);
+        // Disposed mid-startup: do not attach listeners nothing will remove.
+        if (abort.signal.aborted) return;
 
         const run = pump(target, media, root, vStream, current, { video: vBuf, audio: aBuf }, abort.signal);
         onTime = () => {
