@@ -1,5 +1,5 @@
-type Attr = string | number | boolean | null | undefined | EventListener;
-type Child = Node | string | null | undefined | false;
+export type Attr = string | number | boolean | null | undefined | EventListener;
+export type Child = Node | string | null | undefined | false;
 
 /** Tiny DOM builder: `on*` attrs become listeners, `false`/null attrs are skipped. */
 export function h<K extends keyof HTMLElementTagNameMap>(

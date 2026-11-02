@@ -1,7 +1,7 @@
 // <prompt-dialog> props: title, placeholder, confirmLabel, initialValue.
 // Events: confirm (detail: trimmed value), cancel.
 import { h } from "./dom.ts";
-import { define, emit } from "./events.ts";
+import { define, emit } from "./element-kit.ts";
 import { modal, showModal } from "./modal.ts";
 
 export class PromptDialog extends HTMLElement {

@@ -1,6 +1,21 @@
-// Registers every gallery element; integration appends the other agents' modules.
-import "./gallery-topbar.ts";
-import "./grid.ts";
-import "./result-groups.ts";
+// Registers every element, so each is defined before cloud-app sets props on it.
+import "./audio-menu.ts";
+import "./confirm-dialog.ts";
+import "./duration-range.ts";
+import "./extension-picker.ts";
 import "./filter-bar.ts";
+import "./folder-picker.ts";
+import "./gallery-dialogs.ts";
+import "./gallery-topbar.ts";
+import "./gallery-viewer.ts";
+import "./grid.ts";
+import "./media-viewer.ts";
+import "./prompt-dialog.ts";
+import "./resolution-range.ts";
+import "./result-groups.ts";
+import "./selection-bar.ts";
+import "./size-range.ts";
+import "./subtitle-menu.ts";
+import "./text-editor.ts";
+import "./transfer-banner.ts";
 import "./gallery.ts";

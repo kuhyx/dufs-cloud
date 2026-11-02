@@ -6,7 +6,7 @@ import {
   type TransferProgress,
 } from "../lib/transfer.ts";
 import { h } from "./dom.ts";
-import { define, emit } from "./events.ts";
+import { define, emit } from "./element-kit.ts";
 
 export class TransferBanner extends HTMLElement {
   #progress: TransferProgress | null = null;

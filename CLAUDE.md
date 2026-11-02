@@ -1,6 +1,6 @@
 ## Commands
 
-Four suites: `web/` (React, vitest), `app/` (Flutter), `firebase_backup/` (Python), `scripts/` (bats).
+Four suites: `web/` (Astro, vitest), `app/` (Flutter), `firebase_backup/` (Python), `scripts/` (bats).
 
 - run: `pnpm --dir web dev`
 - test: `scripts/test_changed.sh --all`

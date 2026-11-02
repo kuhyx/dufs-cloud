@@ -2,7 +2,7 @@
 
 A self-hosted "Google Drive alternative" built on
 [**dufs**](https://github.com/sigoden/dufs) (a single-binary WebDAV/HTTP file
-server): a React web gallery, a Flutter mobile client, and the setup scripts
+server): an Astro web gallery, a Flutter mobile client, and the setup scripts
 that stand the whole thing up behind your own domain.
 
 One folder on your PC is the single source of truth; dufs serves it, and both
@@ -12,7 +12,7 @@ apps talk to the same WebDAV endpoint.
 
 | Path       | What it is                                                                 |
 | ---------- | -------------------------------------------------------------------------- |
-| `web/`     | React 19 + Vite + TypeScript SPA — the browser UI (served by dufs itself)  |
+| `web/`     | Astro + TypeScript static site — the browser UI (served by dufs itself)  |
 | `app/`     | Flutter Android client (`com.kuhy.dufs_client`) over WebDAV + Basic auth   |
 | `scripts/` | Bash installers/daemons: set up dufs, deploy the gallery, sync media, etc. |
 | `firebase_backup/` | Python: daily backup of the kuhy-syncs Firebase RTDB into the cloud, plus restore |
@@ -29,7 +29,7 @@ the server's own auth.
 ```bash
 cd web
 pnpm install
-pnpm run lint       # tsc + eslint (strict + stylistic type-checked, react-hooks)
+pnpm run lint       # tsc + eslint (strict + stylistic type-checked)
 pnpm run coverage   # vitest — thresholds enforce 100%
 pnpm run build
 ```

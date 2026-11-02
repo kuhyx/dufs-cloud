@@ -1,6 +1,6 @@
 // <confirm-dialog> props: message, confirmLabel. Events: confirm, cancel.
 import { h } from "./dom.ts";
-import { define, emit } from "./events.ts";
+import { define, emit } from "./element-kit.ts";
 import { modal, showModal } from "./modal.ts";
 
 export class ConfirmDialog extends HTMLElement {

@@ -4,7 +4,8 @@ import type { DirEntry } from "../api/types.ts";
 import type { GalleryDialogs as DialogStore } from "../stores/gallery-dialogs.ts";
 import type { Mutations } from "../stores/mutations.ts";
 import { ConfirmDialog } from "./confirm-dialog.ts";
-import { define, emit } from "./events.ts";
+import "./folder-picker.ts";
+import { define, emit } from "./element-kit.ts";
 import { TextEditor } from "./text-editor.ts";
 
 type SlotName = "edit" | "delete" | "deleteSelected" | "move";

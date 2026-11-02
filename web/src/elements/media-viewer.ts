@@ -3,7 +3,7 @@
 import type { DirEntry, SubtitleManifest } from "../api/types.ts";
 import { isAudio, isImage, isPdf, isVideo } from "../lib/paths.ts";
 import { h } from "./dom.ts";
-import { emit } from "./emit.ts";
+import { emit } from "./element-kit.ts";
 import { createControls, type Controls } from "./viewer-controls.ts";
 
 const NO_SIBLINGS: readonly DirEntry[] = [];

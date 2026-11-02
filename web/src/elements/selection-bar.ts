@@ -1,6 +1,6 @@
 // <selection-bar> props: count. Events: move, download, delete, clear.
 import { h } from "./dom.ts";
-import { define, emit } from "./events.ts";
+import { define, emit } from "./element-kit.ts";
 
 export class SelectionBar extends HTMLElement {
   #count = 0;

@@ -5,7 +5,7 @@ import {
   createSubtitleManifest,
   type SubtitleManifestStore,
 } from "../stores/subtitle-manifest.ts";
-import { emit } from "./emit.ts";
+import { emit } from "./element-kit.ts";
 import { MediaViewer } from "./media-viewer.ts";
 
 export class GalleryViewer extends HTMLElement {

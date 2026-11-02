@@ -1,7 +1,7 @@
 // <subtitle-menu> props: tracks, active, offsetMs. Events: select (detail: track|null), offset-change (detail: ms).
 import { subtitleLabel, type SubtitleTrack } from "../lib/subtitles.ts";
 import { h } from "./dom.ts";
-import { emit } from "./emit.ts";
+import { emit } from "./element-kit.ts";
 import { rebuildKeepFocus } from "./rebuild-keep-focus.ts";
 
 /** How far one nudge shifts subtitle timing, in milliseconds. */

@@ -33,7 +33,6 @@ export class CloudGallery extends HTMLElement {
   #selBar: Kid | null = null;
   #newFolder: Kid | null = null;
   #rename: { entry: DirEntry; el: Kid } | null = null;
-  #dialogsSeen: unknown = null;
   #wiring: AbortController | null = null;
 
   constructor() {
@@ -64,7 +63,6 @@ export class CloudGallery extends HTMLElement {
     this.#state?.dispose();
     this.#state = null;
     this.#wiring?.abort();
-    this.#dialogsSeen = null;
     this.#banner = this.#selBar = this.#newFolder = null;
     this.#rename = null;
     this.#root.remove();
@@ -124,7 +122,7 @@ export class CloudGallery extends HTMLElement {
     setProps(this.#grid, { client: st.client, dragEnabled: true });
     setProps(this.#groups, { client: st.client });
     setProps(this.#viewer, { client: st.client });
-    setProps(this.#dialogs, { client: st.client, mutations: st.mutations, reload: st.reload });
+    setProps(this.#dialogs, { client: st.client, mutations: st.mutations, dialogs: st.dialogs });
   }
 
   #mountBanner(st: GalleryState, s: GallerySnapshot): Kid | null {
@@ -197,10 +195,6 @@ export class CloudGallery extends HTMLElement {
     setProps(this.#grid, { entries: s.view.visible, selected: s.selection.selected });
     setProps(this.#groups, { groups: s.view.groups, collapsed: s.collapsed, selected: s.selection.selected });
     setProps(this.#viewer, { meta: s.meta, media: s.view.media, siblings: s.view.displayed, index: s.viewerIndex });
-    if (this.#dialogsSeen !== s.dialogs) {
-      this.#dialogsSeen = s.dialogs;
-      this.#dialogs.dialogs = { ...s.dialogs, ...st.dialogs };
-    }
     setProps(this.#dialogs, { path: s.path, selectedCount: s.selection.selectedEntries.length });
     this.#main.className = `content${s.osDragOver ? " content-drop" : ""}`;
     if (s.listing.loading) this.#main.setAttribute("aria-busy", "true");

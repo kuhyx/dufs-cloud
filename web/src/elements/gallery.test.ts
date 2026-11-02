@@ -50,7 +50,7 @@ describe("cloud-gallery listing", () => {
     await userEvent.click(screen.getByLabelText("Select pic.jpg"));
     const bar = g.kid("selection-bar");
     expect(bar?.count).toBe(1);
-    const dialogs = () => g.kid("gallery-dialogs")?.dialogs as Record<string, unknown>;
+    const dialogs = () => (g.kid("gallery-dialogs")?.dialogs as { getState: () => Record<string, unknown> }).getState();
     fire(bar as HTMLElement, "move");
     expect(dialogs().showMove).toBe(true);
     fire(bar as HTMLElement, "delete");
@@ -80,7 +80,7 @@ describe("cloud-gallery listing", () => {
 
   it("routes tile actions to the dialogs and prompts", async () => {
     const g = await mountGallery();
-    const dialogs = () => g.kid("gallery-dialogs")?.dialogs as Record<string, unknown>;
+    const dialogs = () => (g.kid("gallery-dialogs")?.dialogs as { getState: () => Record<string, unknown> }).getState();
     await userEvent.click(within(g.main).getByText("notes.txt"));
     expect((dialogs().editEntry as DirEntry).name).toBe("notes.txt");
     await userEvent.click(screen.getByLabelText("Delete notes.txt"));

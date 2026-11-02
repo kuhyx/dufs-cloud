@@ -2,7 +2,7 @@
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
 import { h } from "./dom.ts";
-import { define, emit } from "./events.ts";
+import { define, emit } from "./element-kit.ts";
 import { modal, showModal } from "./modal.ts";
 
 type Status = "loading" | "ready" | "saving" | "error";

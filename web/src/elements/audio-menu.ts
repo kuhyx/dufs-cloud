@@ -2,7 +2,7 @@
 import type { DashStream } from "../lib/dash-manifest.ts";
 import { languageName } from "../lib/subtitles.ts";
 import { h } from "./dom.ts";
-import { emit } from "./emit.ts";
+import { emit } from "./element-kit.ts";
 import { rebuildKeepFocus } from "./rebuild-keep-focus.ts";
 
 export function audioLabel(stream: DashStream, index: number): string {
