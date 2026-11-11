@@ -34,6 +34,18 @@ class TransferBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Direction glyph replaces the "Uploading"/"Downloading" verb.
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: Icon(
+                progress.kind == TransferKind.upload
+                    ? Icons.upload
+                    : Icons.download,
+                semanticLabel: progress.kind == TransferKind.upload
+                    ? 'Uploading'
+                    : 'Downloading',
+              ),
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,7 +78,11 @@ class TransferBanner extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            TextButton(onPressed: onCancel, child: const Text('Cancel')),
+            IconButton(
+              key: const Key('transfer-cancel'),
+              onPressed: onCancel,
+              icon: const Icon(Icons.close, semanticLabel: 'Cancel'),
+            ),
           ],
         ),
       ),

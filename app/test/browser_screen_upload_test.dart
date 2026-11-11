@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dufs_client/models/upload_source.dart';
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +12,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +59,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(puts, ['/up.png', '/note.txt']);
     expect(bodies['/up.png'], [1, 2, 3]);
-    expect(find.text('Uploaded 2 files'), findsOneWidget);
+    expect(spoken('Uploaded 2'), findsOneWidget);
 
     // Cancelled pick returns nothing and uploads nothing further.
     files = [];
@@ -96,7 +98,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    expect(find.text('1 of 3 failed: bad.bin'), findsOneWidget);
+    expect(find.text('1/3 · bad.bin'), findsOneWidget);
+    expect(cueOf(CueKind.error), findsOneWidget);
   });
 
   testWidgets('a single upload reports in the singular', (tester) async {
@@ -113,7 +116,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    expect(find.text('Uploaded 1 file'), findsOneWidget);
+    expect(spoken('Uploaded 1'), findsOneWidget);
   });
 
   // Cancels a two-file batch during the first (slow) file. With [deleteFail]
@@ -162,13 +165,13 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 150));
     });
     await tester.pump();
-    expect(find.text('Uploading 1/2 · slow.bin'), findsOneWidget);
+    expect(find.text('1/2 · slow.bin'), findsOneWidget);
     await tester.runAsync(() async {
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(spoken('Cancel'));
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    expect(find.text('Cancelled after 0 of 2'), findsOneWidget);
+    expect(spoken('Cancelled after 0 of 2'), findsOneWidget);
     expect(methods, contains('DELETE /slow.bin'));
     expect(methods, isNot(contains('PUT /never.bin')));
     await tester.pump(const Duration(seconds: 5));
@@ -198,6 +201,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    expect(find.text('1 of 1 failed: u.png'), findsOneWidget);
+    expect(find.text('1/1 · u.png'), findsOneWidget);
+    expect(cueOf(CueKind.error), findsOneWidget);
   });
 }

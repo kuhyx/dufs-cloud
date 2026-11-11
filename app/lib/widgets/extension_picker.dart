@@ -40,7 +40,12 @@ class ExtensionPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (available.isEmpty) {
-      return const Text('No extensions in view.');
+      // Nothing to pick: a dimmed glyph instead of a sentence.
+      return Icon(
+        Icons.block,
+        color: Theme.of(context).colorScheme.outline,
+        semanticLabel: 'No extensions in view',
+      );
     }
     final scheme = Theme.of(context).colorScheme;
     return Wrap(

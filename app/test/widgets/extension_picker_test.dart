@@ -2,6 +2,8 @@ import 'package:dufs_client/widgets/extension_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/finders.dart';
+
 void main() {
   testWidgets('cycles off → include → exclude → off', (tester) async {
     List<String>? inc;
@@ -47,7 +49,7 @@ void main() {
         ),
       ),
     ));
-    expect(find.text('No extensions in view.'), findsOneWidget);
+    expect(spoken('No extensions in view'), findsOneWidget);
   });
 }
 

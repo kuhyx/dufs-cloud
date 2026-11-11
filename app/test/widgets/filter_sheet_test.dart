@@ -6,6 +6,9 @@ import 'package:dufs_client/widgets/range_bounds_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/finders.dart';
+
+
 void main() {
   final sizes = [for (var i = 0; i <= 100; i++) i * 1000000];
   final durations = [for (var i = 0; i <= 100; i++) i * 1000];
@@ -67,7 +70,7 @@ void main() {
     sortDd.onChanged?.call(SortKey.size);
     expect(s?.key, SortKey.size);
     sortDd.onChanged?.call(null);
-    await tester.tap(find.byTooltip('Ascending'));
+    await tester.tap(spoken('Ascending'));
     expect(s?.dir, SortDir.desc);
   });
 
@@ -99,7 +102,7 @@ void main() {
         ?.call(const RangeValues(0.3, 0.6));
     expect(f?.minDurationMs, isNotNull);
     // Descending render covers the down-arrow branch.
-    expect(find.byTooltip('Descending'), findsOneWidget);
+    expect(spoken('Descending'), findsOneWidget);
   });
 
   testWidgets('shows a resolution slider for images and sorts by it',
@@ -142,7 +145,7 @@ void main() {
         sort: defaultSort,
         onFilter: (v) => f = v,
         onSort: (_) {});
-    await tester.enterText(find.widgetWithText(TextField, 'min MB'), '500');
+    await tester.enterText(fieldSpoken('min MB'), '500');
     await tester.pump();
     expect(f?.minSize, 500 * bytesPerMb);
   });
@@ -156,7 +159,7 @@ void main() {
         durationValues: durations,
         onFilter: (v) => f = v,
         onSort: (_) {});
-    await tester.enterText(find.widgetWithText(TextField, 'max s'), '90');
+    await tester.enterText(fieldSpoken('max s'), '90');
     await tester.pump();
     expect(f?.maxDurationMs, 90000);
   });
@@ -169,7 +172,7 @@ void main() {
         resolutionValues: [for (var i = 0; i <= 100; i++) i * 100000],
         onFilter: (v) => f = v,
         onSort: (_) {});
-    await tester.enterText(find.widgetWithText(TextField, 'min MP'), '2');
+    await tester.enterText(fieldSpoken('min MP'), '2');
     await tester.pump();
     expect(f?.minPixels, 2 * pixelsPerMp);
   });
@@ -181,7 +184,7 @@ void main() {
         sort: defaultSort,
         onFilter: (v) => f = v,
         onSort: (_) {});
-    await tester.enterText(find.widgetWithText(TextField, 'min MB'), '');
+    await tester.enterText(fieldSpoken('min MB'), '');
     await tester.pump();
     expect(f?.minSize, isNull);
   });
@@ -192,7 +195,7 @@ void main() {
         sort: defaultSort,
         onFilter: (_) {},
         onSort: (_) {});
-    expect(find.widgetWithText(TextButton, 'Clear'), findsNothing);
+    expect(spoken('Clear'), findsNothing);
   });
 
   testWidgets('Clear appears once a filter is active and resets everything',
@@ -203,7 +206,7 @@ void main() {
         sort: defaultSort,
         onFilter: (v) => f = v,
         onSort: (_) {});
-    final clear = find.widgetWithText(TextButton, 'Clear');
+    final clear = spoken('Clear');
     expect(clear, findsOneWidget);
     await tester.ensureVisible(clear);
     await tester.pumpAndSettle();

@@ -108,3 +108,9 @@ abstract final class AppViewerColors {
   /// `muted-on-dark`, for de-emphasized chrome (error text, disabled icons).
   static const Color muted = AppPalette.mutedOnDark;
 }
+
+/// `MaterialApp.builder` that never paints tooltips. Framework widgets
+/// (BackButton, PopupMenuButton) add worded tooltips on long-press; the
+/// textgate rule allows no visible chrome words, while semantics keep them.
+Widget hideTooltips(BuildContext context, Widget? child) =>
+    TooltipVisibility(visible: false, child: child ?? const SizedBox.shrink());

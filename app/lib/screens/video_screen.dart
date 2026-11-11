@@ -4,6 +4,7 @@ import 'package:dufs_client/services/app_player.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/ui/theme.dart';
 import 'package:dufs_client/util/subtitle_track.dart';
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 
 /// Full-screen video player streaming over authenticated HTTP (with seeking
@@ -126,14 +127,14 @@ class _VideoScreenState extends State<VideoScreen> {
     return PopupMenuButton<String>(
       icon: Icon(
         _selected == null ? Icons.subtitles_off_outlined : Icons.subtitles,
+        semanticLabel: 'Subtitles',
       ),
-      tooltip: 'Subtitles',
       onSelected: (id) => unawaited(_select(_trackById(id))),
       itemBuilder: (context) => [
         CheckedPopupMenuItem<String>(
           value: _offValue,
           checked: _selected == null,
-          child: const Text('Off'),
+          child: const Icon(Icons.subtitles_off, semanticLabel: 'Off'),
         ),
         for (final track in _tracks)
           CheckedPopupMenuItem<String>(
@@ -161,10 +162,7 @@ class _VideoScreenState extends State<VideoScreen> {
       ),
       body: Center(
         child: _error != null
-            ? Text(
-                'Could not play: $_error',
-                style: const TextStyle(color: AppViewerColors.muted),
-              )
+            ? ErrorState(spoken: 'Could not play: $_error')
             : player == null
                 ? const CircularProgressIndicator()
                 : player.buildSurface(),

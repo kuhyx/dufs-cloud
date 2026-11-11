@@ -45,7 +45,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(0), 'https://h');
     await tester.enterText(find.byType(TextField).at(1), 'bob');
     await tester.enterText(find.byType(TextField).at(2), 'pw');
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.byKey(const Key('save')));
     await tester.pumpAndSettle();
 
     expect(popped, isTrue);
@@ -82,7 +82,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final tile = find.widgetWithText(SwitchListTile, 'Completion sound');
+    final tile = find.byType(SwitchListTile);
     expect(tile, findsOneWidget);
     expect(tester.widget<SwitchListTile>(tile).value, isTrue);
 
@@ -104,7 +104,7 @@ void main() {
       MaterialApp(home: SettingsScreen(settings: settings)),
     );
     await tester.pumpAndSettle();
-    final tile = find.widgetWithText(SwitchListTile, 'Completion sound');
+    final tile = find.byType(SwitchListTile);
     expect(tester.widget<SwitchListTile>(tile).value, isFalse);
   });
 }

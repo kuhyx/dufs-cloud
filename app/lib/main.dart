@@ -25,6 +25,7 @@ class DufsApp extends StatelessWidget {
     return MaterialApp(
       title: 'Cloud',
       debugShowCheckedModeBanner: false,
+      builder: hideTooltips,
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       home: BrowserScreen(settings: settings),

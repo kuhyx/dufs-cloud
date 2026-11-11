@@ -8,6 +8,7 @@ import 'package:dufs_client/services/device_picker.dart';
 import 'package:dufs_client/services/download_zip.dart';
 import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -60,19 +61,24 @@ mixin BrowserTransfers on BrowserLoading {
   Future<void> publish(File staged) async {
     final downloads = widget.publicDownloads ?? PublicDownloads();
     final saved = await downloads.save(staged.path, p.basename(staged.path));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Saved to ${saved.location}'),
-        duration: const Duration(seconds: 8),
-        action: SnackBarAction(
-          label: 'Open',
-          onPressed: () async {
-            if (!await downloads.open(saved)) {
-              snack('No app can open ${saved.name}');
-            }
-          },
-        ),
+    snack(
+      CueKind.success,
+      'Saved to ${saved.location}',
+      detail: saved.location,
+      duration: const Duration(seconds: 8),
+      action: IconButton(
+        icon: const Icon(Icons.open_in_new, semanticLabel: 'Open'),
+        onPressed: () async {
+          // Dismiss like a SnackBarAction would, so a follow-up cue shows.
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          if (!await downloads.open(saved)) {
+            snack(
+              CueKind.error,
+              'No app can open ${saved.name}',
+              detail: saved.name,
+            );
+          }
+        },
       ),
     );
   }
@@ -108,10 +114,10 @@ mixin BrowserTransfers on BrowserLoading {
       await publish(staged);
     } on TransferCancelled {
       await discard(staged);
-      snack('Download cancelled');
+      snack(CueKind.cancelled, 'Download cancelled');
     } on Exception catch (e) {
       await discard(staged);
-      snack('Download failed: $e');
+      snack(CueKind.error, 'Download failed: $e', detail: entry.name);
     } finally {
       endTransfer();
     }
@@ -163,14 +169,21 @@ mixin BrowserTransfers on BrowserLoading {
         }
       }
       if (failed.isEmpty) unawaited(run.succeeded());
-      snack(
-        failed.isEmpty
-            ? 'Uploaded $done file${done == 1 ? '' : 's'}'
-            : '${failed.length} of ${files.length} failed: '
-                  '${failed.join(', ')}',
-      );
+      if (failed.isEmpty) {
+        snack(CueKind.success, 'Uploaded $done', detail: '$done');
+      } else {
+        snack(
+          CueKind.error,
+          '${failed.length} of ${files.length} failed',
+          detail: '${failed.length}/${files.length} · ${failed.join(', ')}',
+        );
+      }
     } on TransferCancelled {
-      snack('Cancelled after $done of ${files.length}');
+      snack(
+        CueKind.cancelled,
+        'Cancelled after $done of ${files.length}',
+        detail: '$done/${files.length}',
+      );
     } finally {
       // Whatever landed is on the server now, so the listing must reflect it.
       cloudIndex = null;
@@ -200,10 +213,10 @@ mixin BrowserTransfers on BrowserLoading {
       unawaited(run.succeeded());
       exitSelect();
     } on TransferCancelled {
-      snack('Zip cancelled');
+      snack(CueKind.cancelled, 'Zip cancelled');
     } on Exception catch (e) {
       await discard(staged);
-      snack('Zip failed: $e');
+      snack(CueKind.error, 'Zip failed: $e');
     } finally {
       endTransfer();
     }

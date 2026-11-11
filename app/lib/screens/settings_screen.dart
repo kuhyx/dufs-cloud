@@ -59,31 +59,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cloud settings')),
+      // The gear that opened this screen names it; no title.
+      appBar: AppBar(),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _url,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(labelText: 'Server URL'),
-            ),
+            _field(Icons.link, 'Server URL', _url, url: true),
             const SizedBox(height: 12),
-            TextField(
-              controller: _user,
-              decoration: const InputDecoration(labelText: 'Username'),
-            ),
+            _field(Icons.person, 'Username', _user),
             const SizedBox(height: 12),
-            TextField(
-              controller: _pass,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
+            _field(Icons.lock, 'Password', _pass, obscure: true),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Completion sound'),
+              title: const Align(
+                alignment: Alignment.centerLeft,
+                child: Icon(Icons.volume_up, semanticLabel: 'Completion sound'),
+              ),
               value: _cue,
               onChanged: (v) {
                 setState(() => _cue = v);
@@ -92,12 +85,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             FilledButton(
+              key: const Key('save'),
               onPressed: _saving ? null : _save,
-              child: const Text('Save'),
+              child: const Icon(Icons.check, semanticLabel: 'Save'),
             ),
           ],
         ),
       ),
     );
   }
+
+  /// A field named by its prefix glyph; [spoken] is the screen-reader label.
+  Widget _field(
+    IconData icon,
+    String spoken,
+    TextEditingController controller, {
+    bool url = false,
+    bool obscure = false,
+  }) => Semantics(
+    label: spoken,
+    child: TextField(
+      controller: controller,
+      keyboardType: url ? TextInputType.url : null,
+      obscureText: obscure,
+      decoration: InputDecoration(prefixIcon: Icon(icon)),
+    ),
+  );
 }

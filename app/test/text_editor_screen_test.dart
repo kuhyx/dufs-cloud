@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'support/finders.dart';
+
 DufsClient _client(MockClient mock) => DufsClient(
       baseUrl: 'https://host',
       username: 'u',
@@ -31,14 +33,14 @@ void main() {
     await tester.tap(find.byIcon(Icons.save));
     await tester.pumpAndSettle();
     expect(methods, contains('PUT'));
-    expect(find.text('Saved n.txt'), findsOneWidget);
+    expect(spoken('Saved n.txt'), findsOneWidget);
   });
 
   testWidgets('surfaces a load error', (tester) async {
     final client = _client(MockClient((_) async => http.Response('', 500)));
     await tester.pumpWidget(_app(client));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Could not open'), findsOneWidget);
+    expect(spokenContaining('Could not open'), findsOneWidget);
     // Save is disabled when the file failed to load.
     final save =
         tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.save));
@@ -54,6 +56,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.save));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Save failed'), findsOneWidget);
+    expect(spokenContaining('Save failed'), findsOneWidget);
   });
 }

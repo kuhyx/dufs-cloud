@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import '../support/finders.dart';
+
 String _xml(String self, List<String> dirs) {
   final base = self == '/' ? '' : self;
   final sb = StringBuffer('<D:multistatus xmlns:D="DAV:">');
@@ -66,9 +68,9 @@ Future<ValueNotifier<String?>> _open(
 void main() {
   testWidgets('lists folders and picks the current directory', (tester) async {
     final result = await _open(tester, _client({'/': ['Media', 'Docs']}), '/');
-    expect(find.text('..'), findsNothing); // no up-row at the root
+    expect(spoken('Up'), findsNothing); // no up-row at the root
     expect(find.text('Media'), findsOneWidget);
-    await tester.tap(find.text('Move here'));
+    await tester.tap(find.byKey(const Key('move-here')));
     await tester.pumpAndSettle();
     expect(result.value, '/');
   });
@@ -85,18 +87,18 @@ void main() {
     await tester.tap(find.text('2026'));
     await tester.pumpAndSettle();
     expect(find.text('07'), findsOneWidget);
-    await tester.tap(find.text('..'));
+    await tester.tap(spoken('Up'));
     await tester.pumpAndSettle();
     expect(find.text('2026'), findsOneWidget);
-    await tester.tap(find.text('Move here'));
+    await tester.tap(find.byKey(const Key('move-here')));
     await tester.pumpAndSettle();
     expect(result.value, '/Media');
   });
 
   testWidgets('surfaces a load error', (tester) async {
     final result = await _open(tester, _client(const {}, fail: {'/'}), '/');
-    expect(find.textContaining('Could not load'), findsOneWidget);
-    await tester.tap(find.text('Move here'));
+    expect(spokenContaining('Could not load'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('move-here')));
     await tester.pumpAndSettle();
     expect(result.value, '/');
   });

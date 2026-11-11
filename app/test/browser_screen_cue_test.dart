@@ -11,6 +11,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 /// A cue whose clock jumps 3 s per read, so every run looks long.
 CompletionCue _longRunCue(List<String> played) {
@@ -61,7 +62,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pumpAndSettle();
-    expect(find.text('Uploaded 1 file'), findsOneWidget);
+    expect(spoken('Uploaded 1'), findsOneWidget);
     expect(played, ['cue']);
   });
 
@@ -86,7 +87,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pumpAndSettle();
-    expect(find.textContaining('failed'), findsOneWidget);
+    expect(spokenContaining('failed'), findsOneWidget);
     expect(played, isEmpty);
   });
 
@@ -157,11 +158,11 @@ void main() {
     await tester.longPress(find.text('data.bin'));
     await tester.pump();
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Download zip'));
+      await tester.tap(spoken('Download zip'));
       await Future<void>.delayed(const Duration(milliseconds: 400));
     });
     await tester.pump();
-    expect(find.textContaining('Saved to'), findsOneWidget);
+    expect(spokenContaining('Saved to'), findsOneWidget);
     expect(played, ['cue']);
     await tester.pump(const Duration(seconds: 9));
   });
@@ -182,11 +183,11 @@ void main() {
     await tester.longPress(find.text('data.bin'));
     await tester.pump();
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Download zip'));
+      await tester.tap(spoken('Download zip'));
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    expect(find.textContaining('Zip failed'), findsOneWidget);
+    expect(spokenContaining('Zip failed'), findsOneWidget);
     expect(played, isEmpty);
     await tester.pump(const Duration(seconds: 5));
   });

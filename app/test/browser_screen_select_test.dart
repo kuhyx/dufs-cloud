@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -27,29 +28,29 @@ void main() {
 
     await tester.longPress(find.text('data.bin'));
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
-    expect(find.byTooltip('Move'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
+    expect(spoken('Move'), findsOneWidget);
 
     // A tile's checkbox toggles it, as does tapping the tile body.
     await tester.tap(find.byType(Checkbox).first);
     await tester.pump();
-    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '2'), findsOneWidget);
     await tester.tap(find.byType(Checkbox).first);
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
 
     // Tapping another tile adds it; tapping it again removes it.
     await tester.tap(find.text('doc.txt'));
     await tester.pump();
-    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '2'), findsOneWidget);
     await tester.tap(find.text('doc.txt'));
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
 
     // Close returns to the normal browse bar (the search field reappears).
-    await tester.tap(find.byTooltip('Cancel selection'));
+    await tester.tap(spoken('Cancel selection'));
     await tester.pumpAndSettle();
-    expect(find.text('1 selected'), findsNothing);
+    expect(find.widgetWithText(AppBar, '1'), findsNothing);
     expect(find.byType(TextField), findsOneWidget);
   });
 
@@ -64,23 +65,23 @@ void main() {
 
     await tester.longPress(find.text('clip.mp4'));
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Select range'));
+    await tester.tap(spoken('Select range'));
     await tester.pump();
-    expect(find.byTooltip('Range select armed — tap an item'), findsOneWidget);
+    expect(spoken('Range select armed — tap an item'), findsOneWidget);
 
     await tester.tap(find.text('pic.jpg'));
     await tester.pump();
     // clip.mp4..pic.jpg inclusive = clip.mp4, data.bin, doc.txt, pic.jpg.
-    expect(find.text('4 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '4'), findsOneWidget);
     // Armed state cleared after the range tap.
-    expect(find.byTooltip('Select range'), findsOneWidget);
+    expect(spoken('Select range'), findsOneWidget);
 
     // The anchor moved to pic.jpg; a plain tap elsewhere just toggles it.
     await tester.tap(find.text('doc.txt'));
     await tester.pump();
-    expect(find.text('3 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '3'), findsOneWidget);
   });
 
   testWidgets('range select falls back to a plain toggle when the anchor '
@@ -93,24 +94,24 @@ void main() {
 
     await tester.longPress(find.text('clip.mp4'));
     await tester.pump();
-    await tester.tap(find.byTooltip('Select range'));
+    await tester.tap(spoken('Select range'));
     await tester.pump();
 
     await tester.fling(find.text('doc.txt'), const Offset(0, 300), 1000);
     await tester.pumpAndSettle();
     expect(find.text('clip.mp4'), findsNothing);
     // Still armed, and clip.mp4 is still counted even though it is gone.
-    expect(find.byTooltip('Range select armed — tap an item'), findsOneWidget);
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(spoken('Range select armed — tap an item'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
 
     // No resolvable anchor: the tap degrades to a plain toggle and disarms.
     await tester.tap(find.text('doc.txt'));
     await tester.pump();
-    expect(find.text('2 selected'), findsOneWidget);
-    expect(find.byTooltip('Select range'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '2'), findsOneWidget);
+    expect(spoken('Select range'), findsOneWidget);
 
     await tester.tap(find.text('doc.txt'));
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
   });
 }

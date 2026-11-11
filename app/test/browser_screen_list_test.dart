@@ -7,6 +7,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,7 @@ void main() {
     final settings = await testSettings(configured: false);
     await tester.pumpWidget(browserApp(settings, browserMock()));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Tap the gear'), findsOneWidget);
+    expect(spokenContaining('Tap the gear'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsNothing);
   });
 
@@ -47,7 +48,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sub'));
     await tester.pumpAndSettle();
-    expect(find.text('This folder is empty.'), findsOneWidget);
+    expect(spoken('This folder is empty'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
     await tester.tap(find.byIcon(Icons.arrow_upward));
     await tester.pumpAndSettle();
@@ -58,7 +59,7 @@ void main() {
     final settings = await testSettings(configured: true);
     await tester.pumpWidget(browserApp(settings, browserMock(listFail: true)));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Exception'), findsOneWidget);
+    expect(spokenContaining('Exception'), findsOneWidget);
   });
 
   testWidgets('opening settings and saving re-bootstraps', (tester) async {
@@ -68,7 +69,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings));
     await tester.pumpAndSettle();
     expect(find.byType(SettingsScreen), findsOneWidget);
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.byKey(const Key('save')));
     await tester.pumpAndSettle();
     // Back on the browser after re-bootstrap.
     expect(find.text('pic.jpg'), findsOneWidget);
@@ -82,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.settings));
     await tester.pumpAndSettle();
-    await tester.pageBack();
+    await tester.tap(find.backButton());
     await tester.pumpAndSettle();
     expect(find.text('pic.jpg'), findsOneWidget);
   });

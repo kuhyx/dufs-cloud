@@ -1,7 +1,9 @@
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/screens/browser/browser_mutations.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:dufs_client/widgets/folder_picker.dart';
+import 'package:dufs_client/widgets/icon_dialog.dart';
 import 'package:flutter/material.dart';
 
 /// Bulk changes: move or delete the selection, or drop entries on a folder.
@@ -37,7 +39,7 @@ mixin BrowserBatch on BrowserMutations {
     if (dest == null || dest == currentPath) return;
     setState(() => busy = true);
     final failed = await batch((e) => client.move(e.path, dest));
-    if (failed > 0) snack('$failed item(s) could not be moved');
+    failedCue(failed, 'moved');
     cloudIndex = null;
     exitSelect();
     await load(currentPath);
@@ -49,27 +51,16 @@ mixin BrowserBatch on BrowserMutations {
     final client = dufsClient;
     if (client == null || selected.isEmpty) return;
     final n = selected.length;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete $n item${n == 1 ? '' : 's'}?'),
-        content: const Text('This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final ok = await confirmDestructive(
+      context,
+      icon: Icons.delete,
+      subject: '$n',
+      spoken: 'Delete $n items',
     );
-    if (ok != true) return;
+    if (!ok) return;
     setState(() => busy = true);
     final failed = await batch((e) => client.delete(e.path));
-    if (failed > 0) snack('$failed item(s) could not be deleted');
+    failedCue(failed, 'deleted');
     cloudIndex = null;
     exitSelect();
     await load(currentPath);
@@ -93,10 +84,20 @@ mixin BrowserBatch on BrowserMutations {
         failed++;
       }
     }
-    if (failed > 0) snack('$failed item(s) could not be moved');
+    failedCue(failed, 'moved');
     cloudIndex = null;
     exitSelect();
     await load(currentPath);
     if (mounted) setState(() => busy = false);
+  }
+
+  /// An error cue with the [failed] count, when any item failed to be [verb].
+  void failedCue(int failed, String verb) {
+    if (failed == 0) return;
+    snack(
+      CueKind.error,
+      '$failed item(s) could not be $verb',
+      detail: '$failed',
+    );
   }
 }

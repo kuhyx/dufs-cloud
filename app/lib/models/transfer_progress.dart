@@ -56,11 +56,9 @@ class TransferProgress {
     size: size,
   );
 
-  /// First banner line: `Uploading 3/7 · photo.jpg`.
-  String get title {
-    final verb = kind == TransferKind.upload ? 'Uploading' : 'Downloading';
-    return '$verb $index/$total · $name';
-  }
+  /// First banner line: `3/7 · photo.jpg` (the banner shows the direction
+  /// as a glyph, so no verb).
+  String get title => '$index/$total · $name';
 
   /// Second banner line: `42 % · 12.3 MB / 29.1 MB` (just the byte count
   /// while the size is unknown).

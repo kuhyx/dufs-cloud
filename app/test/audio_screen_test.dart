@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_app_player.dart';
+import 'support/finders.dart';
 
 DufsClient _client() =>
     DufsClient(baseUrl: 'https://host', username: 'u', password: 'p');
@@ -113,7 +114,7 @@ void main() {
     final player = FakeAppPlayer()..failOpen = true;
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Could not play'), findsOneWidget);
+    expect(spokenContaining('Could not play'), findsOneWidget);
     expect(player.disposed, isTrue);
   });
 

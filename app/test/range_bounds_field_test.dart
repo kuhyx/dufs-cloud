@@ -2,6 +2,9 @@ import 'package:dufs_client/widgets/range_bounds_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/finders.dart';
+
+
 void main() {
   group('formatBound', () {
     test('renders null as an empty field', () {
@@ -74,7 +77,7 @@ void main() {
           ),
         ),
       );
-      await tester.enterText(find.widgetWithText(TextField, field), text);
+      await tester.enterText(fieldSpoken(field), text);
       await tester.pump();
       return edits;
     }
@@ -82,8 +85,8 @@ void main() {
     testWidgets('shows a min and a max field labelled with the unit',
         (tester) async {
       await pumpAndEdit(tester, field: 'min MB', text: '');
-      expect(find.widgetWithText(TextField, 'min MB'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'max MB'), findsOneWidget);
+      expect(fieldSpoken('min MB'), findsOneWidget);
+      expect(fieldSpoken('max MB'), findsOneWidget);
     });
 
     testWidgets('typing a minimum reports it in bytes', (tester) async {
@@ -137,7 +140,7 @@ void main() {
             ),
           );
       await tester.pumpWidget(build());
-      final field = find.widgetWithText(TextField, 'min MB');
+      final field = fieldSpoken('min MB');
 
       for (final key in ['1', '.', '5']) {
         final current = tester.widget<TextField>(field).controller!.text;

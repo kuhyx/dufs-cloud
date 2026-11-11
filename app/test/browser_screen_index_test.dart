@@ -1,3 +1,4 @@
+import 'package:dufs_client/widgets/indexing_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,7 +40,7 @@ void main() {
       await tester.enterText(find.byType(TextField), 'pic');
       // The root listing (1 folder, 5 entries) lands; /Sub is still pending.
       await tester.pump(const Duration(milliseconds: 250));
-      expect(find.text('Indexing the cloud…'), findsOneWidget);
+      expect(find.byType(IndexingView), findsOneWidget);
       expect(find.byKey(const Key('index-folders')), findsOneWidget);
       expect(
         tester.widget<Text>(find.byKey(const Key('index-folders'))).data,
@@ -53,7 +54,7 @@ void main() {
       // Cancel keeps what was found and ends the spinner.
       await tester.tap(find.bySemanticsLabel('Cancel indexing'));
       await tester.pumpAndSettle();
-      expect(find.text('Indexing the cloud…'), findsNothing);
+      expect(find.byType(IndexingView), findsNothing);
       expect(find.text('pic.jpg'), findsOneWidget);
       expect(find.bySemanticsLabel('Partial index'), findsOneWidget);
     },
@@ -94,7 +95,7 @@ void main() {
 
     await tester.longPress(find.text('data.bin'));
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
     // The framework's own long-press feedback (vibrate, no type) may also fire;
     // ours is the selection click, exactly once.
     expect(

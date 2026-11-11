@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -7,6 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +33,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await gesture.moveTo(tester.getCenter(to));
     await tester.pump();
-    expect(find.text(expectFeedback), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('drag-count'))).data,
+      expectFeedback,
+    );
     await gesture.up();
     await tester.pumpAndSettle();
   }
@@ -57,19 +62,19 @@ void main() {
     // Long-press enters select mode; the next long-press starts a drag.
     await tester.longPress(find.text('clip.mp4'));
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
 
     await dragOnto(
       tester,
       find.text('clip.mp4'),
       find.text('Sub'),
-      expectFeedback: 'Move 1 item',
+      expectFeedback: '1',
     );
     expect(methods.where((m) => m == 'MOVE').length, 1);
     // WebDAV's Destination is the full target URL: folder + kept name.
     expect(destination, endsWith('/Sub/clip.mp4'));
     // The move exits select mode and reloads the folder.
-    expect(find.text('1 selected'), findsNothing);
+    expect(find.widgetWithText(AppBar, '1'), findsNothing);
   });
 
   testWidgets('dragging two selected items moves both', (tester) async {
@@ -87,13 +92,13 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('doc.txt'));
     await tester.pump();
-    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '2'), findsOneWidget);
 
     await dragOnto(
       tester,
       find.text('clip.mp4'),
       find.text('Sub'),
-      expectFeedback: 'Move 2 items',
+      expectFeedback: '2',
     );
     expect(methods.where((m) => m == 'MOVE').length, 2);
   });
@@ -121,7 +126,7 @@ void main() {
       tester,
       find.text('data.bin'),
       find.text('Sub'),
-      expectFeedback: 'Move 1 item',
+      expectFeedback: '1',
     );
     expect(destinations, ['/data.bin']);
   });
@@ -143,12 +148,12 @@ void main() {
       tester,
       find.text('Sub'),
       find.text('Sub'),
-      expectFeedback: 'Move 1 item',
+      expectFeedback: '1',
     );
     // Dropping a folder on itself would orphan its subtree: no MOVE at all,
     // and the selection is left untouched.
     expect(methods.where((m) => m == 'MOVE'), isEmpty);
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
   });
 
   testWidgets('a failed drag-move is reported in a snackbar', (tester) async {
@@ -162,8 +167,8 @@ void main() {
       tester,
       find.text('clip.mp4'),
       find.text('Sub'),
-      expectFeedback: 'Move 1 item',
+      expectFeedback: '1',
     );
-    expect(find.text('1 item(s) could not be moved'), findsOneWidget);
+    expect(spoken('1 item(s) could not be moved'), findsOneWidget);
   });
 }

@@ -11,11 +11,11 @@ void main() {
     size: 29 * 1024 * 1024,
   );
 
-  test('title names the direction, position and file', () {
-    expect(upload.title, 'Uploading 3/7 · photo.jpg');
+  test('title names the position and file', () {
+    expect(upload.title, '3/7 · photo.jpg');
     expect(
       upload.withDone(0).title,
-      'Uploading 3/7 · photo.jpg',
+      '3/7 · photo.jpg',
     );
     const download = TransferProgress(
       kind: TransferKind.download,
@@ -25,7 +25,7 @@ void main() {
       done: 0,
       size: 10,
     );
-    expect(download.title, 'Downloading 1/1 · big.bin');
+    expect(download.title, '1/1 · big.bin');
   });
 
   test('detail shows percent and bytes, clamped to 100 %', () {

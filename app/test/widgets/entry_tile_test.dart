@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import '../support/finders.dart';
+
 DufsClient _client() => DufsClient(
       baseUrl: 'https://h',
       username: 'u',
@@ -96,12 +98,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Download'));
+    await tester.tap(spoken('Download'));
     await tester.pumpAndSettle();
     expect(downloaded, isTrue);
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
+    await tester.tap(spoken('Delete'));
     await tester.pumpAndSettle();
     expect(deleted, isTrue);
   });

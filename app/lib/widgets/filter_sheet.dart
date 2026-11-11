@@ -1,32 +1,10 @@
 import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/extension_picker.dart';
+import 'package:dufs_client/widgets/filter_icons.dart';
 import 'package:dufs_client/widgets/quantile_range_slider.dart';
 import 'package:dufs_client/widgets/range_bounds_field.dart';
 import 'package:flutter/material.dart';
-
-String _typeLabel(TypeFilter t) => switch (t) {
-      TypeFilter.all => 'All types',
-      TypeFilter.folder => 'Folders',
-      TypeFilter.image => 'Images',
-      TypeFilter.video => 'Videos',
-      TypeFilter.audio => 'Audio',
-      TypeFilter.pdf => 'PDFs',
-      TypeFilter.text => 'Text',
-      TypeFilter.other => 'Other',
-    };
-
-String _sortLabel(SortKey k) => switch (k) {
-      SortKey.name => 'Name',
-      SortKey.size => 'Size',
-      SortKey.modified => 'Modified',
-      SortKey.created => 'Created',
-      SortKey.uploaded => 'Uploaded',
-      SortKey.duration => 'Duration',
-      SortKey.resolution => 'Resolution',
-      SortKey.type => 'Type',
-      SortKey.extension => 'Extension',
-    };
 
 String _megapixels(int pixels) => '${(pixels / 1000000).toStringAsFixed(1)} MP';
 
@@ -95,23 +73,25 @@ class FilterSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _row('Type', _typeDropdown()),
+              glyphRow(Icons.category, 'Type', _typeDropdown()),
               if (filter.type != TypeFilter.folder) ...[
                 const SizedBox(height: 12),
-                const Text('Extensions'),
-                const SizedBox(height: 4),
-                ExtensionPicker(
+                glyphRow(
+                  Icons.extension,
+                  'Extensions',
+                  ExtensionPicker(
                   available: extensions,
                   includes: filter.extIncludes,
                   excludes: filter.extExcludes,
                   onChanged: (inc, exc) => onFilter(
                     filter.copyWith(extIncludes: inc, extExcludes: exc),
                   ),
+                  ),
                 ),
               ],
               if (_hasRange(sizeValues)) ...[
                 const SizedBox(height: 12),
-                const Text('Size'),
+                const Icon(Icons.sd_storage, semanticLabel: 'Size'),
                 QuantileRangeSlider(
                   values: sizeValues,
                   lo: filter.minSize,
@@ -133,7 +113,7 @@ class FilterSheet extends StatelessWidget {
               if (filter.type == TypeFilter.video &&
                   _hasRange(durationValues)) ...[
                 const SizedBox(height: 12),
-                const Text('Length'),
+                const Icon(Icons.timer, semanticLabel: 'Length'),
                 QuantileRangeSlider(
                   values: durationValues,
                   lo: filter.minDurationMs,
@@ -159,7 +139,7 @@ class FilterSheet extends StatelessWidget {
                       filter.type == TypeFilter.video) &&
                   _hasRange(resolutionValues)) ...[
                 const SizedBox(height: 12),
-                const Text('Resolution'),
+                const Icon(Icons.aspect_ratio, semanticLabel: 'Resolution'),
                 QuantileRangeSlider(
                   values: resolutionValues,
                   lo: filter.minPixels,
@@ -179,15 +159,17 @@ class FilterSheet extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 12),
-              _row('Sort', _sortControls()),
+              glyphRow(Icons.sort, 'Sort', _sortControls()),
               if (isFilterActive(filter)) ...[
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: TextButton.icon(
+                  child: IconButton.filledTonal(
                     onPressed: () => onFilter(defaultFilter),
-                    icon: const Icon(Icons.clear),
-                    label: const Text('Clear'),
+                    icon: const Icon(
+                      Icons.filter_alt_off,
+                      semanticLabel: 'Clear',
+                    ),
                   ),
                 ),
               ],
@@ -198,13 +180,6 @@ class FilterSheet extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, Widget control) => Row(
-        children: [
-          SizedBox(width: 72, child: Text(label)),
-          Expanded(child: control),
-        ],
-      );
-
   Widget _typeDropdown() => DropdownButton<TypeFilter>(
         isExpanded: true,
         value: filter.type,
@@ -213,7 +188,7 @@ class FilterSheet extends StatelessWidget {
         },
         items: [
           for (final t in TypeFilter.values)
-            DropdownMenuItem(value: t, child: Text(_typeLabel(t))),
+            DropdownMenuItem(value: t, child: glyphItem(typeGlyph(t))),
         ],
       );
 
@@ -228,15 +203,18 @@ class FilterSheet extends StatelessWidget {
               },
               items: [
                 for (final k in SortKey.values)
-                  DropdownMenuItem(value: k, child: Text(_sortLabel(k))),
+                  DropdownMenuItem(value: k, child: glyphItem(sortGlyph(k))),
               ],
             ),
           ),
           IconButton(
-            tooltip: sort.dir == SortDir.asc ? 'Ascending' : 'Descending',
-            icon: Icon(sort.dir == SortDir.asc
-                ? Icons.arrow_upward
-                : Icons.arrow_downward),
+            icon: Icon(
+              sort.dir == SortDir.asc
+                  ? Icons.arrow_upward
+                  : Icons.arrow_downward,
+              semanticLabel:
+                  sort.dir == SortDir.asc ? 'Ascending' : 'Descending',
+            ),
             onPressed: () => onSort(
               sort.copyWith(
                 dir: sort.dir == SortDir.asc ? SortDir.desc : SortDir.asc,

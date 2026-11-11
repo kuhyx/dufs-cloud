@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dufs_client/services/app_player.dart';
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 
 /// Full-screen audio player streaming over authenticated HTTP.
@@ -99,7 +100,7 @@ class _AudioScreenState extends State<AudioScreen> {
       appBar: AppBar(title: Text(widget.title)),
       body: Center(
         child: _error != null
-            ? Text('Could not play: $_error')
+            ? ErrorState(spoken: 'Could not play: $_error')
             : audio == null
                 ? const CircularProgressIndicator()
                 : _Controls(

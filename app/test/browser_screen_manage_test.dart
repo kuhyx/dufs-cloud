@@ -8,6 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,18 +29,18 @@ void main() {
     // Cancel path.
     await tester.tap(find.byType(PopupMenuButton<String>).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete').last);
+    await tester.tap(spoken('Delete').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(spoken('Cancel'));
     await tester.pumpAndSettle();
     expect(find.text('pic.jpg'), findsOneWidget);
 
     // Confirm path.
     await tester.tap(find.byType(PopupMenuButton<String>).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete').last);
+    await tester.tap(spoken('Delete').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
     expect(find.text('pic.jpg'), findsOneWidget);
   });
@@ -52,11 +53,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(PopupMenuButton<String>).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete').last);
+    await tester.tap(spoken('Delete').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Delete failed'), findsOneWidget);
+    expect(spokenContaining('Delete failed'), findsOneWidget);
   });
 
   testWidgets(
@@ -84,7 +85,7 @@ void main() {
       // Cancel: pre-filled with the current name, no MOVE.
       await tester.tap(find.byType(PopupMenuButton<String>).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Rename'));
+      await tester.tap(spoken('Rename'));
       await tester.pumpAndSettle();
       final field = tester.widget<TextField>(
         find.descendant(
@@ -93,23 +94,23 @@ void main() {
         ),
       );
       expect(field.controller?.text, 'pic.jpg');
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(spoken('Cancel'));
       await tester.pumpAndSettle();
       expect(methods, isNot(contains('MOVE')));
 
       // Confirming with the name unchanged is a no-op too.
       await tester.tap(find.byType(PopupMenuButton<String>).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Rename'));
+      await tester.tap(spoken('Rename'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+      await tester.tap(find.byType(FilledButton).last);
       await tester.pumpAndSettle();
       expect(methods, isNot(contains('MOVE')));
 
       // A real rename → MOVE with the new destination.
       await tester.tap(find.byType(PopupMenuButton<String>).last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Rename'));
+      await tester.tap(spoken('Rename'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.descendant(
@@ -118,7 +119,7 @@ void main() {
         ),
         'renamed.jpg',
       );
-      await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+      await tester.tap(find.byType(FilledButton).last);
       await tester.pumpAndSettle();
       expect(methods, contains('MOVE'));
       expect(destination, endsWith('/renamed.jpg'));
@@ -131,7 +132,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(PopupMenuButton<String>).last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Rename'));
+    await tester.tap(spoken('Rename'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.descendant(
@@ -140,9 +141,9 @@ void main() {
       ),
       'renamed.jpg',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Rename'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Rename failed'), findsOneWidget);
+    expect(spokenContaining('Rename failed'), findsOneWidget);
   });
 
   testWidgets('new folder: create, cancel and error', (tester) async {
@@ -162,14 +163,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.create_new_folder));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(spoken('Cancel'));
     await tester.pumpAndSettle();
     expect(methods, isNot(contains('MKCOL')));
 
     // Create with a blank name is a no-op too.
     await tester.tap(find.byIcon(Icons.create_new_folder));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
     expect(methods, isNot(contains('MKCOL')));
 
@@ -183,7 +184,7 @@ void main() {
       ),
       'Trips',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
     expect(methods, contains('MKCOL'));
   });
@@ -201,8 +202,8 @@ void main() {
       ),
       'X',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Create failed'), findsOneWidget);
+    expect(spokenContaining('Create failed'), findsOneWidget);
   });
 }

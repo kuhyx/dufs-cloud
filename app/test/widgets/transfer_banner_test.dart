@@ -3,6 +3,8 @@ import 'package:dufs_client/widgets/transfer_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/finders.dart';
+
 void main() {
   testWidgets('shows both lines, a determinate bar, and fires Cancel',
       (tester) async {
@@ -22,13 +24,13 @@ void main() {
         ),
       ),
     ));
-    expect(find.text('Uploading 2/5 · clip.mp4'), findsOneWidget);
+    expect(find.text('2/5 · clip.mp4'), findsOneWidget);
     expect(find.text('25 % · 50 B / 200 B'), findsOneWidget);
     final bar = tester.widget<LinearProgressIndicator>(
       find.byType(LinearProgressIndicator),
     );
     expect(bar.value, 0.25);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(spoken('Cancel'));
     expect(cancelled, 1);
   });
 

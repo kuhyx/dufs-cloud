@@ -128,23 +128,33 @@ class _RangeBoundsFieldState extends State<RangeBoundsField> {
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Expanded(child: _field(_lo, 'min')),
+          Expanded(child: _field(_lo, Icons.vertical_align_bottom, 'min')),
           const SizedBox(width: 12),
-          Expanded(child: _field(_hi, 'max')),
+          Expanded(child: _field(_hi, Icons.vertical_align_top, 'max')),
         ],
       );
 
-  Widget _field(TextEditingController controller, String label) => TextField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
-        ],
-        decoration: InputDecoration(
-          labelText: '$label ${widget.unit}',
-          isDense: true,
-          border: const OutlineInputBorder(),
-        ),
-        onChanged: (_) => _emit(),
-      );
+  // Floor/ceiling glyph instead of "min"/"max"; the unit symbol stays as a
+  // suffix (a unit next to a number is content, not chrome).
+  Widget _field(
+    TextEditingController controller,
+    IconData icon,
+    String spoken,
+  ) => Semantics(
+    label: '$spoken ${widget.unit}',
+    child: TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
+      ],
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon),
+        suffixText: widget.unit,
+        isDense: true,
+        border: const OutlineInputBorder(),
+      ),
+      onChanged: (_) => _emit(),
+    ),
+  );
 }

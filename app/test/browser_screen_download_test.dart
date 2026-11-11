@@ -8,6 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -40,12 +41,12 @@ void main() {
     await tester.pump();
     expect(downloads.staged.single, endsWith('data.bin'));
     expect(File(downloads.staged.single).readAsBytesSync(), [1, 2, 3]);
-    expect(find.text('Saved to Download/data.bin (1)'), findsOneWidget);
+    expect(spoken('Saved to Download/data.bin (1)'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1)); // snackbar slides in
-    await tester.tap(find.text('Open'));
+    await tester.tap(spoken('Open'));
     await tester.pumpAndSettle();
     expect(downloads.opened.single.name, 'data.bin (1)');
-    expect(find.textContaining('No app can open'), findsNothing);
+    expect(spokenContaining('No app can open'), findsNothing);
   });
 
   testWidgets('Open with no viewer says so', (tester) async {
@@ -61,9 +62,9 @@ void main() {
     });
     await tester.pump();
     await tester.pump(const Duration(seconds: 1)); // snackbar slides in
-    await tester.tap(find.text('Open'));
+    await tester.tap(spoken('Open'));
     await tester.pumpAndSettle();
-    expect(find.text('No app can open data.bin (1)'), findsOneWidget);
+    expect(spoken('No app can open data.bin (1)'), findsOneWidget);
   });
 
   testWidgets('a MediaStore failure is a download failure', (tester) async {
@@ -82,7 +83,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    expect(find.textContaining('Download failed'), findsOneWidget);
+    expect(spokenContaining('Download failed'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
   });
 
@@ -107,15 +108,25 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 150));
     });
     await tester.pump();
-    expect(find.text('Downloading 1/1 · data.bin'), findsOneWidget);
+    expect(find.text('1/1 · data.bin'), findsOneWidget);
     expect(find.textContaining('% · '), findsOneWidget);
     await tester.runAsync(() async {
-      await tester.tap(find.text('Cancel'));
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await tester.tap(spoken('Cancel'));
     });
-    await tester.pump();
-    expect(find.text('Download cancelled'), findsOneWidget);
-    expect(find.text('Cancel'), findsNothing);
+    // Poll in real time: under a loaded full-suite run the abort and the
+    // staging-file cleanup can take longer than any fixed delay.
+    for (
+      var i = 0;
+      i < 50 && spoken('Download cancelled').evaluate().isEmpty;
+      i++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pump();
+    }
+    expect(spoken('Download cancelled'), findsOneWidget);
+    expect(spoken('Cancel'), findsNothing);
     expect(downloads.staged, isEmpty);
     // The half-written staging file is gone, so nothing partial lingers.
     expect(tmp.listSync(), isEmpty);
@@ -129,7 +140,7 @@ void main() {
     await tester.tap(find.text('doc.txt'));
     await tester.pumpAndSettle();
     // The editor screen shows a Save action.
-    expect(find.byTooltip('Save'), findsOneWidget);
+    expect(spoken('Save'), findsOneWidget);
   });
 
   testWidgets('download via the popup menu, and a download error', (
@@ -143,11 +154,11 @@ void main() {
     // The last tile is a file (folders sort first); open its menu.
     await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Download'));
+    await tester.tap(spoken('Download'));
     await tester.pump();
     // Staging dir, sink close and partial delete are all real I/O.
     await settleIo(tester);
-    expect(find.textContaining('Download failed'), findsOneWidget);
+    expect(spokenContaining('Download failed'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
   });
 }

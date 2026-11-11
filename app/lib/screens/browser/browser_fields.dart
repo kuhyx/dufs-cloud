@@ -8,6 +8,7 @@ import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/util/cloud_stats.dart';
 import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 
 /// State of the browser screen plus the values derived from it. The other
@@ -125,11 +126,23 @@ mixin BrowserFields on State<BrowserScreen> {
   /// app exit.
   bool get canExit => !selecting && !filterActive && currentPath == '/';
 
-  /// Shows [message] in a snackbar while the screen is mounted.
-  void snack(String message) {
+  /// Shows a [kind] glyph in a snackbar while the screen is mounted;
+  /// [spoken] is for screen readers, [detail] is content (names, counts).
+  void snack(
+    CueKind kind,
+    String spoken, {
+    String? detail,
+    Widget? action,
+    Duration duration = const Duration(seconds: 4),
+  }) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
+    showCue(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+      kind,
+      spoken: spoken,
+      detail: detail,
+      action: action,
+      duration: duration,
+    );
   }
 }

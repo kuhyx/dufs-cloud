@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 import 'support/pdf_harness.dart';
 
 void main() {
@@ -77,7 +78,7 @@ void main() {
       );
       await pumpUntilSettled(tester);
     });
-    expect(find.textContaining('Could not open'), findsOneWidget);
+    expect(spokenContaining('Could not open'), findsOneWidget);
     expect(find.byType(WebViewWidget), findsNothing);
   });
 }

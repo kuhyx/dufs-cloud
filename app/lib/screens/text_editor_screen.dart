@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 
 /// A minimal editor for `.txt`/`.md` files: loads the text over WebDAV, lets
@@ -66,18 +67,17 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     setState(() => _saving = true);
     try {
       await widget.client.writeText(widget.path, _controller.text);
-      _snack('Saved ${widget.title}');
+      _snack(CueKind.success, 'Saved ${widget.title}');
     } on Exception catch (e) {
-      _snack('Save failed: $e');
+      _snack(CueKind.error, 'Save failed: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  void _snack(String message) {
+  void _snack(CueKind kind, String spoken) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    showCue(context, kind, spoken: spoken);
   }
 
   @override
@@ -87,8 +87,7 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
         title: Text(widget.title),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: 'Save',
+            icon: const Icon(Icons.save, semanticLabel: 'Save'),
             onPressed: (_loading || _saving || _error != null) ? null : _save,
           ),
         ],
@@ -100,12 +99,7 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('Could not open: $_error', textAlign: TextAlign.center),
-        ),
-      );
+      return ErrorState(spoken: 'Could not open: $_error');
     }
     return Padding(
       padding: const EdgeInsets.all(12),

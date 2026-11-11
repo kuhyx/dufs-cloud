@@ -1,3 +1,4 @@
+import 'package:dufs_client/widgets/folder_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,20 +41,20 @@ void main() {
     await tester.pump();
 
     // Cancel the confirmation: no DELETE.
-    await tester.tap(find.byTooltip('Delete'));
+    await tester.tap(spoken('Delete'));
     await tester.pumpAndSettle();
-    expect(find.text('Delete 2 items?'), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    expect(find.widgetWithText(AlertDialog, '2'), findsOneWidget);
+    await tester.tap(spoken('Cancel'));
     await tester.pumpAndSettle();
     expect(methods.where((m) => m == 'DELETE'), isEmpty);
 
     // Confirm: one DELETE per selected item.
-    await tester.tap(find.byTooltip('Delete'));
+    await tester.tap(spoken('Delete'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
     expect(methods.where((m) => m == 'DELETE').length, 2);
-    expect(find.text('2 selected'), findsNothing); // selection cleared
+    expect(find.widgetWithText(AppBar, '2'), findsNothing); // selection cleared
   });
 
   testWidgets('bulk delete surfaces a failure count', (tester) async {
@@ -63,11 +65,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.longPress(find.text('data.bin'));
     await tester.pump();
-    await tester.tap(find.byTooltip('Delete'));
+    await tester.tap(spoken('Delete'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
-    expect(find.textContaining('could not be deleted'), findsOneWidget);
+    expect(spokenContaining('could not be deleted'), findsOneWidget);
   });
 
   testWidgets(
@@ -87,20 +89,20 @@ void main() {
       Future<void> startMove() async {
         await tester.longPress(find.text('data.bin'));
         await tester.pump();
-        await tester.tap(find.byTooltip('Move'));
+        await tester.tap(spoken('Move'));
         await tester.pumpAndSettle();
       }
 
       // Cancel the picker (system back): no MOVE.
       await startMove();
-      expect(find.text('Move 1 item to…'), findsOneWidget);
-      await tester.pageBack();
+      expect(find.byType(FolderPicker), findsOneWidget);
+      await tester.tap(find.backButton());
       await tester.pumpAndSettle();
       expect(methods.where((m) => m == 'MOVE'), isEmpty);
 
       // "Move here" at the starting folder is a no-op (dest == current path).
       await startMove();
-      await tester.tap(find.widgetWithText(FilledButton, 'Move here'));
+      await tester.tap(find.byType(FilledButton).last);
       await tester.pumpAndSettle();
       expect(methods.where((m) => m == 'MOVE'), isEmpty);
 
@@ -108,7 +110,7 @@ void main() {
       await startMove();
       await tester.tap(find.text('Sub'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Move here'));
+      await tester.tap(find.byType(FilledButton).last);
       await tester.pumpAndSettle();
       expect(methods.where((m) => m == 'MOVE').length, 1);
     },
@@ -127,16 +129,16 @@ void main() {
     // Real file I/O (download + temp write), so drive it in the real zone and
     // pump manually afterwards (pumpAndSettle would hang on the async gap).
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Download zip'));
+      await tester.tap(spoken('Download zip'));
       await Future<void>.delayed(const Duration(milliseconds: 400));
     });
     await tester.pump();
     expect(downloads.staged.single, endsWith('dufs-selection.zip'));
     expect(
-      find.text('Saved to Download/dufs-selection.zip (1)'),
+      spoken('Saved to Download/dufs-selection.zip (1)'),
       findsOneWidget,
     );
-    expect(find.text('1 selected'), findsNothing); // selection cleared
+    expect(find.widgetWithText(AppBar, '1'), findsNothing); // selection cleared
   });
 
   testWidgets('a zip download can be cancelled mid-file', (tester) async {
@@ -149,17 +151,17 @@ void main() {
     await tester.longPress(find.text('data.bin'));
     await tester.pump();
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Download zip'));
+      await tester.tap(spoken('Download zip'));
       await Future<void>.delayed(const Duration(milliseconds: 150));
     });
     await tester.pump();
-    expect(find.text('Downloading 1/1 · data.bin'), findsOneWidget);
+    expect(find.text('1/1 · data.bin'), findsOneWidget);
     await tester.runAsync(() async {
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(spoken('Cancel'));
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pump();
-    expect(find.text('Zip cancelled'), findsOneWidget);
+    expect(spoken('Zip cancelled'), findsOneWidget);
     expect(downloads.staged, isEmpty);
     await tester.pump(const Duration(seconds: 5));
   });
@@ -178,11 +180,11 @@ void main() {
     await tester.longPress(find.text('data.bin'));
     await tester.pump();
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Download zip'));
+      await tester.tap(spoken('Download zip'));
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    expect(find.textContaining('Zip failed'), findsOneWidget);
+    expect(spokenContaining('Zip failed'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5)); // drain the snackbar timer
   });
 }

@@ -1,6 +1,8 @@
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/screens/browser/browser_transfers.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
+import 'package:dufs_client/widgets/cue.dart';
+import 'package:dufs_client/widgets/icon_dialog.dart';
 import 'package:flutter/material.dart';
 
 /// Single-entry changes: delete, rename and new folder.
@@ -9,31 +11,20 @@ mixin BrowserMutations on BrowserTransfers {
   Future<void> delete(DirEntry entry) async {
     final client = dufsClient;
     if (client == null) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete ${entry.name}?'),
-        content: const Text('This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final ok = await confirmDestructive(
+      context,
+      icon: Icons.delete,
+      subject: entry.name,
+      spoken: 'Delete ${entry.name}',
     );
-    if (ok != true) return;
+    if (!ok) return;
     setState(() => busy = true);
     try {
       await client.delete(entry.path);
       cloudIndex = null;
       await load(currentPath);
     } on Exception catch (e) {
-      snack('Delete failed: $e');
+      snack(CueKind.error, 'Delete failed: $e', detail: entry.name);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -43,27 +34,11 @@ mixin BrowserMutations on BrowserTransfers {
   Future<void> rename(DirEntry entry) async {
     final client = dufsClient;
     if (client == null) return;
-    final controller = TextEditingController(text: entry.name);
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Rename "${entry.name}"'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'New name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Rename'),
-          ),
-        ],
-      ),
+    final newName = await askName(
+      context,
+      icon: Icons.edit,
+      spoken: 'Rename ${entry.name}',
+      initial: entry.name,
     );
     if (newName == null || newName.isEmpty || newName == entry.name) return;
     setState(() => busy = true);
@@ -72,7 +47,7 @@ mixin BrowserMutations on BrowserTransfers {
       cloudIndex = null;
       await load(currentPath);
     } on Exception catch (e) {
-      snack('Rename failed: $e');
+      snack(CueKind.error, 'Rename failed: $e', detail: entry.name);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -82,27 +57,10 @@ mixin BrowserMutations on BrowserTransfers {
   Future<void> newFolder() async {
     final client = dufsClient;
     if (client == null) return;
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New folder'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Folder name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+    final name = await askName(
+      context,
+      icon: Icons.create_new_folder,
+      spoken: 'New folder',
     );
     if (name == null || name.isEmpty) return;
     setState(() => busy = true);
@@ -111,7 +69,7 @@ mixin BrowserMutations on BrowserTransfers {
       cloudIndex = null;
       await load(currentPath);
     } on Exception catch (e) {
-      snack('Create failed: $e');
+      snack(CueKind.error, 'Create failed: $e', detail: name);
     } finally {
       if (mounted) setState(() => busy = false);
     }

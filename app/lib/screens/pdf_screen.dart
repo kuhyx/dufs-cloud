@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dufs_client/services/dufs_client.dart';
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 import 'package:path_provider/path_provider.dart';
@@ -183,7 +184,7 @@ class _PdfScreenState extends State<PdfScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: _error != null
-          ? Center(child: Text('Could not open: $_error'))
+          ? ErrorState(spoken: 'Could not open: $_error')
           : controller == null
               ? const Center(child: CircularProgressIndicator())
               : WebViewWidget(controller: controller),

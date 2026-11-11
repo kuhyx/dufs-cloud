@@ -25,8 +25,6 @@ class IndexingView extends StatelessWidget {
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 12),
-          const Text('Indexing the cloud…'),
-          const SizedBox(height: 8),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [

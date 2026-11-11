@@ -5,6 +5,7 @@ import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/screens/browser/browser_opener.dart';
 import 'package:dufs_client/util/cloud_stats.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:dufs_client/widgets/entry_tile.dart';
 import 'package:dufs_client/widgets/folder_group_list.dart';
 import 'package:dufs_client/widgets/indexing_view.dart';
@@ -21,11 +22,21 @@ mixin BrowserBody on BrowserOpener {
   Widget buildBody() {
     if (loading) return const ListingSkeleton();
     if (loadError != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(loadError!, textAlign: TextAlign.center),
-        ),
+      // Not configured yet: one big gear that opens settings. Otherwise an
+      // error glyph with a retry; the message stays spoken-only.
+      if (!widget.settings.isConfigured) {
+        return Center(
+          child: IconButton.filledTonal(
+            key: const Key('setup'),
+            iconSize: 48,
+            icon: Icon(Icons.settings, semanticLabel: loadError),
+            onPressed: openSettings,
+          ),
+        );
+      }
+      return ErrorState(
+        spoken: loadError!,
+        onRetry: () => unawaited(load(currentPath)),
       );
     }
     if (filterActive) {
@@ -37,7 +48,14 @@ mixin BrowserBody on BrowserOpener {
       }
       final found = groups;
       if (found.isEmpty) {
-        return const Center(child: Text('Nothing matches your filters.'));
+        return Center(
+          child: Icon(
+            Icons.filter_alt_off,
+            size: 64,
+            color: Theme.of(context).colorScheme.outline,
+            semanticLabel: 'Nothing matches your filters',
+          ),
+        );
       }
       if (!indexPartial) return buildGroups(found);
       return Column(
@@ -51,7 +69,14 @@ mixin BrowserBody on BrowserOpener {
       );
     }
     if (listing.isEmpty) {
-      return const Center(child: Text('This folder is empty.'));
+      return Center(
+        child: Icon(
+          Icons.folder_open,
+          size: 64,
+          color: Theme.of(context).colorScheme.outline,
+          semanticLabel: 'This folder is empty',
+        ),
+      );
     }
     return RefreshIndicator(
       onRefresh: () => load(currentPath),
@@ -183,7 +208,14 @@ mixin BrowserBody on BrowserOpener {
       child: Padding(
         // horizontal = 2x vertical (rule 22), both on the 4px spacing scale.
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Text('Move $count item${count == 1 ? '' : 's'}'),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.drive_file_move, size: 18),
+            const SizedBox(width: 8),
+            Text('$count', key: const Key('drag-count')),
+          ],
+        ),
       ),
     );
   }

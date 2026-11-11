@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
+import 'package:dufs_client/widgets/cue.dart';
 import 'package:flutter/material.dart';
 
 /// A folder browser for choosing a move destination. Lists only directories,
@@ -83,16 +84,26 @@ class _FolderPickerState extends State<FolderPicker> {
 
   Widget _buildScaffold(int n) {
     return Scaffold(
-      appBar: AppBar(title: Text('Move $n item${n == 1 ? '' : 's'} to…')),
+      // Move glyph + count: what is being moved.
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.drive_file_move),
+            const SizedBox(width: 8),
+            Text('$n'),
+          ],
+        ),
+      ),
       persistentFooterButtons: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(_dir, style: Theme.of(context).textTheme.bodySmall),
         ),
-        FilledButton.icon(
-          icon: const Icon(Icons.drive_file_move),
-          label: const Text('Move here'),
+        FilledButton(
+          key: const Key('move-here'),
           onPressed: () => Navigator.of(context).pop(_dir),
+          child: const Icon(Icons.check, semanticLabel: 'Move here'),
         ),
       ],
       body: _buildBody(),
@@ -102,14 +113,16 @@ class _FolderPickerState extends State<FolderPicker> {
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(child: Text('Could not load: $_error'));
+      return ErrorState(
+        spoken: 'Could not load: $_error',
+        onRetry:() => unawaited(_load()),
+      );
     }
     return ListView(
       children: [
         if (_dir != '/')
           ListTile(
-            leading: const Icon(Icons.arrow_upward),
-            title: const Text('..'),
+            leading: const Icon(Icons.arrow_upward, semanticLabel: 'Up'),
             onTap: () => _go(paths.parentPath(_dir)),
           ),
         for (final folder in _folders)

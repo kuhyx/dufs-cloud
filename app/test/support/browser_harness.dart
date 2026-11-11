@@ -6,6 +6,7 @@ import 'package:dufs_client/services/completion_cue.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
+import 'package:dufs_client/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,6 +61,7 @@ Widget browserApp(
   CompletionCue? cue,
 }) {
   return MaterialApp(
+    builder: hideTooltips,
     home: BrowserScreen(
       settings: settings,
       clientFactory:

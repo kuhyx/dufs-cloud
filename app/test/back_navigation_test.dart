@@ -124,10 +124,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.longPress(find.text('a.bin'));
     await tester.pump();
-    expect(find.text('1 selected'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, '1'), findsOneWidget);
 
     await _back(tester);
-    expect(find.text('1 selected'), findsNothing);
+    expect(find.widgetWithText(AppBar, '1'), findsNothing);
     expect(find.text('a.bin'), findsOneWidget);
     expect(exits(), 0);
   });

@@ -105,18 +105,22 @@ class EntryTile extends StatelessWidget {
                   if (v == 'rename') onRename?.call();
                   if (v == 'delete') onDelete?.call();
                 },
+                // Glyph-only rows; the old words are spoken labels.
                 itemBuilder: (_) => [
                   if (onDownload != null)
                     const PopupMenuItem(
                       value: 'download',
-                      child: Text('Download'),
+                      child: Icon(Icons.download, semanticLabel: 'Download'),
                     ),
                   if (onRename != null)
                     const PopupMenuItem(
                       value: 'rename',
-                      child: Text('Rename'),
+                      child: Icon(Icons.edit, semanticLabel: 'Rename'),
                     ),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Icon(Icons.delete, semanticLabel: 'Delete'),
+                  ),
                 ],
               ),
             ),

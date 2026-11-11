@@ -1,5 +1,6 @@
 import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/widgets/filter_sheet.dart';
+import 'package:dufs_client/widgets/indexing_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -10,6 +11,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';
 import 'support/fake_webview_platform.dart';
+import 'support/finders.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +70,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'pic');
     await tester.pump(); // one frame: filter active, index still building
-    expect(find.text('Indexing the cloud…'), findsOneWidget);
+    expect(find.byType(IndexingView), findsOneWidget);
     await tester.pumpAndSettle(); // drain the delayed walk
     expect(find.text('pic.jpg'), findsOneWidget);
   });
@@ -81,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'zzzzz');
     await tester.pumpAndSettle();
-    expect(find.text('Nothing matches your filters.'), findsOneWidget);
+    expect(spoken('Nothing matches your filters'), findsOneWidget);
   });
 
   testWidgets("the sheet's Clear button also empties the search box", (
@@ -95,9 +97,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('clip'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Filters'));
+    await tester.tap(spoken('Filters'));
     await tester.pumpAndSettle();
-    final clear = find.widgetWithText(TextButton, 'Clear');
+    final clear = spoken('Clear');
     await tester.ensureVisible(clear);
     await tester.pumpAndSettle();
     await tester.tap(clear);
@@ -113,19 +115,19 @@ void main() {
     await tester.pumpWidget(browserApp(settings, browserMock()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Filters'));
+    await tester.tap(spoken('Filters'));
     await tester.pumpAndSettle();
     expect(find.byType(FilterSheet), findsOneWidget);
 
     // Toggling sort direction routes through the sheet's onSort callback.
-    await tester.tap(find.byTooltip('Ascending'));
+    await tester.tap(spoken('Ascending'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Descending'), findsOneWidget);
+    expect(spoken('Descending'), findsOneWidget);
 
     // Choosing a type from the dropdown routes through onFilter.
     await tester.tap(find.byType(DropdownButton<TypeFilter>));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Images').last);
+    await tester.tap(spoken('Images').last);
     await tester.pumpAndSettle();
     expect(find.byType(FilterSheet), findsOneWidget);
   });
