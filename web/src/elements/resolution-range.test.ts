@@ -23,8 +23,8 @@ describe("resolution-range", () => {
     expect(customElements.get("resolution-range")).toBe(ResolutionRange);
     expect(el.className).toBe("resrange");
     expect(el.querySelectorAll("input.filter-size")).toHaveLength(2);
-    expect(input(el, "Minimum resolution in megapixels").placeholder).toBe("min MP");
-    expect(input(el, "Maximum resolution in megapixels").placeholder).toBe("max MP");
+    expect(input(el, "Minimum resolution in megapixels").placeholder).toBe("≥ MP");
+    expect(input(el, "Maximum resolution in megapixels").placeholder).toBe("≤ MP");
   });
 
   it("converts MP to pixels on both sides and clears to null", () => {

@@ -84,6 +84,16 @@ export class ExtensionPicker extends HTMLElement {
   #summary(): string {
     const parts = [
       this.#includes.length > 0 ? this.#includes.join(", ") : "",
+      this.#excludes.length > 0 ? `✕ ${this.#excludes.join(", ")}` : "",
+    ].filter((s) => s !== "");
+    // Extensions are user data; "any" is the same ✱ the type filter uses.
+    return parts.join(" · ") || "✱";
+  }
+
+  /** The toggle's spoken name: the old summary sentence. */
+  #spoken(): string {
+    const parts = [
+      this.#includes.length > 0 ? this.#includes.join(", ") : "",
       this.#excludes.length > 0 ? `not ${this.#excludes.join(", ")}` : "",
     ].filter((s) => s !== "");
     return parts.join(" · ") || "Any ext";
@@ -117,14 +127,11 @@ export class ExtensionPicker extends HTMLElement {
       this.#open = false;
       this.#render();
     });
-    const menu = h(
-      "div",
-      { class: "extpicker-menu" },
-      h("p", { class: "extpicker-hint muted" }, "Click to cycle: keep ✓ · drop ✕"),
-    );
+    // No hint line: each option's ✓ / ✕ / blank glyph already shows its state.
+    const menu = h("div", { class: "extpicker-menu" });
     if (this.#available.length === 0) {
       menu.append(
-        h("p", { class: "muted extpicker-empty" }, "No extensions in view."),
+        h("p", { class: "muted extpicker-empty", "aria-label": "No extensions in view." }, "∅"),
       );
     }
     menu.append(...this.#available.map((ext) => this.#option(ext)));
@@ -136,6 +143,7 @@ export class ExtensionPicker extends HTMLElement {
     const options = [...this.querySelectorAll(".extpicker-opt")];
     const focused = options.findIndex((o) => o === document.activeElement);
     this.#button.textContent = `${this.#summary()} ▾`;
+    this.#button.setAttribute("aria-label", this.#spoken());
     this.#button.setAttribute("aria-expanded", String(this.#open));
     // The toggle button stays put (keeps focus); only the popup is swapped.
     if (this.#button.parentNode !== this) this.prepend(this.#button);

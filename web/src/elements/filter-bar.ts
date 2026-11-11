@@ -38,16 +38,16 @@ export class FilterBar extends HTMLElement {
   #timer: ReturnType<typeof setTimeout> | undefined;
   readonly #bar = h("div", { class: "filterbar" });
   readonly #query = h("input", {
-    class: "filter-query", type: "search", placeholder: "Filter by name…", "aria-label": "Filter by name",
+    class: "filter-query", type: "search", placeholder: "🔍", "aria-label": "Filter by name",
   });
   readonly #type = h("select", { "aria-label": "Filter by type" },
-    ...TYPE_OPTIONS.map((o) => h("option", { value: o.value }, o.label)));
+    ...TYPE_OPTIONS.map((o) => h("option", { value: o.value, "aria-label": o.label }, o.glyph)));
   readonly #sortKey = h("select", { "aria-label": "Sort by" },
-    ...SORT_OPTIONS.map((o) => h("option", { value: o.value }, `Sort: ${o.label}`)));
+    ...SORT_OPTIONS.map((o) => h("option", { value: o.value, "aria-label": o.label }, o.glyph)));
   readonly #dir = h("button", { type: "button", class: "filter-dir" });
-  readonly #busy = h("span", { class: "busy" });
+  readonly #busy = h("span", { class: "busy", role: "status", "aria-label": "Indexing cloud" });
   readonly #cancel = h("button", { type: "button", class: "filter-clear", "aria-label": "Cancel indexing" }, "✕");
-  readonly #clear = h("button", { type: "button", class: "filter-clear" }, "Clear");
+  readonly #clear = h("button", { type: "button", class: "filter-clear", "aria-label": "Clear filters" }, "🧹");
   readonly #ext = child("extension-picker");
   readonly #size = child("size-range");
   readonly #duration = child("duration-range");
@@ -114,7 +114,6 @@ export class FilterBar extends HTMLElement {
     this.#sortKey.value = this.sort.key;
     const asc = this.sort.dir === "asc";
     this.#dir.setAttribute("aria-label", asc ? "Sort ascending" : "Sort descending");
-    this.#dir.title = asc ? "Ascending" : "Descending";
     this.#dir.textContent = asc ? "▲" : "▼";
     setProps(this.#ext, { available: this.extensions, includes: f.extIncludes, excludes: f.extExcludes });
     setProps(this.#size, { values: this.sizeValues, minSize: f.minSize, maxSize: f.maxSize });
@@ -122,7 +121,7 @@ export class FilterBar extends HTMLElement {
     setProps(this.#resolution, { minPixels: f.minPixels, maxPixels: f.maxPixels });
     const p = this.indexProgress;
     this.#busy.replaceChildren(
-      "Indexing cloud…",
+      h("span", { class: "spinner", "aria-hidden": "true" }, "⟳"),
       ...(p === undefined
         ? []
         : [

@@ -26,7 +26,7 @@ describe("duration-range", () => {
     expect(el.className).toBe("duration-filter");
     expect(input(el, "Minimum duration in seconds")).toBeInTheDocument();
     expect(el.querySelector("range-slider")).toBeNull();
-    expect(el.querySelector(".slider-note")).toHaveTextContent("no durations indexed");
+    expect(el.querySelector(".slider-note")).toHaveTextContent("∅");
   });
 
   it("converts seconds inputs to ms and clears to null", () => {

@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { AudioMenu, audioLabel } from "./audio-menu.ts";
+import { AudioMenu, audioLabel, audioShortLabel } from "./audio-menu.ts";
 import type { DashStream } from "../lib/dash-manifest.ts";
 
 function stream(id: string, language: string): DashStream {
@@ -37,6 +37,8 @@ describe("audioLabel", () => {
 
   it("falls back to a track number when the muxer tagged no language", () => {
     expect(audioLabel(stream("3", ""), 2)).toBe("Track 3");
+    expect(audioShortLabel(stream("3", ""), 2)).toBe("#3");
+    expect(audioShortLabel(ENG, 0)).toBe("English");
   });
 
   it("shows an unknown tag rather than hiding it", () => {
@@ -73,7 +75,7 @@ describe("audio-menu", () => {
 
   it("labels the toggle generically before a track is chosen", () => {
     mount([ENG, JPN], null);
-    expect(screen.getByLabelText("Audio track")).toHaveTextContent("Audio");
+    expect(screen.getByLabelText("Audio track").textContent).toBe("🔊");
   });
 
   it("lists every language once opened", async () => {

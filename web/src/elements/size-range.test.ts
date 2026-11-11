@@ -55,7 +55,7 @@ describe("size-range", () => {
   it("collapses to a note when every file is the same size", () => {
     const { el } = make({ values: [4 * MB, 4 * MB] });
     expect(el.querySelector(".slider")).toBeNull();
-    expect(el.querySelector(".slider-note")).toHaveTextContent("all 4.0 MB");
+    expect(el.querySelector(".slider-note")).toHaveTextContent("= 4.0 MB");
   });
 
   it("shows the slider and a range note once a distribution is known", () => {

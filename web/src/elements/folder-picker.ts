@@ -104,20 +104,20 @@ export class FolderPicker extends HTMLElement {
         items.push(h("li", { class: "skeleton-row", "aria-hidden": "true" }));
       }
     } else if (this.#error !== null) {
-      items.push(h("li", { class: "error" }, `Could not load: ${this.#error}`));
+      items.push(h("li", { class: "error", role: "alert", "aria-label": `Could not load: ${this.#error}` }, "⚠"));
     } else if (this.#folders.length === 0) {
-      items.push(h("li", { class: "muted" }, "No subfolders."));
+      items.push(h("li", { class: "muted empty-glyph", "aria-label": "No subfolders." }, "∅"));
     }
     for (const f of this.#folders) items.push(this.#rowButton(`📁 ${f.name}`, f.path));
     return items;
   }
 
   #actions(): HTMLElement {
-    const cancel = h("button", { type: "button" }, "Cancel");
+    const cancel = h("button", { type: "button", "aria-label": "Cancel" }, "✕");
     cancel.addEventListener("click", () => {
       this.#emit("cancel");
     });
-    const pick = h("button", { type: "button", class: "primary" }, "Move here");
+    const pick = h("button", { type: "button", class: "primary", "aria-label": "Move here" }, "✓");
     pick.addEventListener("click", () => {
       this.#emit("pick", this.#dir);
     });
@@ -129,7 +129,7 @@ export class FolderPicker extends HTMLElement {
     const dialog = h(
       "div",
       { class: "dialog" },
-      h("p", {}, `Move ${this.#count} item${plural} to:`),
+      h("p", { class: "picker-heading" }, h("span", { "aria-hidden": "true" }, "➜📁 "), String(this.#count)),
       h("p", { class: "picker-path muted" }, this.#dir),
       h("ul", { class: "picker-list" }, ...this.#listItems()),
       this.#actions(),
@@ -139,7 +139,10 @@ export class FolderPicker extends HTMLElement {
     });
     const overlay = h(
       "div",
-      { class: "overlay", role: "dialog", "aria-modal": "true" },
+      {
+        class: "overlay", role: "dialog", "aria-modal": "true",
+        "aria-label": `Move ${this.#count} item${plural} to:`,
+      },
       dialog,
     );
     overlay.addEventListener("click", () => {

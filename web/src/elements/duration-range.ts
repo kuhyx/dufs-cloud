@@ -4,14 +4,14 @@ import { NumericRange, type NumericRangeSpec } from "./numeric-range.ts";
 
 const SPEC: NumericRangeSpec = {
   className: "duration-filter",
-  placeholders: ["min s", "max s"],
+  placeholders: ["≥ s", "≤ s"],
   labels: ["Minimum duration in seconds", "Maximum duration in seconds"],
   keys: ["minMs", "maxMs"],
   toText: (ms) => (ms === null ? "" : String(Math.round(ms / 1000))),
   fromText: (text) => (text === "" ? null : Number(text) * 1000),
   note: (values, { lo, hi }, hasRange) => {
     if (hasRange) return `${formatDuration(lo)} – ${formatDuration(hi)}`;
-    return values.length === 0 ? "no durations indexed" : null;
+    return values.length === 0 ? "∅" : null;
   },
 };
 

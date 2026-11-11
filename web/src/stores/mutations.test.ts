@@ -1,4 +1,5 @@
 import type { DufsClient } from "../api/dufs-client.ts";
+import type { Busy } from "../lib/busy.ts";
 import { fileAt, makeClient } from "../test/client-fixtures.ts";
 import { createMutations } from "./mutations.ts";
 
@@ -12,18 +13,24 @@ const flush = (): Promise<void> =>
 
 function setup(overrides: Partial<DufsClient> = {}) {
   const client = makeClient(overrides);
+  // Records the spoken sentence; the painted kind/count/name are asserted in
+  // the busy-kind test.
   const setBusy = vi.fn();
+  const busyCalls: (Busy | null)[] = [];
   const refreshAll = vi.fn();
   const clearSelection = vi.fn();
   const mutations = createMutations({
     client,
     getPath: () => "/dir",
     getSelectedEntries: () => [a, b],
-    setBusy,
+    setBusy: (busy) => {
+      busyCalls.push(busy);
+      setBusy(busy?.spoken ?? null);
+    },
     refreshAll,
     clearSelection,
   });
-  return { client, setBusy, refreshAll, clearSelection, mutations };
+  return { client, setBusy, busyCalls, refreshAll, clearSelection, mutations };
 }
 
 describe("moveInto", () => {
@@ -203,5 +210,26 @@ describe("deleteSelected", () => {
     expect(setBusy).toHaveBeenLastCalledWith("1 item(s) could not be deleted");
     expect(clearSelection).toHaveBeenCalledOnce();
     expect(refreshAll).toHaveBeenCalledOnce();
+  });
+});
+
+describe("painted busy note", () => {
+  it("carries a kind, a count or a name, never the sentence alone", async () => {
+    const { busyCalls, mutations } = setup({ rename: vi.fn(() => Promise.reject(new Error("exists"))) });
+    mutations.moveSelected("/x");
+    mutations.confirmDelete(a);
+    mutations.renameSelected(a, "c.txt");
+    mutations.createFolder("New");
+    mutations.deleteSelected();
+    await flush();
+    const painted = busyCalls.filter((b): b is Busy => b !== null).map(({ kind, count, name }) => ({ kind, count, name }));
+    expect(painted).toEqual(expect.arrayContaining([
+      { kind: "move", count: "2", name: undefined },
+      { kind: "delete", count: undefined, name: "a.txt" },
+      { kind: "rename", count: undefined, name: "a.txt" },
+      { kind: "create", count: undefined, name: "New" },
+      { kind: "delete", count: "2", name: undefined },
+      { kind: "error", count: undefined, name: undefined },
+    ]));
   });
 });

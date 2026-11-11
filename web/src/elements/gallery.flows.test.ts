@@ -58,7 +58,7 @@ describe("cloud-gallery flows", () => {
     gate.reject(new DOMException("aborted", "AbortError"));
     await flush();
     expect(g.kid("transfer-banner")).toBeNull();
-    expect(g.kid("gallery-topbar")?.busy).toBe("Cancelled after 0 of 1");
+    expect((g.kid("gallery-topbar")?.busy as { spoken: string } | null)?.spoken).toBe("Cancelled after 0 of 1");
   });
 
   it("accepts OS file drops on the content area", async () => {
@@ -121,12 +121,12 @@ describe("cloud-gallery flows", () => {
     fire(bad.kid("filter-bar") as HTMLElement, "filter", { ...DEFAULT_FILTER, query: "x" });
     fire(bad.kid("filter-bar") as HTMLElement, "activate");
     await flush();
-    expect(screen.getByText("Could not index the cloud: down")).toHaveClass("error");
+    expect(screen.getByLabelText("Could not index the cloud: down")).toHaveClass("error");
   });
 
   it("keeps open prompts across unrelated re-renders", async () => {
     const g = await mountGallery();
-    await userEvent.click(screen.getByText("New folder"));
+    await userEvent.click(screen.getByRole("button", { name: "New folder" }));
     await userEvent.click(screen.getByLabelText("Rename pic.jpg"));
     const prompts = [...g.el.querySelectorAll("prompt-dialog")];
     expect(prompts).toHaveLength(2);

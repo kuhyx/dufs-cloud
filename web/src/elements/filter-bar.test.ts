@@ -33,7 +33,8 @@ describe("filter-bar", () => {
   it("registers and renders the default controls", () => {
     expect(customElements.get("filter-bar")).toBe(FilterBar);
     mount();
-    expect(screen.getByLabelText("Filter by name")).toHaveAttribute("placeholder", "Filter by name…");
+    expect(screen.getByLabelText("Filter by name")).toHaveAttribute("placeholder", "🔍");
+    expect(screen.getByRole("option", { name: "Images" })).toHaveTextContent("🖼");
     expect(screen.getByLabelText("Filter by type")).toHaveValue("all");
     expect(screen.getByLabelText("Sort by")).toHaveValue("name");
     expect(screen.getByRole("option", { name: "Sort: Extension" })).toBeInTheDocument();
@@ -41,8 +42,8 @@ describe("filter-bar", () => {
     expect(kid("size-range")).not.toBeNull();
     expect(kid("duration-range")).toBeNull();
     expect(kid("resolution-range")).toBeNull();
-    expect(screen.queryByText("Clear")).toBeNull();
-    expect(screen.queryByText(/Indexing cloud/)).toBeNull();
+    expect(screen.queryByLabelText("Clear filters")).toBeNull();
+    expect(screen.queryByRole("status", { name: "Indexing cloud" })).toBeNull();
   });
 
   it("does not duplicate the bar on reconnect", () => {
@@ -85,7 +86,7 @@ describe("filter-bar", () => {
     vi.useFakeTimers();
     const { events } = mount({ filter: withFilter({ type: "image" }) });
     fireEvent.input(screen.getByLabelText("Filter by name"), { target: { value: "x" } });
-    fireEvent.click(screen.getByText("Clear"));
+    fireEvent.click(screen.getByLabelText("Clear filters"));
     vi.advanceTimersByTime(500);
     expect(events).toEqual([{ type: "filter", detail: DEFAULT_FILTER }]);
   });
@@ -156,12 +157,11 @@ describe("filter-bar", () => {
     fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "size" } });
     const dir = screen.getByLabelText("Sort ascending");
     expect(dir).toHaveTextContent("▲");
-    expect(dir).toHaveAttribute("title", "Ascending");
+    expect(dir).not.toHaveAttribute("title");
     fireEvent.click(dir);
     bar.sort = { key: "size", dir: "desc" };
     const desc = screen.getByLabelText("Sort descending");
     expect(desc).toHaveTextContent("▼");
-    expect(desc).toHaveAttribute("title", "Descending");
     expect(screen.getByLabelText("Sort by")).toHaveValue("size");
     fireEvent.click(desc);
     expect(events.map((e) => e.detail)).toEqual([
@@ -173,7 +173,7 @@ describe("filter-bar", () => {
 
   it("shows indexing progress and a cancel control", () => {
     const { bar, events } = mount({ indexing: true });
-    expect(screen.getByText("Indexing cloud…")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Indexing cloud" })).toHaveTextContent("⟳");
     expect(screen.queryByLabelText("Folders indexed")).toBeNull();
     bar.indexProgress = { folders: 3, entries: 42, path: "/a" };
     expect(screen.getByLabelText("Folders indexed")).toHaveTextContent("📁 3");

@@ -25,7 +25,7 @@ describe("media-viewer props", () => {
 
     const other = open("x.bin");
     other.viewer.url = "/y.bin";
-    expect(screen.getByText("Download")).toHaveAttribute("href", "/y.bin");
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute("href", "/y.bin");
   });
 
   it("swaps a video's src when the url changes, and keeps its element", () => {
@@ -97,7 +97,7 @@ describe("media-viewer subtitles", () => {
     expect(localStorage.getItem("subtitle-preference")).toBe("pol");
     await userEvent.click(screen.getByLabelText("Subtitles"));
     await userEvent.click(screen.getByRole("menuitemradio", { name: "Off" }));
-    expect(screen.getByLabelText("Subtitles")).toHaveTextContent("Subtitles: Off");
+    expect(screen.getByLabelText("Subtitles")).toHaveTextContent("💬 ⊘");
     expect(leaked).not.toHaveBeenCalled();
     document.removeEventListener("select", leaked);
   });

@@ -154,7 +154,7 @@ export class CloudGallery extends HTMLElement {
     if (!s.dialogs.showNewFolder) this.#newFolder = null;
     else if (this.#newFolder === null) {
       const el = make("prompt-dialog");
-      setProps(el, { title: "New folder name", placeholder: "Folder name", confirmLabel: "Create" });
+      setProps(el, { title: "New folder name", glyph: "📁＋", confirmLabel: "Create" });
       this.#own(el, "confirm", (name: string) => {
         d.setShowNewFolder(false);
         st.mutations.createFolder(name);
@@ -169,7 +169,8 @@ export class CloudGallery extends HTMLElement {
     else if (this.#rename?.entry !== entry) {
       const el = make("prompt-dialog");
       setProps(el, {
-        title: `Rename "${entry.name}"`, placeholder: "New name", confirmLabel: "Rename", initialValue: entry.name,
+        title: `Rename "${entry.name}"`, glyph: "✏️", subject: entry.name, confirmLabel: "Rename",
+        initialValue: entry.name,
       });
       this.#own(el, "confirm", (newName: string) => {
         d.setRenameEntry(null);

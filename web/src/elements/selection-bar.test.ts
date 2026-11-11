@@ -13,7 +13,9 @@ describe("selection-bar", () => {
     bar.count = 3;
     document.body.append(bar);
     expect(customElements.get("selection-bar")).toBe(SelectionBar);
-    expect(screen.getByText("3 selected")).toHaveClass("sel-count");
+    expect(screen.getByRole("status", { name: "3 selected" })).toHaveClass("sel-count");
+    expect(screen.getByRole("status", { name: "3 selected" })).toHaveTextContent("☑ 3");
+    expect(screen.getByRole("button", { name: "Move" })).toHaveTextContent("➜📁");
     expect(bar.querySelector(".selbar")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Delete" })).toHaveClass("danger");
     const seen = vi.fn();
@@ -28,7 +30,7 @@ describe("selection-bar", () => {
     expect(seen.mock.calls).toEqual([["move"], ["download"], ["delete"], ["clear"]]);
     bar.count = 5;
     expect(bar.count).toBe(5);
-    expect(screen.getByText("5 selected")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "5 selected" })).toBeInTheDocument();
   });
 
   it("renders once across reconnects", () => {
@@ -36,6 +38,6 @@ describe("selection-bar", () => {
     document.body.append(bar);
     document.body.append(bar);
     expect(bar.querySelectorAll(".selbar")).toHaveLength(1);
-    expect(screen.getByText("0 selected")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "0 selected" })).toBeInTheDocument();
   });
 });

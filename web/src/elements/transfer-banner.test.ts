@@ -18,7 +18,7 @@ describe("transfer-banner", () => {
   it("renders both lines, a determinate bar, and fires Cancel", async () => {
     const banner = mount();
     expect(screen.getByRole("status")).toHaveClass("transfer");
-    expect(screen.getByText("Uploading 2/5 · clip.mp4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Uploading 2/5 · clip.mp4")).toHaveTextContent("⭱ 2/5 · clip.mp4");
     expect(screen.getByText("25 % · 50 B / 200 B")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("value", "0.25");
     const onCancel = vi.fn();
@@ -34,7 +34,7 @@ describe("transfer-banner", () => {
     expect(banner.progress).toBe(next);
     expect(screen.getByRole("progressbar")).not.toHaveAttribute("value");
     expect(screen.getByText("7 B")).toBeInTheDocument();
-    expect(screen.getByText("Downloading 1/1 · x")).toBeInTheDocument();
+    expect(screen.getByLabelText("Downloading 1/1 · x")).toHaveTextContent("⭳ 1/1 · x");
   });
 
   it("keeps the last render when progress clears, and renders once", () => {
@@ -43,6 +43,6 @@ describe("transfer-banner", () => {
     document.body.append(banner);
     expect(banner.progress).toBeNull();
     expect(banner.querySelectorAll(".transfer")).toHaveLength(1);
-    expect(screen.getByText("Uploading 2/5 · clip.mp4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Uploading 2/5 · clip.mp4")).toBeInTheDocument();
   });
 });

@@ -27,10 +27,10 @@ describe("cloud-gallery listing", () => {
 
   it("reports a failed listing and an empty folder", async () => {
     const bad = await mountGallery({ list: vi.fn(() => Promise.reject(new Error("boom"))) });
-    expect(screen.getByText("Could not load: boom")).toHaveClass("error");
+    expect(screen.getByRole("alert", { name: "Could not load: boom" })).toHaveTextContent("⚠");
     expect(bad.kid("filter-bar")).toBeNull();
     await mountGallery({ list: vi.fn(() => Promise.resolve([])) });
-    expect(screen.getByText("This folder is empty.")).toHaveClass("muted");
+    expect(screen.getByLabelText("This folder is empty.")).toHaveClass("muted");
   });
 
   it("navigates into folders and through the breadcrumb", async () => {
@@ -88,6 +88,7 @@ describe("cloud-gallery listing", () => {
     await userEvent.click(screen.getByLabelText("Rename notes.txt"));
     const prompt = g.kid("prompt-dialog") as HTMLElement & Record<string, unknown>;
     expect(prompt.title).toBe('Rename "notes.txt"');
+    expect(prompt.subject).toBe("notes.txt");
     expect(prompt.initialValue).toBe("notes.txt");
     expect(prompt.confirmLabel).toBe("Rename");
     fire(prompt, "confirm", "b.txt");
@@ -101,16 +102,16 @@ describe("cloud-gallery listing", () => {
 
   it("creates folders through the new-folder prompt", async () => {
     const g = await mountGallery();
-    await userEvent.click(screen.getByText("New folder"));
+    await userEvent.click(screen.getByRole("button", { name: "New folder" }));
     const prompt = g.kid("prompt-dialog") as HTMLElement & Record<string, unknown>;
-    expect(prompt.placeholder).toBe("Folder name");
+    expect(prompt.glyph).toBe("📁＋");
     const inner = prompt.appendChild(document.createElement("span"));
     fire(inner, "confirm", "ignored-inner");
     expect(g.client.createDir).not.toHaveBeenCalled();
     fire(prompt, "confirm", "New");
     await flush();
     expect(g.client.createDir).toHaveBeenCalledWith("/New");
-    await userEvent.click(screen.getByText("New folder"));
+    await userEvent.click(screen.getByRole("button", { name: "New folder" }));
     fire(g.kid("prompt-dialog") as HTMLElement, "cancel");
     expect(g.kid("prompt-dialog")).toBeNull();
   });
@@ -134,11 +135,11 @@ describe("cloud-gallery listing", () => {
     expect(names()).toEqual([before[0], ...before.slice(1).reverse()]);
     expect(bar.sort).toEqual({ key: "name", dir: "desc" });
     fire(bar, "filter", { ...DEFAULT_FILTER, query: "zzz" });
-    expect(screen.getByText("Indexing the whole cloud…")).toBeInTheDocument();
+    expect(screen.getByLabelText("Indexing the whole cloud…")).toHaveTextContent("⟳");
     fire(bar, "activate");
     expect(bar.indexing).toBe(true);
     await flush();
-    expect(screen.getByText("Nothing on the cloud matches your filters.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nothing on the cloud matches your filters.")).toHaveTextContent("∅");
     fire(bar, "filter", { ...DEFAULT_FILTER, query: "pic" });
     expect(g.kid("result-groups")).not.toBeNull();
     fire(bar, "filter", DEFAULT_FILTER);

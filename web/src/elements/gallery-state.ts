@@ -1,5 +1,6 @@
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
+import type { Busy } from "../lib/busy.ts";
 import { createHashPath } from "../lib/hash-path.ts";
 import { createCompletionCue, type CompletionCue, type CueRun } from "../lib/completion-cue.ts";
 import { DEFAULT_FILTER, DEFAULT_SORT, isFilterActive, type FilterState, type SortState } from "../lib/filter-sort.ts";
@@ -18,7 +19,7 @@ import { createTransfers } from "../stores/transfers.ts";
 interface Local {
   readonly filter: FilterState;
   readonly sort: SortState;
-  readonly busy: string | null;
+  readonly busy: Busy | null;
   /** -1 means "no viewer open". */
   readonly viewerIndex: number;
 }
@@ -43,7 +44,7 @@ export function createGalleryState(
   const patch = (change: Partial<Local>): void => {
     local.setState((s) => ({ ...s, ...change }));
   };
-  const setBusy = (busy: string | null): void => {
+  const setBusy = (busy: Busy | null): void => {
     patch({ busy });
   };
   const refreshAll = (): void => {

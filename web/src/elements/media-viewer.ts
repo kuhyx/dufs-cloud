@@ -194,7 +194,7 @@ export class MediaViewer extends HTMLElement {
       this.#media = h("audio", { class: "viewer-audio", src: url, controls: true, autoplay: true });
       return keepClicks(h("div", { class: "viewer-fallback" }, h("p", {}, name), this.#media));
     }
-    this.#media = h("a", { href: url, download: true }, "Download");
+    this.#media = h("a", { href: url, download: true, class: "viewer-download", "aria-label": "Download" }, "⭳");
     return h("div", { class: "viewer-fallback" }, h("p", {}, name), this.#media);
   }
 }

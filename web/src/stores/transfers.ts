@@ -1,5 +1,6 @@
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
+import { busyError, type Busy } from "../lib/busy.ts";
 import { basename, joinPath } from "../lib/paths.ts";
 import { buildSelectionZip, saveBytes } from "../lib/download.ts";
 import { isAbort, type TransferProgress } from "../lib/transfer.ts";
@@ -8,7 +9,7 @@ import { createStore, type Readable } from "./store.ts";
 export interface TransferDeps {
   readonly client: DufsClient;
   readonly getPath: () => string;
-  readonly setBusy: (message: string | null) => void;
+  readonly setBusy: (busy: Busy | null) => void;
   readonly refreshAll: () => void;
   readonly clearSelection: () => void;
 }
@@ -53,10 +54,10 @@ export function createTransfers({
     return controller;
   }
 
-  function endTransfer(message: string | null): void {
+  function endTransfer(busy: Busy | null): void {
     abortRef.current = null;
     setTransfer(null);
-    setBusy(message);
+    setBusy(busy);
   }
 
   function cancelTransfer(): void {
@@ -99,7 +100,11 @@ export function createTransfers({
               // Leaving a partial behind is the lesser evil here.
             }
             refreshAll();
-            endTransfer(`Cancelled after ${done} of ${list.length}`);
+            endTransfer({
+              kind: "cancelled",
+              spoken: `Cancelled after ${done} of ${list.length}`,
+              count: `${done}/${list.length}`,
+            });
             return;
           }
           failed.push(file.name);
@@ -109,7 +114,12 @@ export function createTransfers({
       endTransfer(
         failed.length === 0
           ? null
-          : `${failed.length} of ${list.length} failed: ${failed.join(", ")}`,
+          : {
+              kind: "failed",
+              spoken: `${failed.length} of ${list.length} failed: ${failed.join(", ")}`,
+              count: `${failed.length}/${list.length}`,
+              name: failed.join(", "),
+            },
       );
     })();
   }
@@ -122,7 +132,11 @@ export function createTransfers({
     zipBase: string,
     selectedEntries: readonly DirEntry[],
   ): void {
-    setBusy(`Preparing ${selectedEntries.length} item(s)…`);
+    setBusy({
+      kind: "zip",
+      spoken: `Preparing ${selectedEntries.length} item(s)…`,
+      count: String(selectedEntries.length),
+    });
     const controller = beginTransfer();
     void (async () => {
       try {
@@ -136,10 +150,10 @@ export function createTransfers({
         saveBytes(bytes, `${base === "/" ? "cloud" : base}.zip`);
       } catch (err: unknown) {
         if (isAbort(err)) {
-          endTransfer("Zip cancelled");
+          endTransfer({ kind: "cancelled", spoken: "Zip cancelled" });
           return;
         }
-        endTransfer(err instanceof Error ? err.message : String(err));
+        endTransfer(busyError(err));
         return;
       }
       endTransfer(null);

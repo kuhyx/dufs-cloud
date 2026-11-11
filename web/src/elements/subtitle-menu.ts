@@ -1,5 +1,5 @@
 // <subtitle-menu> props: tracks, active, offsetMs. Events: select (detail: track|null), offset-change (detail: ms).
-import { subtitleLabel, type SubtitleTrack } from "../lib/subtitles.ts";
+import { subtitleLabel, subtitleShortLabel, type SubtitleTrack } from "../lib/subtitles.ts";
 import { h } from "./dom.ts";
 import { emit } from "./element-kit.ts";
 import { rebuildKeepFocus } from "./rebuild-keep-focus.ts";
@@ -57,7 +57,8 @@ export class SubtitleMenu extends HTMLElement {
           "aria-expanded": String(this.#open),
           "aria-label": "Subtitles",
         },
-        active === null ? "Subtitles: Off" : subtitleLabel(active),
+        h("span", { "aria-hidden": "true" }, "💬 "),
+        active === null ? "⊘" : subtitleShortLabel(active),
       );
       toggle.addEventListener("click", () => {
         this.#open = !this.#open;
@@ -73,7 +74,7 @@ export class SubtitleMenu extends HTMLElement {
     });
   }
 
-  #choice(label: string, track: SubtitleTrack | null): HTMLButtonElement {
+  #choice(label: string, painted: string, track: SubtitleTrack | null): HTMLButtonElement {
     const checked = track?.id === this.#active?.id;
     const item = h(
       "button",
@@ -81,9 +82,10 @@ export class SubtitleMenu extends HTMLElement {
         type: "button",
         role: "menuitemradio",
         "aria-checked": String(checked),
+        "aria-label": label,
         class: checked ? "is-active" : "",
       },
-      label,
+      painted,
     );
     item.addEventListener("click", () => {
       emit(this, "select", track);
@@ -104,8 +106,8 @@ export class SubtitleMenu extends HTMLElement {
   #panel(): HTMLElement {
     const offset = h(
       "div",
-      { class: "subtitle-offset" },
-      h("span", {}, "Delay"),
+      { class: "subtitle-offset", role: "group", "aria-label": "Delay" },
+      h("span", { "aria-hidden": "true" }, "⏱"),
       this.#nudge("Subtitles earlier", "−", -OFFSET_STEP_MS),
       h(
         "span",
@@ -117,8 +119,8 @@ export class SubtitleMenu extends HTMLElement {
     return h(
       "div",
       { class: "subtitle-panel", role: "menu" },
-      this.#choice("Off", null),
-      ...this.#tracks.map((track) => this.#choice(subtitleLabel(track), track)),
+      this.#choice("Off", "⊘", null),
+      ...this.#tracks.map((track) => this.#choice(subtitleLabel(track), subtitleShortLabel(track), track)),
       offset,
     );
   }

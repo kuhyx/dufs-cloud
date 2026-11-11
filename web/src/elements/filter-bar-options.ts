@@ -1,26 +1,35 @@
 import type { SortKey, TypeFilter } from "../lib/filter-sort.ts";
 
-export const TYPE_OPTIONS: readonly { value: TypeFilter; label: string }[] = [
-  { value: "all", label: "All types" },
-  { value: "folder", label: "Folders" },
-  { value: "image", label: "Images" },
-  { value: "video", label: "Videos" },
-  { value: "audio", label: "Audio" },
-  { value: "pdf", label: "PDFs" },
-  { value: "text", label: "Text" },
-  { value: "other", label: "Other" },
+/** A select option: the painted glyph (same vocabulary as the grid tiles) and
+ * the spoken label screen readers announce instead. */
+export interface GlyphOption<V> {
+  readonly value: V;
+  readonly glyph: string;
+  readonly label: string;
+}
+
+export const TYPE_OPTIONS: readonly GlyphOption<TypeFilter>[] = [
+  { value: "all", glyph: "✱", label: "All types" },
+  { value: "folder", glyph: "📁", label: "Folders" },
+  { value: "image", glyph: "🖼", label: "Images" },
+  { value: "video", glyph: "🎞", label: "Videos" },
+  { value: "audio", glyph: "🎵", label: "Audio" },
+  { value: "pdf", glyph: "📕", label: "PDFs" },
+  { value: "text", glyph: "📝", label: "Text" },
+  { value: "other", glyph: "📄", label: "Other" },
 ];
 
-export const SORT_OPTIONS: readonly { value: SortKey; label: string }[] = [
-  { value: "name", label: "Name" },
-  { value: "size", label: "Size" },
-  { value: "modified", label: "Modified" },
-  { value: "created", label: "Created" },
-  { value: "uploaded", label: "Uploaded" },
-  { value: "duration", label: "Duration" },
-  { value: "resolution", label: "Resolution" },
-  { value: "type", label: "Type" },
-  { value: "extension", label: "Extension" },
+export const SORT_OPTIONS: readonly GlyphOption<SortKey>[] = [
+  // 🏷 (a name tag), not 🔤: that emoji paints the letters "abc".
+  { value: "name", glyph: "⇅ 🏷", label: "Sort: Name" },
+  { value: "size", glyph: "⇅ ⚖", label: "Sort: Size" },
+  { value: "modified", glyph: "⇅ ✏️", label: "Sort: Modified" },
+  { value: "created", glyph: "⇅ ✨", label: "Sort: Created" },
+  { value: "uploaded", glyph: "⇅ ⭱", label: "Sort: Uploaded" },
+  { value: "duration", glyph: "⇅ ⏱", label: "Sort: Duration" },
+  { value: "resolution", glyph: "⇅ 📐", label: "Sort: Resolution" },
+  { value: "type", glyph: "⇅ 🗂", label: "Sort: Type" },
+  { value: "extension", glyph: "⇅ .✱", label: "Sort: Extension" },
 ];
 
 /** Child range/picker elements report `change` with a detail object; inner

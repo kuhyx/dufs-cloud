@@ -1,4 +1,6 @@
-// <prompt-dialog> props: title, placeholder, confirmLabel, initialValue.
+// <prompt-dialog> props: title (spoken), glyph (painted heading), subject
+// (painted user content, e.g. the entry renamed), placeholder, confirmLabel
+// (spoken; the button paints ✓), initialValue.
 // Events: confirm (detail: trimmed value), cancel.
 import { h } from "./dom.ts";
 import { define, emit } from "./element-kit.ts";
@@ -7,16 +9,19 @@ import { modal, showModal } from "./modal.ts";
 export class PromptDialog extends HTMLElement {
   #seeded = false;
   #initialValue = "";
-  readonly #title = h("p");
+  #title = "";
+  readonly #glyph = h("span", { class: "prompt-glyph", "aria-hidden": "true" });
+  readonly #subject = h("span", { class: "prompt-subject" });
+  readonly #heading = h("p", { class: "prompt-heading" }, this.#glyph, this.#subject);
   readonly #input = h("input", { class: "prompt-input", type: "text" });
-  readonly #confirm = h("button", { type: "button", class: "primary", disabled: true });
+  readonly #confirm = h("button", { type: "button", class: "primary", disabled: true }, "✓");
   readonly #dialog = modal(
     "dialog",
     () => {
       emit(this, "cancel");
     },
     true,
-    this.#title,
+    this.#heading,
     this.#input,
     h(
       "div",
@@ -25,11 +30,12 @@ export class PromptDialog extends HTMLElement {
         "button",
         {
           type: "button",
+          "aria-label": "Cancel",
           onclick: () => {
             emit(this, "cancel");
           },
         },
-        "Cancel",
+        "✕",
       ),
       this.#confirm,
     ),
@@ -48,13 +54,30 @@ export class PromptDialog extends HTMLElement {
     });
   }
 
+  /** Spoken only: names the input for screen readers. */
   override get title(): string {
-    return this.#title.textContent;
+    return this.#title;
   }
 
   override set title(value: string) {
-    this.#title.replaceChildren(value);
+    this.#title = value;
     this.#input.setAttribute("aria-label", value);
+  }
+
+  get glyph(): string {
+    return this.#glyph.textContent;
+  }
+
+  set glyph(value: string) {
+    this.#glyph.replaceChildren(value);
+  }
+
+  get subject(): string {
+    return this.#subject.textContent;
+  }
+
+  set subject(value: string) {
+    this.#subject.replaceChildren(value);
   }
 
   get placeholder(): string {
@@ -66,11 +89,11 @@ export class PromptDialog extends HTMLElement {
   }
 
   get confirmLabel(): string {
-    return this.#confirm.textContent;
+    return this.#confirm.getAttribute("aria-label") ?? "";
   }
 
   set confirmLabel(value: string) {
-    this.#confirm.replaceChildren(value);
+    this.#confirm.setAttribute("aria-label", value);
   }
 
   get initialValue(): string {

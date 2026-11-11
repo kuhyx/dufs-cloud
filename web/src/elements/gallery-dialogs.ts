@@ -84,7 +84,10 @@ export class GalleryDialogs extends HTMLElement {
     );
     this.#slot("move", s.showMove || null, () => this.#picker(dialogs));
     const confirm = this.#slots.get("deleteSelected")?.el;
-    if (confirm instanceof ConfirmDialog) confirm.message = this.#selectedMessage();
+    if (confirm instanceof ConfirmDialog) {
+      confirm.message = this.#selectedMessage();
+      confirm.subject = String(this.#selectedCount);
+    }
     const picker = this.#slots.get("move")?.el as FolderPickerProps | undefined;
     if (picker) picker.count = this.#selectedCount;
   }
@@ -115,10 +118,15 @@ export class GalleryDialogs extends HTMLElement {
     return el;
   }
 
-  #confirm(message: string, onConfirm: () => void, onCancel: () => void): ConfirmDialog {
+  // A delete confirmation: 🗑 + the entry name or the count is painted; the
+  // full sentence is the dialog's spoken name.
+  #confirm(message: string, subject: string, onConfirm: () => void, onCancel: () => void): ConfirmDialog {
     const el = new ConfirmDialog();
     el.message = message;
+    el.glyph = "🗑";
+    el.subject = subject;
     el.confirmLabel = "Delete";
+    el.confirmGlyph = "🗑";
     on(el, "confirm", onConfirm);
     on(el, "cancel", onCancel);
     return el;
@@ -127,6 +135,7 @@ export class GalleryDialogs extends HTMLElement {
   #confirmDelete(dialogs: DialogStore, entry: DirEntry): HTMLElement {
     return this.#confirm(
       `Delete "${entry.name}"? This cannot be undone.`,
+      entry.name,
       () => {
         dialogs.setDeleteEntry(null);
         this.mutations.confirmDelete(entry);
@@ -144,6 +153,7 @@ export class GalleryDialogs extends HTMLElement {
   #confirmDeleteSelected(dialogs: DialogStore): HTMLElement {
     return this.#confirm(
       this.#selectedMessage(),
+      String(this.#selectedCount),
       () => {
         dialogs.setShowDeleteSelected(false);
         this.mutations.deleteSelected();

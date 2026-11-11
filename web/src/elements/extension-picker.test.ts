@@ -33,9 +33,8 @@ describe("extension-picker", () => {
     await userEvent.click(btn);
     expect(btn).toHaveAttribute("aria-expanded", "true");
     expect(getByLabelText(el, "webp: off")).toBeInTheDocument();
-    expect(el.querySelector(".extpicker-hint")).toHaveTextContent(
-      "Click to cycle: keep ✓ · drop ✕",
-    );
+    expect(btn).toHaveTextContent("✱ ▾");
+    expect(el.querySelector(".extpicker-hint")).toBeNull();
     await userEvent.click(btn);
     expect(el.querySelector(".extpicker-menu")).toBeNull();
   });
@@ -55,19 +54,21 @@ describe("extension-picker", () => {
     expect(off.seen).toEqual([{ includes: ["webp"], excludes: [] }]);
 
     const inc = make({ includes: ["webp"] });
-    await userEvent.click(getByRole(inc.el, "button", { name: "webp ▾" }));
+    await userEvent.click(getByRole(inc.el, "button", { name: "webp" }));
     await userEvent.click(getByLabelText(inc.el, "webp: include"));
     expect(inc.seen).toEqual([{ includes: [], excludes: ["webp"] }]);
 
     const exc = make({ excludes: ["webp"] });
-    await userEvent.click(getByRole(exc.el, "button", { name: "not webp ▾" }));
+    const excBtn = getByRole(exc.el, "button", { name: "not webp" });
+    expect(excBtn).toHaveTextContent("✕ webp ▾");
+    await userEvent.click(excBtn);
     await userEvent.click(getByLabelText(exc.el, "webp: exclude"));
     expect(exc.seen).toEqual([{ includes: [], excludes: [] }]);
   });
 
   it("keeps the other extensions when one cycles", async () => {
     const { el, seen } = make({ includes: ["png"], excludes: ["jpg"] });
-    await userEvent.click(getByRole(el, "button", { name: "png · not jpg ▾" }));
+    await userEvent.click(getByRole(el, "button", { name: "png · not jpg" }));
     await userEvent.click(getByLabelText(el, "webp: off"));
     expect(seen).toEqual([{ includes: ["png", "webp"], excludes: ["jpg"] }]);
   });
@@ -87,7 +88,7 @@ describe("extension-picker", () => {
   it("explains an empty scope", async () => {
     const { el } = make({ available: [] });
     await userEvent.click(getByRole(el, "button", { name: /Any ext/ }));
-    expect(el.querySelector(".extpicker-empty")).toHaveTextContent("No extensions in view.");
+    expect(getByLabelText(el, "No extensions in view.")).toHaveTextContent("∅");
   });
 
   it("keeps focus on the same option and the toggle across re-renders", async () => {

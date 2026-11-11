@@ -69,7 +69,8 @@ describe("gallery-dialogs", () => {
     const { dialogs, muts } = mount();
     const file = entry("pic.jpg", "file");
     dialogs.setDeleteEntry(file);
-    expect(screen.getByText('Delete "pic.jpg"? This cannot be undone.')).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: 'Delete "pic.jpg"? This cannot be undone.' }))
+      .toHaveTextContent("🗑pic.jpg");
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(muts.confirmDelete).toHaveBeenCalledWith(file);
     expect(dialogs.getState().deleteEntry).toBeNull();
@@ -82,9 +83,11 @@ describe("gallery-dialogs", () => {
   it("confirms and cancels deleting the selection, tracking the count", async () => {
     const { el, dialogs, muts } = mount();
     dialogs.openDeleteSelected();
-    expect(screen.getByText("Delete 2 item(s)? This cannot be undone.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Delete 2 item(s)? This cannot be undone." }))
+      .toHaveTextContent("🗑2");
     el.selectedCount = 4;
-    expect(screen.getByText("Delete 4 item(s)? This cannot be undone.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Delete 4 item(s)? This cannot be undone." }))
+      .toHaveTextContent("🗑4");
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(muts.deleteSelected).toHaveBeenCalledOnce();
     expect(dialogs.getState().showDeleteSelected).toBe(false);

@@ -62,9 +62,7 @@ describe("subtitle-menu", () => {
 
   it("shows 'Off' on the toggle when no track is active", () => {
     mount();
-    expect(screen.getByLabelText("Subtitles")).toHaveTextContent(
-      "Subtitles: Off",
-    );
+    expect(screen.getByLabelText("Subtitles")).toHaveTextContent("💬 ⊘");
   });
 
   it("shows the active track's label on the toggle", () => {
@@ -94,10 +92,11 @@ describe("subtitle-menu", () => {
     await userEvent.click(screen.getByLabelText("Subtitles"));
     const items = screen.getAllByRole("menuitemradio");
     expect(items.map((i) => i.textContent)).toEqual([
-      "Off",
+      "⊘",
       "English",
       "Polish",
     ]);
+    expect(items[0]).toHaveAccessibleName("Off");
   });
 
   it("marks the active track as checked", async () => {

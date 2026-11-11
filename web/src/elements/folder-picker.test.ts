@@ -1,9 +1,10 @@
-import { findByText, getByRole, getByText, queryByText } from "@testing-library/dom";
+import { findByLabelText, findByText, getByRole, getByText, queryByText } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, it, expect, vi } from "vitest";
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
 import { makeClient } from "../test/client-fixtures.ts";
+import { must } from "../test/viewer-fixtures.ts";
 import { FolderPicker } from "./folder-picker.ts";
 
 function dir(name: string, parent = ""): DirEntry {
@@ -37,11 +38,12 @@ describe("folder-picker", () => {
     const overlay = el.querySelector(".overlay");
     expect(overlay).toHaveAttribute("role", "dialog");
     expect(overlay).toHaveAttribute("aria-modal", "true");
-    expect(getByText(el, "Move 2 items to:")).toBeInTheDocument();
+    expect(getByRole(el, "dialog", { name: "Move 2 items to:" })).toBe(overlay);
+    expect(el.querySelector(".picker-heading")).toHaveTextContent("➜📁 2");
     expect(el.querySelector(".picker-path")).toHaveTextContent("/Media");
-    await findByText(el, "No subfolders.");
+    expect(await findByLabelText(el, "No subfolders.")).toHaveTextContent("∅");
     el.count = 1;
-    expect(getByText(el, "Move 1 item to:")).toBeInTheDocument();
+    expect(getByRole(el, "dialog", { name: "Move 1 item to:" })).toBeInTheDocument();
     expect(el.count).toBe(1);
     expect(el.initialPath).toBe("/Media");
     expect(el.client).toBeDefined();
@@ -87,19 +89,19 @@ describe("folder-picker", () => {
 
   it("surfaces a load error (Error and non-Error)", async () => {
     const err = make(() => Promise.reject(new Error("nope")));
-    expect(await findByText(err.el, "Could not load: nope")).toHaveClass("error");
+    expect(await findByLabelText(err.el, "Could not load: nope")).toHaveClass("error");
 
     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
     const plain = make(() => Promise.reject("boom-string"));
-    expect(await findByText(plain.el, /boom-string/)).toBeInTheDocument();
+    expect(await findByLabelText(plain.el, /boom-string/)).toBeInTheDocument();
   });
 
   it("cancels via the button and the overlay, but not a click inside the dialog", async () => {
     const { el, cancels } = make(() => Promise.resolve([]));
-    await findByText(el, "No subfolders.");
+    await findByLabelText(el, "No subfolders.");
     await userEvent.click(getByRole(el, "button", { name: "Cancel" }));
     expect(cancels).toHaveLength(1);
-    await userEvent.click(getByText(el, "Move 2 items to:"));
+    await userEvent.click(must(".picker-heading"));
     expect(cancels).toHaveLength(1);
     await userEvent.click(getByRole(el, "dialog"));
     expect(cancels).toHaveLength(2);

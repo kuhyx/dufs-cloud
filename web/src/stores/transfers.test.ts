@@ -1,4 +1,5 @@
 import type { DufsClient, TransferOptions } from "../api/dufs-client.ts";
+import type { Busy } from "../lib/busy.ts";
 import { buildSelectionZip, saveBytes } from "../lib/download.ts";
 import type { TransferProgress } from "../lib/transfer.ts";
 import { fileAt, makeClient } from "../test/client-fixtures.ts";
@@ -33,17 +34,23 @@ const hangUntilAborted: DufsClient["upload"] = (_dir, _file, opts) =>
 
 function setup(overrides: Partial<DufsClient> = {}) {
   const client = makeClient(overrides);
+  // Records the spoken sentence: the painted part (glyph, count) is asserted
+  // separately in the busy-kind tests.
   const setBusy = vi.fn();
+  const busyCalls: (Busy | null)[] = [];
   const refreshAll = vi.fn();
   const clearSelection = vi.fn();
   const transfers = createTransfers({
     client,
     getPath: () => "/dir",
-    setBusy,
+    setBusy: (b) => {
+      busyCalls.push(b);
+      setBusy(b?.spoken ?? null);
+    },
     refreshAll,
     clearSelection,
   });
-  return { client, setBusy, refreshAll, clearSelection, transfers };
+  return { client, setBusy, busyCalls, refreshAll, clearSelection, transfers };
 }
 
 beforeEach(() => {
@@ -101,16 +108,17 @@ describe("uploads", () => {
       .fn<DufsClient["upload"]>()
       .mockRejectedValueOnce(new Error("bad"))
       .mockResolvedValue(undefined);
-    const { setBusy, refreshAll, transfers } = setup({ upload });
+    const { setBusy, busyCalls, refreshAll, transfers } = setup({ upload });
     transfers.uploadInto("/d", files("a.txt", "b.txt"));
     await flush();
     expect(upload).toHaveBeenCalledTimes(2);
     expect(setBusy).toHaveBeenLastCalledWith("1 of 2 failed: a.txt");
+    expect(busyCalls.at(-1)).toMatchObject({ kind: "failed", count: "1/2", name: "a.txt" } satisfies Partial<Busy>);
     expect(refreshAll).toHaveBeenCalledOnce();
   });
 
   it("cancels, removes the partial file and reports progress", async () => {
-    const { client, setBusy, refreshAll, transfers } = setup({
+    const { client, setBusy, busyCalls, refreshAll, transfers } = setup({
       upload: hangUntilAborted,
     });
     transfers.uploadInto("/d", files("a.txt", "b.txt"));
@@ -121,6 +129,7 @@ describe("uploads", () => {
     expect(client.remove).toHaveBeenCalledExactlyOnceWith("/d/a.txt");
     expect(refreshAll).toHaveBeenCalledOnce();
     expect(setBusy).toHaveBeenLastCalledWith("Cancelled after 0 of 2");
+    expect(busyCalls.at(-1)).toMatchObject({ kind: "cancelled", count: "0/2" });
     expect(transfers.getState().transfer).toBeNull();
   });
 
@@ -181,10 +190,12 @@ describe("downloadSelected", () => {
 
   it("reports a cancelled zip without saving or clearing", async () => {
     zipMock.mockRejectedValue(abortError());
-    const { setBusy, clearSelection, transfers } = setup();
+    const { setBusy, busyCalls, clearSelection, transfers } = setup();
     transfers.downloadSelected("/dir", picked);
+    expect(busyCalls.at(0)).toMatchObject({ kind: "zip", count: "1" });
     await flush();
     expect(setBusy).toHaveBeenLastCalledWith("Zip cancelled");
+    expect(busyCalls.at(-1)?.kind).toBe("cancelled");
     expect(saveMock).not.toHaveBeenCalled();
     expect(clearSelection).not.toHaveBeenCalled();
   });

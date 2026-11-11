@@ -4,7 +4,7 @@ import { define, emit } from "./element-kit.ts";
 
 export class SelectionBar extends HTMLElement {
   #count = 0;
-  readonly #label = h("span", { class: "sel-count" });
+  readonly #label = h("span", { class: "sel-count", role: "status" });
 
   get count(): number {
     return this.#count;
@@ -12,34 +12,37 @@ export class SelectionBar extends HTMLElement {
 
   set count(value: number) {
     this.#count = value;
-    this.#label.replaceChildren(`${value} selected`);
+    this.#label.setAttribute("aria-label", `${value} selected`);
+    this.#label.replaceChildren(h("span", { "aria-hidden": "true" }, "☑ "), String(value));
   }
 
   connectedCallback(): void {
     if (this.firstChild) return;
     this.style.display = "contents";
     this.count = this.#count;
-    const button = (event: string, label: string, cls?: string): HTMLButtonElement =>
+    // Icon-only: the glyph paints, the old word is the spoken label.
+    const button = (event: string, label: string, glyph: string, cls?: string): HTMLButtonElement =>
       h(
         "button",
         {
           type: "button",
           class: cls,
+          "aria-label": label,
           onclick: () => {
             emit(this, event);
           },
         },
-        label,
+        glyph,
       );
     this.append(
       h(
         "div",
         { class: "selbar" },
         this.#label,
-        button("move", "Move"),
-        button("download", "Download"),
-        button("delete", "Delete", "danger"),
-        button("clear", "Clear"),
+        button("move", "Move", "➜📁"),
+        button("download", "Download", "⭳"),
+        button("delete", "Delete", "🗑", "danger"),
+        button("clear", "Clear", "✕"),
       ),
     );
   }

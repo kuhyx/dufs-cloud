@@ -12,14 +12,14 @@ export class ResolutionRange extends HTMLElement {
   #min: number | null = null;
   #max: number | null = null;
   readonly #minInput = numberField(
-    "min MP",
+    "≥ MP",
     "Minimum resolution in megapixels",
     (text) => {
       emitChange(this, { minPixels: fromText(text), maxPixels: this.#max });
     },
   );
   readonly #maxInput = numberField(
-    "max MP",
+    "≤ MP",
     "Maximum resolution in megapixels",
     (text) => {
       emitChange(this, { minPixels: this.#min, maxPixels: fromText(text) });

@@ -32,14 +32,15 @@ describe("text-editor", () => {
     const el = mount(c);
     expect(el.client).toBe(c);
     expect(el.entry).toBe(entry);
-    expect(screen.getByText("loading")).toHaveClass("editor-status");
+    expect(screen.getByRole("status", { name: "loading" })).toHaveClass("editor-status");
+    expect(screen.getByRole("status")).toHaveTextContent("⟳");
     expect(screen.getByRole("textbox")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     const area = await screen.findByDisplayValue("body");
     expect(area).toHaveClass("editor-area");
     expect(area).toHaveAttribute("spellcheck", "false");
     expect(screen.getByText("n.txt").parentElement).toHaveClass("editor-head");
-    expect(screen.getByText("ready")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "ready" })).toHaveAttribute("data-status", "ready");
     expect(el.querySelector(".dialog")).toHaveClass("editor");
     expect(c.readText).toHaveBeenCalledOnce();
     await userEvent.clear(area);
@@ -48,19 +49,20 @@ describe("text-editor", () => {
     await waitFor(() => {
       expect(c.writeText).toHaveBeenCalledWith("/n.txt", "changed");
     });
-    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Saved" })).toHaveTextContent("✓");
+    expect(screen.getByRole("status")).toHaveAttribute("data-status", "saved");
   });
 
   it("shows a load error", async () => {
     mount(client({ readText: vi.fn(() => Promise.reject(new Error("nope"))) }));
-    expect(await screen.findByText("nope")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "nope" })).toHaveTextContent("⚠");
   });
 
   it("shows a save error", async () => {
     mount(client({ writeText: vi.fn(() => Promise.reject(new Error("wfail"))) }));
     await screen.findByDisplayValue("body");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByText("wfail")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "wfail" })).toHaveAttribute("data-status", "error");
   });
 
   it("stringifies non-Error rejections", async () => {
@@ -72,11 +74,11 @@ describe("text-editor", () => {
     );
     await screen.findByDisplayValue("body");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByText("plain-save-failure")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "plain-save-failure" })).toBeInTheDocument();
     document.body.replaceChildren();
     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
     mount(client({ readText: vi.fn(() => Promise.reject("plain-load-failure")) }));
-    expect(await screen.findByText("plain-load-failure")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "plain-load-failure" })).toBeInTheDocument();
   });
 
   it("closes via the button and Escape", async () => {
@@ -130,6 +132,6 @@ describe("text-editor", () => {
     await ok;
     await bad.catch(() => undefined);
     expect(first.querySelector("textarea")?.value).toBe("");
-    expect(second.querySelector(".editor-status")?.textContent).toBe("loading");
+    expect(second.querySelector(".editor-status")?.getAttribute("data-status")).toBe("loading");
   });
 });

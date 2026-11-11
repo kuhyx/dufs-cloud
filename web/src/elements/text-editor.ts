@@ -17,9 +17,9 @@ export class TextEditor extends HTMLElement {
   #entry: DirEntry | null = null;
   #generation = 0;
   readonly #name = h("span");
-  readonly #status = h("span", { class: "editor-status" });
-  readonly #area = h("textarea", { class: "editor-area", spellcheck: "false" });
-  readonly #save = h("button", { type: "button", class: "primary" }, "Save");
+  readonly #status = h("span", { class: "editor-status", role: "status" });
+  readonly #area = h("textarea", { class: "editor-area", spellcheck: "false", "aria-label": "File contents" });
+  readonly #save = h("button", { type: "button", class: "primary", "aria-label": "Save" }, "💾");
   readonly #dialog = modal(
     "dialog editor",
     () => {
@@ -35,11 +35,12 @@ export class TextEditor extends HTMLElement {
         "button",
         {
           type: "button",
+          "aria-label": "Close",
           onclick: () => {
             emit(this, "close");
           },
         },
-        "Close",
+        "✕",
       ),
       this.#save,
     ),
@@ -83,8 +84,14 @@ export class TextEditor extends HTMLElement {
     this.#dialog.close();
   }
 
+  // The status paints a glyph (spinner while busy, ✓ once saved, ⚠ on error);
+  // the old word or the error message is its spoken name, `data-status` the
+  // state tests read.
   #show(status: Status, message: string | null): void {
-    this.#status.replaceChildren(message ?? status);
+    const glyph = status === "error" ? "⚠" : status === "ready" ? (message === null ? "" : "✓") : "⟳";
+    this.#status.replaceChildren(glyph);
+    this.#status.dataset.status = status === "ready" && message !== null ? "saved" : status;
+    this.#status.setAttribute("aria-label", message ?? status);
     this.#area.disabled = status === "loading";
     this.#save.disabled = status === "loading" || status === "saving";
   }

@@ -4,6 +4,7 @@ import {
   looksForcedTitle,
   pickDefaultSubtitle,
   subtitleLabel,
+  subtitleShortLabel,
 } from "./subtitles.ts";
 import { track } from "../test/subtitle-fixtures.ts";
 
@@ -61,6 +62,14 @@ describe("subtitleLabel", () => {
         track({ language: "eng", title: "signs/songs", isForced: true }),
       ),
     ).toBe("English — signs/songs (forced)");
+  });
+});
+
+describe("subtitleShortLabel", () => {
+  it("paints content as-is and the handle and forced flag as symbols", () => {
+    expect(subtitleShortLabel(track({ language: "eng", title: "NF" }))).toBe("English — NF");
+    expect(subtitleShortLabel(track({ id: "embedded:3", language: "", title: "" }))).toBe("#embedded:3");
+    expect(subtitleShortLabel(track({ language: "eng", title: "", isForced: true }))).toBe("English ⚑");
   });
 });
 

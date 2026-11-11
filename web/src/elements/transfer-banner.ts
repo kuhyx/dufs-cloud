@@ -21,7 +21,13 @@ export class TransferBanner extends HTMLElement {
   set progress(value: TransferProgress | null) {
     this.#progress = value;
     if (value === null) return;
-    this.#title.replaceChildren(transferTitle(value));
+    // Painted: direction glyph, `i/n` and the file name (user content); the
+    // "Uploading 3/7 · name" sentence is the spoken name.
+    this.#title.setAttribute("aria-label", transferTitle(value));
+    this.#title.replaceChildren(
+      h("span", { "aria-hidden": "true" }, value.kind === "upload" ? "⭱ " : "⭳ "),
+      `${value.index}/${value.total} · ${value.name}`,
+    );
     this.#detail.replaceChildren(transferDetail(value));
     const fraction = transferFraction(value);
     // An indeterminate <progress> has no value attribute at all.
@@ -47,11 +53,12 @@ export class TransferBanner extends HTMLElement {
           {
             type: "button",
             class: "ghost",
+            "aria-label": "Cancel",
             onclick: () => {
               emit(this, "cancel");
             },
           },
-          "Cancel",
+          "✕",
         ),
       ),
     );

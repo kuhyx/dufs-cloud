@@ -5,9 +5,16 @@ import { h } from "./dom.ts";
 import { emit } from "./element-kit.ts";
 import { rebuildKeepFocus } from "./rebuild-keep-focus.ts";
 
+/** Spoken track name: the language, or "Track N" when untagged. */
 export function audioLabel(stream: DashStream, index: number): string {
   const named = languageName(stream.language);
   return named === "" ? `Track ${String(index + 1)}` : named;
+}
+
+/** Painted track name: the language (file metadata), or `#N` when untagged. */
+export function audioShortLabel(stream: DashStream, index: number): string {
+  const named = languageName(stream.language);
+  return named === "" ? `#${String(index + 1)}` : named;
 }
 
 export class AudioMenu extends HTMLElement {
@@ -43,8 +50,7 @@ export class AudioMenu extends HTMLElement {
       if (this.#tracks.length < 2) return [];
       const current = this.#tracks.findIndex((t) => t.id === this.#active);
       const playing = this.#tracks[current];
-      const label =
-        playing === undefined ? "Audio" : audioLabel(playing, current);
+      const label = playing === undefined ? "" : ` ${audioShortLabel(playing, current)}`;
       const toggle = h(
         "button",
         {
@@ -53,6 +59,7 @@ export class AudioMenu extends HTMLElement {
           "aria-expanded": String(this.#open),
           "aria-label": "Audio track",
         },
+        h("span", { "aria-hidden": "true" }, "🔊"),
         label,
       );
       toggle.addEventListener("click", () => {
@@ -77,9 +84,10 @@ export class AudioMenu extends HTMLElement {
           type: "button",
           role: "menuitemradio",
           "aria-checked": String(track.id === this.#active),
+          "aria-label": audioLabel(track, i),
           class: track.id === this.#active ? "is-active" : "",
         },
-        audioLabel(track, i),
+        audioShortLabel(track, i),
       );
       item.addEventListener("click", () => {
         emit(this, "select", track.id);

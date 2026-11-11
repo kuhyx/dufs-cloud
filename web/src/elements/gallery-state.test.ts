@@ -57,7 +57,7 @@ describe("gallery state completion cue", () => {
     await flush();
     expect(cue.succeeded).not.toHaveBeenCalled();
     expect(failing.cue.succeeded).not.toHaveBeenCalled();
-    expect(failing.st.snapshot().busy).toBe("1 of 1 failed: b.txt");
+    expect(failing.st.snapshot().busy?.spoken).toBe("1 of 1 failed: b.txt");
   });
 
   it("cues a finished zip download but not a failed one", async () => {

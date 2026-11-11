@@ -103,19 +103,29 @@ export function looksForcedTitle(title: string): boolean {
  * file can hold "English — Foxtrot" and "English — signs/songs", and the
  * 17-track releases repeat the same title across every language. */
 export function subtitleLabel(track: SubtitleTrack): string {
-  const language = track.language.trim();
-  const title = track.title.trim();
-  const named = languageName(language);
+  const label = labelParts(track);
+  // Nothing to show: fall back to the handle so entries stay distinguishable.
+  if (label === "") return `Track ${track.id}`;
+  return track.isForced ? `${label} (forced)` : label;
+}
 
+/** Language name and title, joined; "" when the track carries neither. */
+function labelParts(track: SubtitleTrack): string {
+  const title = track.title.trim();
+  const named = languageName(track.language.trim());
   const parts: string[] = [];
   if (named !== "") parts.push(named);
   if (title !== "" && title !== named) parts.push(title);
+  return parts.join(" — ");
+}
 
-  // Nothing to show: fall back to the handle so entries stay distinguishable.
-  if (parts.length === 0) return `Track ${track.id}`;
-
-  const label = parts.join(" — ");
-  return track.isForced ? `${label} (forced)` : label;
+/** The painted label: language and title are the file's own metadata
+ * (content); the "Track" fallback and the "(forced)" flag become symbols.
+ * `subtitleLabel` stays the spoken name. */
+export function subtitleShortLabel(track: SubtitleTrack): string {
+  const label = labelParts(track);
+  if (label === "") return `#${track.id}`;
+  return track.isForced ? `${label} ⚑` : label;
 }
 
 /** Picks the track to enable when a video opens, or null to start with

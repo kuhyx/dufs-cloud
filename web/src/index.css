@@ -85,8 +85,37 @@ button {
   gap: var(--space-2);
 }
 .busy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+/* A failed action: red plus the ⚠ glyph, so colour is never the only cue. */
+.busy-error {
+  color: var(--danger);
+}
+
+/* Text-free states (empty folder, no match, load error, indexing): one large
+   glyph, centred; its sentence is the aria-label. */
+.state-glyph {
+  margin: var(--space-6) 0;
+  font-size: 3rem;
+  text-align: center;
+}
+.state-glyph.error {
+  color: var(--danger);
+}
+
+/* ⟳ turns while work runs (motion is the second channel next to the glyph). */
+.spinner {
+  display: inline-block;
+  animation: spin 1.2s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Transfer banner: raised by a fill step, never a shadow (dark surfaces get

@@ -1,12 +1,13 @@
 import type { DufsClient } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
+import { busyError, type Busy } from "../lib/busy.ts";
 import { joinPath, movableInto } from "../lib/paths.ts";
 
 export interface MutationDeps {
   readonly client: DufsClient;
   readonly getPath: () => string;
   readonly getSelectedEntries: () => readonly DirEntry[];
-  readonly setBusy: (message: string | null) => void;
+  readonly setBusy: (busy: Busy | null) => void;
   readonly refreshAll: () => void;
   readonly clearSelection: () => void;
 }
@@ -19,6 +20,8 @@ export interface Mutations {
   readonly moveSelected: (destDir: string) => void;
   readonly deleteSelected: () => void;
 }
+
+const moving = (n: number): Busy => ({ kind: "move", spoken: `Moving ${n} item(s)…`, count: String(n) });
 
 /** Stateless server-side edits (move/delete/rename/mkdir) reporting through
  * `setBusy`; path and selection are read when an action runs. */
@@ -36,14 +39,14 @@ export function createMutations({
   function moveInto(destDir: string, paths: readonly string[]): void {
     const movable = movableInto(paths, destDir);
     if (movable.length === 0) return;
-    setBusy(`Moving ${movable.length} item(s)…`);
+    setBusy(moving(movable.length));
     void (async () => {
       try {
         for (const p of movable) {
           await client.move(p, destDir);
         }
       } catch (err: unknown) {
-        setBusy(err instanceof Error ? err.message : String(err));
+        setBusy(busyError(err));
         return;
       }
       setBusy(null);
@@ -52,55 +55,50 @@ export function createMutations({
     })();
   }
 
-  function confirmDelete(entry: DirEntry): void {
-    setBusy(`Deleting ${entry.name}…`);
-    client
-      .remove(entry.path)
+  // One server call for one entry: busy while it runs, refresh after.
+  function single(busy: Busy, call: Promise<void>): void {
+    setBusy(busy);
+    call
       .then(() => {
         setBusy(null);
         refreshAll();
       })
       .catch((err: unknown) => {
-        setBusy(err instanceof Error ? err.message : String(err));
+        setBusy(busyError(err));
       });
+  }
+
+  function confirmDelete(entry: DirEntry): void {
+    single(
+      { kind: "delete", spoken: `Deleting ${entry.name}…`, name: entry.name },
+      client.remove(entry.path),
+    );
   }
 
   function renameSelected(entry: DirEntry, newName: string): void {
-    setBusy(`Renaming ${entry.name}…`);
-    client
-      .rename(entry.path, newName)
-      .then(() => {
-        setBusy(null);
-        refreshAll();
-      })
-      .catch((err: unknown) => {
-        setBusy(err instanceof Error ? err.message : String(err));
-      });
+    single(
+      { kind: "rename", spoken: `Renaming ${entry.name}…`, name: entry.name },
+      client.rename(entry.path, newName),
+    );
   }
 
   function createFolder(name: string): void {
-    setBusy(`Creating ${name}…`);
-    client
-      .createDir(joinPath(getPath(), name))
-      .then(() => {
-        setBusy(null);
-        refreshAll();
-      })
-      .catch((err: unknown) => {
-        setBusy(err instanceof Error ? err.message : String(err));
-      });
+    single(
+      { kind: "create", spoken: `Creating ${name}…`, name },
+      client.createDir(joinPath(getPath(), name)),
+    );
   }
 
   function moveSelected(destDir: string): void {
     const selectedEntries = getSelectedEntries();
-    setBusy(`Moving ${selectedEntries.length} item(s)…`);
+    setBusy(moving(selectedEntries.length));
     void (async () => {
       try {
         for (const entry of selectedEntries) {
           await client.move(entry.path, destDir);
         }
       } catch (err: unknown) {
-        setBusy(err instanceof Error ? err.message : String(err));
+        setBusy(busyError(err));
         return;
       }
       setBusy(null);
@@ -111,7 +109,7 @@ export function createMutations({
 
   function deleteSelected(): void {
     const entries = getSelectedEntries();
-    setBusy(`Deleting ${entries.length} item(s)…`);
+    setBusy({ kind: "delete", spoken: `Deleting ${entries.length} item(s)…`, count: String(entries.length) });
     void (async () => {
       let failed = 0;
       for (const entry of entries) {
@@ -121,7 +119,11 @@ export function createMutations({
           failed += 1;
         }
       }
-      setBusy(failed > 0 ? `${failed} item(s) could not be deleted` : null);
+      setBusy(
+        failed > 0
+          ? { kind: "failed", spoken: `${failed} item(s) could not be deleted`, count: String(failed) }
+          : null,
+      );
       clearSelection();
       refreshAll();
     })();

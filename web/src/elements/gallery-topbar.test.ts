@@ -33,10 +33,11 @@ describe("gallery-topbar", () => {
     expect(bar.path).toBe("/Media/2026");
     const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect([...nav.querySelectorAll(".crumb")].map((c) => c.textContent)).toEqual([
-      "cloud",
+      "⌂",
       "Media",
       "2026",
     ]);
+    expect(screen.getByRole("button", { name: "Cloud" })).toHaveTextContent("⌂");
     expect(nav.querySelectorAll(".crumb-sep")).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Media" }));
     expect(events).toEqual([{ type: "go", detail: "/Media" }]);
@@ -46,10 +47,22 @@ describe("gallery-topbar", () => {
     const { bar } = mount();
     expect(bar.busy).toBeNull();
     expect(document.querySelector(".busy")).toBeNull();
-    bar.busy = "Moving 2 item(s)…";
-    expect(document.querySelector(".tools > .busy")).toHaveTextContent("Moving 2 item(s)…");
+    bar.busy = { kind: "move", spoken: "Moving 2 item(s)…", count: "2" };
+    const note = screen.getByRole("status", { name: "Moving 2 item(s)…" });
+    expect(note).toHaveClass("busy");
+    expect(note.querySelector(".spinner")).not.toBeNull();
+    expect(note).toHaveTextContent("⟳➜📁2");
     bar.busy = null;
     expect(document.querySelector(".busy")).toBeNull();
+  });
+
+  it("paints a failure as a red warning with the content name, no spinner", () => {
+    const { bar } = mount();
+    bar.busy = { kind: "failed", spoken: "1 of 2 failed: a.txt", count: "1/2", name: "a.txt" };
+    const note = screen.getByRole("status", { name: "1 of 2 failed: a.txt" });
+    expect(note).toHaveClass("busy-error");
+    expect(note.querySelector(".spinner")).toBeNull();
+    expect(note).toHaveTextContent("⚠1/2a.txt");
   });
 
   it("emits new-folder", () => {

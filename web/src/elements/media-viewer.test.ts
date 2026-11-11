@@ -98,7 +98,8 @@ describe("media-viewer structure", () => {
 
   it("offers a download for non-media files", () => {
     open("x.bin");
-    const link = screen.getByText("Download");
+    const link = screen.getByRole("link", { name: "Download" });
+    expect(link).toHaveTextContent("⭳");
     expect(link).toHaveAttribute("href", "/x.bin");
     expect(link).toHaveAttribute("download");
   });

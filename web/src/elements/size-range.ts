@@ -6,7 +6,8 @@ const BYTES_PER_MB = 1024 * 1024;
 
 const SPEC: NumericRangeSpec = {
   className: "sizerange",
-  placeholders: ["min MB", "max MB"],
+  // ≥ / ≤ plus the unit symbol; the spoken labels below keep the words.
+  placeholders: ["≥ MB", "≤ MB"],
   labels: ["Minimum size in MB", "Maximum size in MB"],
   keys: ["minSize", "maxSize"],
   toText: (bytes) =>
@@ -14,7 +15,7 @@ const SPEC: NumericRangeSpec = {
   fromText: (text) => (text === "" ? null : Number(text) * BYTES_PER_MB),
   note: (values, { lo, hi }, hasRange) => {
     if (hasRange) return `${humanSize(lo)} – ${humanSize(hi)}`;
-    return values.length > 0 ? `all ${humanSize(lo)}` : null;
+    return values.length > 0 ? `= ${humanSize(lo)}` : null;
   },
 };
 
