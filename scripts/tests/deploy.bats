@@ -13,14 +13,23 @@ setup() {
 	mkdir -p "${REPO}/scripts" "${REPO}/web" "${REPO}/app" "${CLOUD}" \
 		"${TMP}/.config/dufs" "${TMP}/bin"
 	cp "${SRC}" "${REPO}/scripts/deploy.sh"
+	mkdir -p "${REPO}/.github/workflows" "${TMP}/sysbin"
+	printf '          node-version: "26.13.0"\n' >"${REPO}/.github/workflows/ci.yml"
 	printf 'serve-path: %s\nport: 5000\n' "${CLOUD}" >"${TMP}/.config/dufs/dufs.yaml"
 	printf 'old-ui\n' >"${CLOUD}/index.html"
 
-	# pnpm "build" writes a dist with one asset, or fails on STUB_BUILD_FAIL.
+	# Ship's PATH puts an old nvm node first; the system one matches CI's pin.
+	printf '#!/bin/bash\necho v22.18.0\n' >"${TMP}/bin/node"
+	printf '#!/bin/bash\necho %s\n' "${STUB_SYS_NODE:-v26.13.0}" >"${TMP}/sysbin/node"
+	chmod +x "${TMP}/sysbin/node"
+	export NODE_BIN_DIR="${TMP}/sysbin"
+	# pnpm "build" writes a dist with one asset, or fails on STUB_BUILD_FAIL or
+	# when the node it finds is older than Astro's floor (as the real one does).
 	cat >"${TMP}/bin/pnpm" <<'EOF'
 #!/bin/bash
 [[ " $* " == *" build "* ]] || exit 0
 [[ -z ${STUB_BUILD_FAIL:-} ]] || exit 1
+[[ $(node -v) == v26.* ]] || { echo "Node.js $(node -v) is not supported by Astro!"; exit 1; }
 dist="$2/dist"
 mkdir -p "$dist/assets"
 printf '<script src="/assets/app.js"></script>\n' >"$dist/index.html"
@@ -78,6 +87,19 @@ teardown() {
 	grep -q old-ui "${CLOUD}/index.html"
 }
 
+@test "web: builds with the CI-pinned node, not the first one on PATH" {
+	run bash "${REPO}/scripts/deploy.sh" web
+	[ "$status" -eq 0 ]
+}
+
+@test "web: a system node older than CI's pin fails before the build" {
+	printf '#!/bin/bash\necho v24.18.0\n' >"${TMP}/sysbin/node"
+	run bash "${REPO}/scripts/deploy.sh" web
+	[ "$status" -ne 0 ]
+	[[ $output == *"node v24.18.0"*"26"* ]]
+	grep -q old-ui "${CLOUD}/index.html"
+}
+
 @test "web: dufs.service down fails the deploy" {
 	STUB_DUFS_DOWN=1 run bash "${REPO}/scripts/deploy.sh" web
 	[ "$status" -ne 0 ]
@@ -119,4 +141,10 @@ teardown() {
 @test "an unknown target is a usage error" {
 	run bash "${REPO}/scripts/deploy.sh" bogus
 	[ "$status" -eq 2 ]
+}
+
+@test "all: a failed web check stops before the phone" {
+	STUB_DUFS_DOWN=1 run bash "${REPO}/scripts/deploy.sh"
+	[ "$status" -ne 0 ]
+	[ ! -f "${HOME}/phone_deploy.log" ]
 }

@@ -27,6 +27,9 @@ readonly DUFS_URL="${DUFS_URL:-http://127.0.0.1:5000/}"
 readonly PKG="com.kuhy.dufs_client"
 readonly SERIAL="${ADB_SERIAL:-23181JEGR08034}"
 readonly PHONE_DEPLOY="${PHONE_DEPLOY:-$HOME/.claude/scripts/phone_deploy.sh}"
+# Ship's PATH puts an old nvm node first; the system (pacman) node is the one
+# kept at CI's pin, so the web build runs with it first on PATH.
+readonly NODE_BIN_DIR="${NODE_BIN_DIR:-/usr/bin}"
 
 log() { printf '[deploy] %s\n' "$*"; }
 die() { printf '[deploy] FAIL: %s\n' "$*" >&2; exit 1; }
@@ -64,9 +67,21 @@ check_web() {
 	log "OK web: $(sha256sum "$root/index.html" | cut -c1-12) served from $root"
 }
 
+# Fail before building unless the node in NODE_BIN_DIR has CI's major.
+use_pinned_node() {
+	local pin have
+	pin="$(sed -nE 's/^[[:space:]]*node-version:[[:space:]]*"?([0-9][0-9.]*)"?.*/\1/p' \
+		"$REPO_ROOT/.github/workflows/ci.yml" | head -1)"
+	[[ -n $pin ]] || die "no node-version pin in .github/workflows/ci.yml"
+	export PATH="$NODE_BIN_DIR:$PATH"
+	have="$(node -v)"
+	[[ ${have#v} == "${pin%%.*}".* ]] || die "node $have in $NODE_BIN_DIR, CI pins $pin: upgrade node"
+}
+
 deploy_web() {
 	local root; root="$(cloud_root)"
-	log "web: build"
+	use_pinned_node
+	log "web: build (node $(node -v))"
 	pnpm --dir "$WEB" install --frozen-lockfile
 	pnpm --dir "$WEB" run build
 	[[ -f "$WEB/dist/index.html" ]] || die "build produced no $WEB/dist/index.html"
@@ -95,7 +110,9 @@ deploy_phone() {
 main() {
 	local target="${1:-all}"
 	case "$target" in
-		all) deploy_web; deploy_phone ;;
+		# Subshell: use_pinned_node's PATH must not reach the phone build
+		# (/usr/bin holds a different flutter than ~/.local/bin).
+		all) (deploy_web); deploy_phone ;;
 		web) deploy_web ;;
 		phone) deploy_phone ;;
 		*) printf 'usage: %s [all|web|phone]\n' "$0" >&2; exit 2 ;;
