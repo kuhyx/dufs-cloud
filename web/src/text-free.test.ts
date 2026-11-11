@@ -50,8 +50,12 @@ function wordsIn(s: string): string[] {
     .filter((t) => !/^\d+(\.\d+)?(B|KB|MB|GB|TB|MP|h|m|s|ms)$/.test(t));
 }
 
+/** Emoji that paint Latin letters (🔤 shows "abc", 🅰, ℹ, Ⓜ): words in
+ * disguise that the letter regex cannot see. A frame Read caught 🔤 once. */
+const LETTER_EMOJI = /[\u{1F170}-\u{1F1AD}\u{1F520}-\u{1F524}ℹⓂ]/u;
+
 function expectNoWords(root: ParentNode = document.body): void {
-  const offenders = painted(root).filter((s) => wordsIn(s).length > 0);
+  const offenders = painted(root).filter((s) => wordsIn(s).length > 0 || LETTER_EMOJI.test(s));
   expect(offenders).toEqual([]);
 }
 
