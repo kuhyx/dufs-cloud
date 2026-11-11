@@ -75,10 +75,14 @@ void main() {
 
     // The listing is name-sorted, so 'f99.txt' is the last of 200 entries.
     expect(find.text('f99.txt'), findsNothing);
-    // 200 files cannot fit one page, so there are pages to swipe through.
+    // 200 files cannot fit one page, so there are pages to swipe through:
+    // dots up to 12 pages, an "n / N" counter past that (design_system 0.3.1).
+    final dots = find.byKey(const ValueKey<String>('fit-grid-dot-1'));
+    final counter = find.byKey(const ValueKey<String>('fit-grid-page-counter'));
     expect(
-      find.byKey(const ValueKey<String>('fit-grid-dot-1')),
-      findsOneWidget,
+      dots.evaluate().length + counter.evaluate().length,
+      1,
+      reason: 'one page indicator',
     );
     for (var i = 0; i < 30; i++) {
       await tester.fling(find.byType(PageView), const Offset(-600, 0), 2000);

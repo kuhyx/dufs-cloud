@@ -4,15 +4,15 @@ version = "1.0.0"
 description = "Daily backup of the kuhy-syncs Firebase RTDB into the dufs cloud, plus restore"
 requires-python = ">=3.14"
 dependencies = [
-    "crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.9.1#subdirectory=crdt-sync",
+    "crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.9.2#subdirectory=crdt-sync",
     "requests==2.34.2",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     "pytest-cov==7.1.0",
-    "ruff==0.16.10",
+    "ruff==0.17.4",
 ]
 
 # Only the Python package; app/ (Flutter) and web/ (React) are not Python.
