@@ -100,3 +100,18 @@ h264+TrueHD+ASS file kept as a regression case for that path.
 
 `origin` → `https://github.com/kuhyx/dufs-cloud.git` (the app lives in the
 `app/` subtree of the cloud repo, not in its own).
+
+## Driving the app on the phone
+
+Tap and type by label, never by coordinate, with `android_ui` from
+`~/src/testsAndMisc` (not copied here):
+
+```bash
+cd ~/src/testsAndMisc && .venv/bin/python -m python_pkg.android_ui \
+    -s 23181JEGR08034 --display self dump
+```
+
+The same driver is the `android-ui` MCP server
+(`.venv/bin/python -m python_pkg.android_ui.mcp_server`, in that repo's
+`.mcp.json`). Tools and error contract:
+`~/src/testsAndMisc/python_pkg/android_ui/README.md`.
