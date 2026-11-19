@@ -12,7 +12,7 @@ dependencies = [
 dev = [
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
-    "ruff==0.17.5",
+    "ruff==0.17.6",
 ]
 
 # Only the Python package; app/ (Flutter) and web/ (React) are not Python.
