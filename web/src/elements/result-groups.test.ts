@@ -10,7 +10,7 @@ const groupA: FolderGroup = { folder: "/A", entries: [fileAt("/A/a.txt"), fileAt
 const groupB: FolderGroup = { folder: "/B", entries: [fileAt("/B/c.txt")] };
 
 function mount(collapsed: string[] = []): ResultGroups {
-  const el = document.createElement("result-groups") as ResultGroups;
+  const el = document.createElement("result-groups");
   el.client = makeClient();
   el.groups = [groupA, groupB];
   el.collapsed = new Set(collapsed);
@@ -82,7 +82,7 @@ describe("result-groups", () => {
   });
 
   it("renders nothing until a client is set", () => {
-    const el = document.createElement("result-groups") as ResultGroups;
+    const el = document.createElement("result-groups");
     el.groups = [groupA];
     expect(sections(el)).toHaveLength(0);
     expect(customElements.get("result-groups")).toBe(ResultGroups);

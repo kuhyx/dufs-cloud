@@ -6,3 +6,10 @@ allowBuilds:
   lfa-ponyfill: true
 minimumReleaseAgeExclude:
   - astro@7.4.5
+# rolldown's wasm32 binding pins @emnapi/*@2.0.0-beta.2; pnpm then resolves
+# astro2tsx's @emnapi/runtime peer to that beta while its own @emnapi/core
+# stays 1.x, and `astro check` crashes ("setLastError is not a function").
+# Hold both on the newest stable so the pair always matches.
+overrides:
+  "@emnapi/core": 1.11.3
+  "@emnapi/runtime": 1.11.3

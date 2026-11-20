@@ -6,7 +6,7 @@ function mount(props: Partial<Record<string, unknown>> = {}): {
   bar: GalleryTopbar;
   events: { type: string; detail: unknown }[];
 } {
-  const bar = document.createElement("gallery-topbar") as GalleryTopbar;
+  const bar = document.createElement("gallery-topbar");
   Object.assign(bar, props);
   const events: { type: string; detail: unknown }[] = [];
   for (const type of ["go", "new-folder", "upload-picked"]) {

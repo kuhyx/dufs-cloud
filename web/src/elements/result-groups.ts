@@ -91,7 +91,7 @@ export class ResultGroups extends HTMLElement {
     const el = h("section", { class: "result-group" }, head);
     let grid: CloudGrid | null = null;
     if (!isCollapsed) {
-      grid = document.createElement("cloud-grid") as CloudGrid;
+      grid = document.createElement("cloud-grid");
       grid.client = this.client;
       grid.entries = group.entries;
       el.append(grid);
@@ -119,3 +119,9 @@ export class ResultGroups extends HTMLElement {
 }
 
 define("result-groups", ResultGroups);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "result-groups": ResultGroups;
+  }
+}

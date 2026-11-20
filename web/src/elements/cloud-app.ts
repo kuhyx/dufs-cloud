@@ -2,12 +2,11 @@
 import "./all.ts";
 import { createDufsClient } from "../api/dufs-client.ts";
 import { define } from "./element-kit.ts";
-import type { CloudGallery } from "./gallery.ts";
 
 export class CloudApp extends HTMLElement {
   connectedCallback(): void {
     if (this.firstElementChild !== null) return;
-    const gallery = document.createElement("cloud-gallery") as CloudGallery;
+    const gallery = document.createElement("cloud-gallery");
     gallery.client = createDufsClient();
     this.append(gallery);
   }

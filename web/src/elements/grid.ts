@@ -87,3 +87,9 @@ export class CloudGrid extends HTMLElement implements TileHost {
 }
 
 define("cloud-grid", CloudGrid);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "cloud-grid": CloudGrid;
+  }
+}

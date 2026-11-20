@@ -142,3 +142,9 @@ export class FilterBar extends HTMLElement {
 
 reactive(FilterBar, PROPS);
 define("filter-bar", FilterBar);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "filter-bar": FilterBar;
+  }
+}

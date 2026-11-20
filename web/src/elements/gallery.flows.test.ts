@@ -7,7 +7,6 @@ import { fire, mountGallery } from "../test/gallery-harness.ts";
 import { DEFAULT_FILTER } from "../lib/filter-sort.ts";
 import type { TransferOptions } from "../api/dufs-client.ts";
 import type { DirEntry } from "../api/types.ts";
-import type { CloudGallery } from "./gallery.ts";
 
 function dragEvent(type: string, types: string[], fileList: File[] = []): Event {
   const ev = new Event(type, { bubbles: true, cancelable: true });
@@ -20,7 +19,7 @@ function dragEvent(type: string, types: string[], fileList: File[] = []): Event 
 describe("cloud-gallery flows", () => {
   it("mounts once a client arrives and tears down on disconnect", async () => {
     window.location.hash = "";
-    const el = document.createElement("cloud-gallery") as CloudGallery;
+    const el = document.createElement("cloud-gallery");
     document.body.replaceChildren(el);
     expect(el.client).toBeNull();
     expect(el.childElementCount).toBe(0);

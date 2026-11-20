@@ -7,7 +7,7 @@ import { CloudGrid } from "./grid.ts";
 import { DRAG_TYPE, draggedPaths } from "./grid-tile.ts";
 
 function mount(entries: readonly DirEntry[], selected: string[] = [], drag = true): CloudGrid {
-  const grid = document.createElement("cloud-grid") as CloudGrid;
+  const grid = document.createElement("cloud-grid");
   grid.client = makeClient();
   grid.entries = entries;
   grid.selected = new Set(selected);
@@ -153,7 +153,7 @@ describe("cloud-grid tiles", () => {
   });
 
   it("does nothing until a client is set", () => {
-    const grid = document.createElement("cloud-grid") as CloudGrid;
+    const grid = document.createElement("cloud-grid");
     grid.entries = [entry("a.txt", "file")];
     document.body.append(grid);
     document.body.append(grid);

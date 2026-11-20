@@ -2,6 +2,13 @@ import "@kuhyx/web-ui/range-slider";
 import type { RangeSliderElement } from "@kuhyx/web-ui/range-slider";
 import { h } from "./dom.ts";
 
+// web-ui registers <range-slider> but ships no tag-map entry for it.
+declare global {
+  interface HTMLElementTagNameMap {
+    "range-slider": RangeSliderElement;
+  }
+}
+
 export function numberField(
   placeholder: string,
   label: string,
@@ -32,7 +39,7 @@ export function setText(input: HTMLInputElement, text: string): void {
 export function sliderField(
   onRange: (lo: number, hi: number) => void,
 ): RangeSliderElement {
-  const slider = document.createElement("range-slider") as RangeSliderElement;
+  const slider = document.createElement("range-slider");
   slider.addEventListener("change", (event) => {
     event.stopPropagation();
     const { lo, hi } = (event as CustomEvent<{ lo: number; hi: number }>).detail;

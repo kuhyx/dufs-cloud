@@ -9,7 +9,7 @@ function mount(props: Partial<Record<string, unknown>> = {}): {
   bar: FilterBar;
   events: { type: string; detail: unknown }[];
 } {
-  const bar = document.createElement("filter-bar") as FilterBar;
+  const bar = document.createElement("filter-bar");
   Object.assign(bar, props);
   const events: { type: string; detail: unknown }[] = [];
   for (const type of ["filter", "sort", "activate", "cancel-index"]) {

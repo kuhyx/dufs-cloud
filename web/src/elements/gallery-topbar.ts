@@ -106,3 +106,9 @@ export class GalleryTopbar extends HTMLElement {
 }
 
 define("gallery-topbar", GalleryTopbar);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "gallery-topbar": GalleryTopbar;
+  }
+}

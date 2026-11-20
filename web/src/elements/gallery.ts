@@ -210,3 +210,9 @@ export class CloudGallery extends HTMLElement {
 }
 
 define("cloud-gallery", CloudGallery);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "cloud-gallery": CloudGallery;
+  }
+}
