@@ -21,6 +21,12 @@ dependencies:
     sdk: flutter
   flutter_secure_storage: 11.2.0
   http: 1.6.0
+  kuhy_credit:
+    git:
+      url: https://github.com/kuhyx/utils
+      ref: kuhy-credit-v0.3.0
+      path: kuhy_credit/flutter
+  material_ui: 1.11.1
   media_kit: 1.2.6
   media_kit_libs_android_video: 1.3.8
   media_kit_libs_linux: 1.2.1

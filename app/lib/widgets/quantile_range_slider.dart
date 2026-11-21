@@ -1,5 +1,5 @@
 import 'package:dufs_client/util/quantile.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A dual-thumb range slider whose scale follows the *distribution* of [values]
 /// (quantile-mapped), so the middle of the track is the median — not the

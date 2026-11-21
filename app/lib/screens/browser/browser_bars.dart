@@ -1,5 +1,5 @@
 import 'package:dufs_client/screens/browser/browser_body.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The two app bars: browsing and the contextual one shown while selecting.
 /// Every control is a glyph; the old wording is the spoken label.

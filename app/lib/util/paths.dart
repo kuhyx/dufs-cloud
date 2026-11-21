@@ -19,7 +19,14 @@ const Set<String> _textExts = {
 };
 const Set<String> _pdfExts = {'pdf'};
 const Set<String> _audioExts = {
-  'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'opus',
+  'mp3',
+  'wav',
+  'm4a',
+  'aac',
+  'ogg',
+  'flac',
+  'wma',
+  'opus',
 };
 
 /// Lower-case extension without the dot, or `''` if none.

@@ -1,6 +1,6 @@
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Full-screen image viewer with pinch-zoom, loaded over authenticated HTTP.
 class ImageScreen extends StatelessWidget {

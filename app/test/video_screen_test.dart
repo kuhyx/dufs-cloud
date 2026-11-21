@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:dufs_client/screens/video_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/util/subtitle_track.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_app_player.dart';
 import 'support/finders.dart';
@@ -13,11 +13,11 @@ DufsClient _client() =>
     DufsClient(baseUrl: 'https://host', username: 'u', password: 'p');
 
 VideoScreen _screen(FakeAppPlayer player) => VideoScreen(
-      client: _client(),
-      path: '/clip.mkv',
-      title: 'clip.mkv',
-      playerFactory: () => player,
-    );
+  client: _client(),
+  path: '/clip.mkv',
+  title: 'clip.mkv',
+  playerFactory: () => player,
+);
 
 /// The three-track shape of `[Foxtrot] Look Back (2024)`: two tracks flagged
 /// default, one of them Japanese, plus a forced signs-only English track.
@@ -34,17 +34,13 @@ const _foxtrot = [
     title: 'signs/songs',
     isForced: true,
   ),
-  SubtitleTrackInfo(
-    id: '5',
-    language: 'jpn',
-    title: '日本語',
-    isDefault: true,
-  ),
+  SubtitleTrackInfo(id: '5', language: 'jpn', title: '日本語', isDefault: true),
 ];
 
 void main() {
-  testWidgets('shows a spinner, then the video surface once opened',
-      (tester) async {
+  testWidgets('shows a spinner, then the video surface once opened', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -56,8 +52,9 @@ void main() {
     expect(player.headers, containsPair('authorization', startsWith('Basic ')));
   });
 
-  testWidgets('streams the original path, never a .proxies remux',
-      (tester) async {
+  testWidgets('streams the original path, never a .proxies remux', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     await tester.pumpAndSettle();
@@ -95,8 +92,9 @@ void main() {
     expect(find.byType(PopupMenuButton<String>), findsOneWidget);
   });
 
-  testWidgets('auto-selects English over a default-flagged Japanese track',
-      (tester) async {
+  testWidgets('auto-selects English over a default-flagged Japanese track', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     await tester.pumpAndSettle();
@@ -106,8 +104,9 @@ void main() {
     expect(player.selections.single?.id, '3');
   });
 
-  testWidgets('re-emitted tracks do not override a manual choice',
-      (tester) async {
+  testWidgets('re-emitted tracks do not override a manual choice', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     await tester.pumpAndSettle();
@@ -155,8 +154,9 @@ void main() {
     expect(find.text('Japanese — 日本語'), findsOneWidget);
   });
 
-  testWidgets('a later emission can still auto-select after a barren one',
-      (tester) async {
+  testWidgets('a later emission can still auto-select after a barren one', (
+    tester,
+  ) async {
     // Regression: Matroska tracks arrive progressively. Latching on the first
     // non-empty emission left subtitles off for the whole file when that
     // emission held only the forced signs/songs track.
@@ -180,8 +180,9 @@ void main() {
     expect(player.selections.single?.id, '3');
   });
 
-  testWidgets('a track id that vanished turns subtitles off, not sideways',
-      (tester) async {
+  testWidgets('a track id that vanished turns subtitles off, not sideways', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     await tester.pumpAndSettle();

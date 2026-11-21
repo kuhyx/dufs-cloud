@@ -4,7 +4,7 @@ import 'package:dufs_client/widgets/extension_picker.dart';
 import 'package:dufs_client/widgets/filter_icons.dart';
 import 'package:dufs_client/widgets/quantile_range_slider.dart';
 import 'package:dufs_client/widgets/range_bounds_field.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 String _megapixels(int pixels) => '${(pixels / 1000000).toStringAsFixed(1)} MP';
 
@@ -80,12 +80,12 @@ class FilterSheet extends StatelessWidget {
                   Icons.extension,
                   'Extensions',
                   ExtensionPicker(
-                  available: extensions,
-                  includes: filter.extIncludes,
-                  excludes: filter.extExcludes,
-                  onChanged: (inc, exc) => onFilter(
-                    filter.copyWith(extIncludes: inc, extExcludes: exc),
-                  ),
+                    available: extensions,
+                    includes: filter.extIncludes,
+                    excludes: filter.extExcludes,
+                    onChanged: (inc, exc) => onFilter(
+                      filter.copyWith(extIncludes: inc, extExcludes: exc),
+                    ),
                   ),
                 ),
               ],
@@ -181,46 +181,43 @@ class FilterSheet extends StatelessWidget {
   }
 
   Widget _typeDropdown() => DropdownButton<TypeFilter>(
-        isExpanded: true,
-        value: filter.type,
-        onChanged: (t) {
-          if (t != null) onFilter(filter.copyWith(type: t));
-        },
-        items: [
-          for (final t in TypeFilter.values)
-            DropdownMenuItem(value: t, child: glyphItem(typeGlyph(t))),
-        ],
-      );
+    isExpanded: true,
+    value: filter.type,
+    onChanged: (t) {
+      if (t != null) onFilter(filter.copyWith(type: t));
+    },
+    items: [
+      for (final t in TypeFilter.values)
+        DropdownMenuItem(value: t, child: glyphItem(typeGlyph(t))),
+    ],
+  );
 
   Widget _sortControls() => Row(
-        children: [
-          Expanded(
-            child: DropdownButton<SortKey>(
-              isExpanded: true,
-              value: sort.key,
-              onChanged: (k) {
-                if (k != null) onSort(sort.copyWith(key: k));
-              },
-              items: [
-                for (final k in SortKey.values)
-                  DropdownMenuItem(value: k, child: glyphItem(sortGlyph(k))),
-              ],
-            ),
+    children: [
+      Expanded(
+        child: DropdownButton<SortKey>(
+          isExpanded: true,
+          value: sort.key,
+          onChanged: (k) {
+            if (k != null) onSort(sort.copyWith(key: k));
+          },
+          items: [
+            for (final k in SortKey.values)
+              DropdownMenuItem(value: k, child: glyphItem(sortGlyph(k))),
+          ],
+        ),
+      ),
+      IconButton(
+        icon: Icon(
+          sort.dir == SortDir.asc ? Icons.arrow_upward : Icons.arrow_downward,
+          semanticLabel: sort.dir == SortDir.asc ? 'Ascending' : 'Descending',
+        ),
+        onPressed: () => onSort(
+          sort.copyWith(
+            dir: sort.dir == SortDir.asc ? SortDir.desc : SortDir.asc,
           ),
-          IconButton(
-            icon: Icon(
-              sort.dir == SortDir.asc
-                  ? Icons.arrow_upward
-                  : Icons.arrow_downward,
-              semanticLabel:
-                  sort.dir == SortDir.asc ? 'Ascending' : 'Descending',
-            ),
-            onPressed: () => onSort(
-              sort.copyWith(
-                dir: sort.dir == SortDir.asc ? SortDir.desc : SortDir.asc,
-              ),
-            ),
-          ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 }

@@ -1,7 +1,8 @@
 import 'package:dufs_client/screens/settings_screen.dart';
 import 'package:dufs_client/services/settings.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kuhy_credit/kuhy_credit.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/secure_storage_mock.dart';
@@ -106,5 +107,14 @@ void main() {
     await tester.pumpAndSettle();
     final tile = find.byType(SwitchListTile);
     expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+  });
+
+  testWidgets('shows KuhyCredit at the bottom', (tester) async {
+    final settings = await makeSettings({});
+    await tester.pumpWidget(
+      MaterialApp(home: SettingsScreen(settings: settings)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(KuhyCredit), findsOneWidget);
   });
 }

@@ -15,45 +15,54 @@ String _xml(String self, List<(String, bool)> children) {
   for (final (name, isDir) in children) {
     final href = isDir ? '$base/$name/' : '$base/$name';
     final rt = isDir ? '<D:collection/>' : '';
-    sb.write('<D:response><D:href>$href</D:href><D:propstat><D:prop>'
-        '<D:resourcetype>$rt</D:resourcetype></D:prop></D:propstat></D:response>');
+    sb.write(
+      '<D:response><D:href>$href</D:href><D:propstat><D:prop>'
+      '<D:resourcetype>$rt</D:resourcetype></D:prop></D:propstat></D:response>',
+    );
   }
   sb.write('</D:multistatus>');
   return sb.toString();
 }
 
 DufsClient _client(Map<String, List<(String, bool)>> tree) => DufsClient(
-      baseUrl: 'https://host',
-      username: 'u',
-      password: 'p',
-      httpClient: MockClient((req) async {
-        final path = Uri.decodeComponent(req.url.path);
-        if (req.method == 'PROPFIND') {
-          return http.Response(_xml(path, tree[path] ?? const []), 207);
-        }
-        return http.Response.bytes(utf8.encode('data-$path'), 200);
-      }),
-    );
+  baseUrl: 'https://host',
+  username: 'u',
+  password: 'p',
+  httpClient: MockClient((req) async {
+    final path = Uri.decodeComponent(req.url.path);
+    if (req.method == 'PROPFIND') {
+      return http.Response(_xml(path, tree[path] ?? const []), 207);
+    }
+    return http.Response.bytes(utf8.encode('data-$path'), 200);
+  }),
+);
 
 DirEntry _f(String path) => DirEntry(
-    name: path.substring(path.lastIndexOf('/') + 1),
-    path: path,
-    kind: EntryKind.file,
-    size: 3);
+  name: path.substring(path.lastIndexOf('/') + 1),
+  path: path,
+  kind: EntryKind.file,
+  size: 3,
+);
 DirEntry _d(String path) => DirEntry(
-    name: path.substring(path.lastIndexOf('/') + 1),
-    path: path,
-    kind: EntryKind.dir,
-    size: 0);
+  name: path.substring(path.lastIndexOf('/') + 1),
+  path: path,
+  kind: EntryKind.dir,
+  size: 0,
+);
 
 void main() {
   group('buildSelectionZip', () {
     test('packs root files as flat entries', () async {
-      final zip = await buildSelectionZip(
-          _client(const {}), '/', [_f('/a.txt'), _f('/b.txt')]);
+      final zip = await buildSelectionZip(_client(const {}), '/', [
+        _f('/a.txt'),
+        _f('/b.txt'),
+      ]);
       final archive = ZipDecoder().decodeBytes(zip);
       expect(archive.files.map((f) => f.name), ['a.txt', 'b.txt']);
-      expect(utf8.decode(archive.files.first.content as List<int>), 'data-/a.txt');
+      expect(
+        utf8.decode(archive.files.first.content as List<int>),
+        'data-/a.txt',
+      );
     });
 
     test('recurses a folder, keeping paths relative to the base', () async {
@@ -63,14 +72,17 @@ void main() {
       });
       final zip = await buildSelectionZip(client, '/', [_d('/Media')]);
       final names = ZipDecoder().decodeBytes(zip).files.map((f) => f.name);
-      expect(names, containsAll(<String>['Media/forest.jpg', 'Media/2026/pic.jpg']));
+      expect(
+        names,
+        containsAll(<String>['Media/forest.jpg', 'Media/2026/pic.jpg']),
+      );
     });
 
     test('names entries relative to a non-root base', () async {
-      final zip = await buildSelectionZip(
-          _client(const {}), '/Media', [_f('/Media/forest.jpg')]);
-      expect(
-          ZipDecoder().decodeBytes(zip).files.single.name, 'forest.jpg');
+      final zip = await buildSelectionZip(_client(const {}), '/Media', [
+        _f('/Media/forest.jpg'),
+      ]);
+      expect(ZipDecoder().decodeBytes(zip).files.single.name, 'forest.jpg');
     });
 
     test('reports index/total per file and bytes as they arrive', () async {
@@ -79,7 +91,8 @@ void main() {
         _client(const {}),
         '/',
         [_f('/a.txt'), _f('/b.txt')],
-        onProgress: (p) => seen.add('${p.index}/${p.total} ${p.name} ${p.done}'),
+        onProgress: (p) =>
+            seen.add('${p.index}/${p.total} ${p.name} ${p.done}'),
       );
       // "data-/a.txt" is 11 bytes; PROPFIND size (3) is the denominator.
       expect(seen, [

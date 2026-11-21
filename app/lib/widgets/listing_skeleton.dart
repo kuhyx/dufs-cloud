@@ -1,5 +1,5 @@
 import 'package:design_system/design_system.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Placeholder tiles shown while a folder listing loads: the same 3-column
 /// card grid as the real listing, filled with static neutral blocks. No

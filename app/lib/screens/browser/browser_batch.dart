@@ -4,7 +4,7 @@ import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/cue.dart';
 import 'package:dufs_client/widgets/folder_picker.dart';
 import 'package:dufs_client/widgets/icon_dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Bulk changes: move or delete the selection, or drop entries on a folder.
 mixin BrowserBatch on BrowserMutations {

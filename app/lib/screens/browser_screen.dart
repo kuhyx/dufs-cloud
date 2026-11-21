@@ -16,7 +16,7 @@ import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:dufs_client/widgets/transfer_banner.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Builds a [DufsClient] from resolved credentials (injectable for tests).
 typedef ClientFactory =

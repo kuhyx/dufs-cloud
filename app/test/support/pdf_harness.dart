@@ -5,10 +5,10 @@ import 'dart:typed_data';
 
 import 'package:dufs_client/screens/pdf_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A [DufsClient] on a fake host answering through [mock].
 DufsClient pdfClient(MockClient mock) => DufsClient(

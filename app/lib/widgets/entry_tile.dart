@@ -1,7 +1,7 @@
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A grid cell for one cloud entry: a thumbnail (media) or type icon, the base
 /// name, and a human-readable size. Files carry a small overflow menu for

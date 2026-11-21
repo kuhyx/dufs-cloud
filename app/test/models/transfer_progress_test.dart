@@ -13,10 +13,7 @@ void main() {
 
   test('title names the position and file', () {
     expect(upload.title, '3/7 · photo.jpg');
-    expect(
-      upload.withDone(0).title,
-      '3/7 · photo.jpg',
-    );
+    expect(upload.withDone(0).title, '3/7 · photo.jpg');
     const download = TransferProgress(
       kind: TransferKind.download,
       index: 1,

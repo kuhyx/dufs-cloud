@@ -4,22 +4,28 @@ import 'package:dufs_client/util/cloud_stats.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 DirEntry _file(String path, {int size = 0}) => DirEntry(
-      name: path.substring(path.lastIndexOf('/') + 1),
-      path: path,
-      kind: EntryKind.file,
-      size: size,
-    );
+  name: path.substring(path.lastIndexOf('/') + 1),
+  path: path,
+  kind: EntryKind.file,
+  size: size,
+);
 DirEntry _dir(String path) => DirEntry(
-    name: path.substring(path.lastIndexOf('/') + 1),
-    path: path,
-    kind: EntryKind.dir,
-    size: 0);
+  name: path.substring(path.lastIndexOf('/') + 1),
+  path: path,
+  kind: EntryKind.dir,
+  size: 0,
+);
 
 void main() {
   group('availableExtensions', () {
     test('distinct sorted file extensions, ignoring dirs/extensionless', () {
-      final es = [_file('/a.JPG'), _file('/b.mp4'), _file('/c.jpg'),
-          _file('/README'), _dir('/Media')];
+      final es = [
+        _file('/a.JPG'),
+        _file('/b.mp4'),
+        _file('/c.jpg'),
+        _file('/README'),
+        _dir('/Media'),
+      ];
       expect(availableExtensions(es), ['jpg', 'mp4']);
     });
     test('empty when nothing has an extension', () {
@@ -29,8 +35,12 @@ void main() {
 
   group('sizeValues', () {
     test('ascending file sizes, skipping dirs', () {
-      final es = [_dir('/M'), _file('/a', size: 10), _file('/b', size: 500),
-          _file('/c', size: 3)];
+      final es = [
+        _dir('/M'),
+        _file('/a', size: 10),
+        _file('/b', size: 500),
+        _file('/c', size: 3),
+      ];
       expect(sizeValues(es), [3, 10, 500]);
     });
     test('empty when no files', () {
@@ -45,7 +55,12 @@ void main() {
       '/c.mp4': const MediaMeta(durationMs: 30000),
     };
     test('ascending known durations, skipping unindexed', () {
-      final es = [_file('/a.mp4'), _file('/b.mp4'), _file('/c.mp4'), _file('/x.mp4')];
+      final es = [
+        _file('/a.mp4'),
+        _file('/b.mp4'),
+        _file('/c.mp4'),
+        _file('/x.mp4'),
+      ];
       expect(durationValues(es, meta), [5000, 30000, 92000]);
     });
     test('empty when none indexed', () {

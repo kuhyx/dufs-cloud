@@ -9,7 +9,7 @@ import 'package:dufs_client/util/cloud_stats.dart';
 import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// State of the browser screen plus the values derived from it. The other
 /// browser mixins build on this one.

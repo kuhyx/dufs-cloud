@@ -1,6 +1,6 @@
 import 'package:dufs_client/ui/theme.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Pins the app theme to the frozen palette's literal values, so swapping the
 /// hand-copied hexes for `design_system` tokens cannot change a colour.

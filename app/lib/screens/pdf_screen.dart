@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show AssetManifest, rootBundle;
+import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -20,8 +20,9 @@ const String _pdfjsDir = 'pdfjs';
 /// Public (not `_`-prefixed) so it's directly unit-testable without needing
 /// a real HTTP round-trip, unlike the rest of [PdfScreen]'s serving logic.
 String pdfViewerContentType(String path) {
-  final ext =
-      path.contains('.') ? path.substring(path.lastIndexOf('.') + 1) : '';
+  final ext = path.contains('.')
+      ? path.substring(path.lastIndexOf('.') + 1)
+      : '';
   switch (ext) {
     case 'html':
       return 'text/html';
@@ -186,8 +187,8 @@ class _PdfScreenState extends State<PdfScreen> {
       body: _error != null
           ? ErrorState(spoken: 'Could not open: $_error')
           : controller == null
-              ? const Center(child: CircularProgressIndicator())
-              : WebViewWidget(controller: controller),
+          ? const Center(child: CircularProgressIndicator())
+          : WebViewWidget(controller: controller),
     );
   }
 }

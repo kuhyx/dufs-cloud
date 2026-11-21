@@ -109,4 +109,11 @@ describe("gallery-topbar", () => {
     document.body.append(bar);
     expect(bar.querySelectorAll("header.topbar")).toHaveLength(1);
   });
+
+  it("renders a kuhy-credit element in the topbar", () => {
+    mount();
+    const el = document.querySelector("header.topbar > kuhy-credit:last-child");
+    expect(el).not.toBeNull();
+    expect(el?.getAttribute("placement")).toBe("below");
+  });
 });

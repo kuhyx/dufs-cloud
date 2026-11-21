@@ -10,14 +10,12 @@ class FakeWebViewPlatform extends WebViewPlatform {
   @override
   PlatformWebViewController createPlatformWebViewController(
     PlatformWebViewControllerCreationParams params,
-  ) =>
-      _FakeWebViewController(this, params);
+  ) => _FakeWebViewController(this, params);
 
   @override
   PlatformWebViewWidget createPlatformWebViewWidget(
     PlatformWebViewWidgetCreationParams params,
-  ) =>
-      _FakeWebViewWidget(params);
+  ) => _FakeWebViewWidget(params);
 }
 
 class _FakeWebViewController extends PlatformWebViewController {

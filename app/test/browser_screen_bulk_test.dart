@@ -1,8 +1,8 @@
 import 'package:dufs_client/widgets/folder_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -134,10 +134,7 @@ void main() {
     });
     await tester.pump();
     expect(downloads.staged.single, endsWith('dufs-selection.zip'));
-    expect(
-      spoken('Saved to Download/dufs-selection.zip (1)'),
-      findsOneWidget,
-    );
+    expect(spoken('Saved to Download/dufs-selection.zip (1)'), findsOneWidget);
     expect(find.widgetWithText(AppBar, '1'), findsNothing); // selection cleared
   });
 

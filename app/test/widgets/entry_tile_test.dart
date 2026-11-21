@@ -1,35 +1,35 @@
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/widgets/entry_tile.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../support/finders.dart';
 
 DufsClient _client() => DufsClient(
-      baseUrl: 'https://h',
-      username: 'u',
-      password: 'p',
-      httpClient: MockClient((_) async => http.Response('', 200)),
-    );
+  baseUrl: 'https://h',
+  username: 'u',
+  password: 'p',
+  httpClient: MockClient((_) async => http.Response('', 200)),
+);
 
 DirEntry _entry(String name, EntryKind kind, {int size = 10}) =>
     DirEntry(name: name, path: '/$name', kind: kind, size: size);
 
 Future<void> _pump(WidgetTester tester, Widget tile) => tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: GridView(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 160,
-            ),
-            children: [tile],
-          ),
+  MaterialApp(
+    home: Scaffold(
+      body: GridView(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 160,
         ),
+        children: [tile],
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
   testWidgets('folder tile shows a folder icon and no size', (tester) async {
@@ -48,8 +48,9 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('image tile falls back to an icon when the thumbnail fails',
-      (tester) async {
+  testWidgets('image tile falls back to an icon when the thumbnail fails', (
+    tester,
+  ) async {
     await _pump(
       tester,
       EntryTile(

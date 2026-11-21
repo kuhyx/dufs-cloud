@@ -9,7 +9,7 @@
 library;
 
 import 'package:design_system/design_system.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Builds the app's `ThemeData` for [brightness] from the shared token set.
 ThemeData buildAppTheme(Brightness brightness) {

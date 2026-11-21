@@ -75,35 +75,37 @@ void main() {
   });
 
   group('MediaKitPlayer', () {
-    test('opens with auth headers, reports tracks, switches them, disposes',
-        () async {
-      // Headless: with a video output attached, `open` would block on the
-      // texture platform channel (see MediaKitPlayer's constructor).
-      final player = MediaKitPlayer(attachVideo: false);
+    test(
+      'opens with auth headers, reports tracks, switches them, disposes',
+      () async {
+        // Headless: with a video output attached, `open` would block on the
+        // texture platform channel (see MediaKitPlayer's constructor).
+        final player = MediaKitPlayer(attachVideo: false);
 
-      // A dead host is fine — mpv still processes the commands, and nothing
-      // here waits on real playback.
-      await player.open(Uri.parse('http://127.0.0.1:1/clip.mkv'), const {
-        'authorization': 'Basic dGVzdDp0ZXN0',
-      });
+        // A dead host is fine — mpv still processes the commands, and nothing
+        // here waits on real playback.
+        await player.open(Uri.parse('http://127.0.0.1:1/clip.mkv'), const {
+          'authorization': 'Basic dGVzdDp0ZXN0',
+        });
 
-      expect(player.subtitleTracks, isA<Stream<List<SubtitleTrackInfo>>>());
-      expect(player.position, isA<Stream<Duration>>());
-      expect(player.duration, isA<Stream<Duration>>());
-      expect(player.playing, isA<Stream<bool>>());
+        expect(player.subtitleTracks, isA<Stream<List<SubtitleTrackInfo>>>());
+        expect(player.position, isA<Stream<Duration>>());
+        expect(player.duration, isA<Stream<Duration>>());
+        expect(player.playing, isA<Stream<bool>>());
 
-      // Transport controls, as the audio screen drives them.
-      await player.play();
-      await player.seek(const Duration(seconds: 3));
-      await player.pause();
+        // Transport controls, as the audio screen drives them.
+        await player.play();
+        await player.seek(const Duration(seconds: 3));
+        await player.pause();
 
-      await player.setSubtitleTrack(
-        const SubtitleTrackInfo(id: '3', language: 'eng', title: 'Foxtrot'),
-      );
-      await player.setSubtitleTrack(null); // "Off"
+        await player.setSubtitleTrack(
+          const SubtitleTrackInfo(id: '3', language: 'eng', title: 'Foxtrot'),
+        );
+        await player.setSubtitleTrack(null); // "Off"
 
-      await player.dispose();
-    });
+        await player.dispose();
+      },
+    );
 
     test('builds a video surface from the attached output', () {
       // Not disposed: tearing down an attached video output also waits on the

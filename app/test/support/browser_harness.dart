@@ -7,8 +7,8 @@ import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:dufs_client/ui/theme.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'secure_storage_mock.dart';

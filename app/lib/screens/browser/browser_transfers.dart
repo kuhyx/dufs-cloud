@@ -9,7 +9,7 @@ import 'package:dufs_client/services/download_zip.dart';
 import 'package:dufs_client/services/public_downloads.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 

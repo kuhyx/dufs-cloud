@@ -1,9 +1,8 @@
 import 'package:dufs_client/widgets/range_bounds_field.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/finders.dart';
-
 
 void main() {
   group('formatBound', () {
@@ -82,8 +81,9 @@ void main() {
       return edits;
     }
 
-    testWidgets('shows a min and a max field labelled with the unit',
-        (tester) async {
+    testWidgets('shows a min and a max field labelled with the unit', (
+      tester,
+    ) async {
       await pumpAndEdit(tester, field: 'min MB', text: '');
       expect(fieldSpoken('min MB'), findsOneWidget);
       expect(fieldSpoken('max MB'), findsOneWidget);
@@ -119,26 +119,27 @@ void main() {
       expect(edits.last, (123 * bytesPerMb, null));
     });
 
-    testWidgets('a decimal survives being typed one key at a time',
-        (tester) async {
+    testWidgets('a decimal survives being typed one key at a time', (
+      tester,
+    ) async {
       // Regression: FilterSheet is fully controlled, so the parent echoes every
       // keystroke back into `lo`. Reformatting "1." to "1" mid-edit ate the
       // decimal point and the following digit landed in the wrong column,
       // turning a typed 1.5 MB into a silent 15 MB bound.
       int? lo;
       Widget build() => MaterialApp(
-            home: Scaffold(
-              body: StatefulBuilder(
-                builder: (context, setState) => RangeBoundsField(
-                  lo: lo,
-                  hi: null,
-                  perUnit: bytesPerMb,
-                  unit: 'MB',
-                  onChanged: (l, h) => setState(() => lo = l),
-                ),
-              ),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => RangeBoundsField(
+              lo: lo,
+              hi: null,
+              perUnit: bytesPerMb,
+              unit: 'MB',
+              onChanged: (l, h) => setState(() => lo = l),
             ),
-          );
+          ),
+        ),
+      );
       await tester.pumpWidget(build());
       final field = fieldSpoken('min MB');
 
@@ -152,20 +153,21 @@ void main() {
       expect(lo, (1.5 * bytesPerMb).round());
     });
 
-    testWidgets('a slider move updates the text without an edit loop',
-        (tester) async {
+    testWidgets('a slider move updates the text without an edit loop', (
+      tester,
+    ) async {
       final edits = <(int?, int?)>[];
       Widget build(int? lo) => MaterialApp(
-            home: Scaffold(
-              body: RangeBoundsField(
-                lo: lo,
-                hi: null,
-                perUnit: bytesPerMb,
-                unit: 'MB',
-                onChanged: (l, h) => edits.add((l, h)),
-              ),
-            ),
-          );
+        home: Scaffold(
+          body: RangeBoundsField(
+            lo: lo,
+            hi: null,
+            perUnit: bytesPerMb,
+            unit: 'MB',
+            onChanged: (l, h) => edits.add((l, h)),
+          ),
+        ),
+      );
 
       await tester.pumpWidget(build(null));
       await tester.pumpWidget(build(250 * bytesPerMb));

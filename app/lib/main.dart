@@ -1,7 +1,7 @@
 import 'package:dufs_client/screens/browser_screen.dart';
 import 'package:dufs_client/services/settings.dart';
 import 'package:dufs_client/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
 
 Future<void> main() async {

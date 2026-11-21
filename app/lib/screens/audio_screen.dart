@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dufs_client/services/app_player.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Full-screen audio player streaming over authenticated HTTP.
 ///
@@ -102,16 +102,16 @@ class _AudioScreenState extends State<AudioScreen> {
         child: _error != null
             ? ErrorState(spoken: 'Could not play: $_error')
             : audio == null
-                ? const CircularProgressIndicator()
-                : _Controls(
-                    position: _position,
-                    duration: _duration,
-                    playing: _playing,
-                    fmt: _fmt,
-                    onSeek: (to) => unawaited(audio.seek(to)),
-                    onToggle: () =>
-                        unawaited(_playing ? audio.pause() : audio.play()),
-                  ),
+            ? const CircularProgressIndicator()
+            : _Controls(
+                position: _position,
+                duration: _duration,
+                playing: _playing,
+                fmt: _fmt,
+                onSeek: (to) => unawaited(audio.seek(to)),
+                onToggle: () =>
+                    unawaited(_playing ? audio.pause() : audio.play()),
+              ),
       ),
     );
   }

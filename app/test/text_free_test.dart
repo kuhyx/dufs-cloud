@@ -9,10 +9,10 @@ import 'package:dufs_client/ui/theme.dart';
 import 'package:dufs_client/widgets/folder_picker.dart';
 import 'package:dufs_client/widgets/indexing_view.dart';
 import 'package:dufs_client/widgets/transfer_banner.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/browser_harness.dart';
 import 'support/browser_mocks.dart';

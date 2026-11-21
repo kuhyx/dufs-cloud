@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A tri-state extension filter shown as tappable chips. Each extension cycles
 /// on tap: off → keep (✓) → drop (✕) → off. This surfaces every available
@@ -63,14 +63,14 @@ class ExtensionPicker extends StatelessWidget {
       avatar: included
           ? Icon(Icons.check, size: 18, color: scheme.primary)
           : excluded
-              ? Icon(Icons.close, size: 18, color: scheme.error)
-              : null,
+          ? Icon(Icons.close, size: 18, color: scheme.error)
+          : null,
       label: Text(ext),
       backgroundColor: excluded
           ? scheme.errorContainer
           : included
-              ? scheme.primaryContainer
-              : null,
+          ? scheme.primaryContainer
+          : null,
       onPressed: () => _cycle(ext),
     );
   }

@@ -4,7 +4,7 @@ import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/util/paths.dart' as paths;
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A folder browser for choosing a move destination. Lists only directories,
 /// lets the user descend or step up, and pops the chosen folder path. Reuses
@@ -115,7 +115,7 @@ class _FolderPickerState extends State<FolderPicker> {
     if (_error != null) {
       return ErrorState(
         spoken: 'Could not load: $_error',
-        onRetry:() => unawaited(_load()),
+        onRetry: () => unawaited(_load()),
       );
     }
     return ListView(

@@ -122,14 +122,12 @@ class MediaKitPlayer implements AppPlayer {
 
   @override
   Widget buildSurface() => Video(
-        controller: _controller,
-        // libass draws the subtitles into the video frame itself, so
-        // media_kit's Flutter subtitle widget would render them a second time
-        // — unstyled, and stranded in the letterbox below the picture.
-        subtitleViewConfiguration: const SubtitleViewConfiguration(
-          visible: false,
-        ),
-      );
+    controller: _controller,
+    // libass draws the subtitles into the video frame itself, so
+    // media_kit's Flutter subtitle widget would render them a second time
+    // — unstyled, and stranded in the letterbox below the picture.
+    subtitleViewConfiguration: const SubtitleViewConfiguration(visible: false),
+  );
 
   @override
   Future<void> dispose() => _player.dispose();
@@ -152,12 +150,12 @@ List<SubtitleTrackInfo> subtitleInfosFrom(Tracks tracks) => tracks.subtitle
 /// inferred from the title because media_kit does not expose the flag (see
 /// [looksForcedTitle]).
 SubtitleTrackInfo toTrackInfo(SubtitleTrack track) => SubtitleTrackInfo(
-      id: track.id,
-      language: track.language ?? '',
-      title: track.title ?? '',
-      isDefault: track.isDefault ?? false,
-      isForced: looksForcedTitle(track.title ?? ''),
-    );
+  id: track.id,
+  language: track.language ?? '',
+  title: track.title ?? '',
+  isDefault: track.isDefault ?? false,
+  isForced: looksForcedTitle(track.title ?? ''),
+);
 
 /// Whether [track] is one of mpv's synthetic placeholder entries rather than a
 /// real embedded track. The picker renders its own "Off" entry instead.

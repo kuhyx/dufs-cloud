@@ -1,6 +1,6 @@
 import 'package:design_system/design_system.dart';
 import 'package:dufs_client/models/transfer_progress.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A strip pinned above the listing while files move: a determinate bar for
 /// the current file, the `n/total · name · %` label, and a Cancel button

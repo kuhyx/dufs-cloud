@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:dufs_client/services/settings.dart';
-import 'package:flutter/material.dart';
+import 'package:kuhy_credit/kuhy_credit.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Screen to enter and save the dufs URL, username and password.
 class SettingsScreen extends StatefulWidget {
@@ -89,6 +90,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _saving ? null : _save,
               child: const Icon(Icons.check, semanticLabel: 'Save'),
             ),
+            const SizedBox(height: 24),
+            const Center(child: KuhyCredit()),
           ],
         ),
       ),

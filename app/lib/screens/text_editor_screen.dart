@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A minimal editor for `.txt`/`.md` files: loads the text over WebDAV, lets
 /// the user edit it, and saves it back with a PUT. Mirrors the web editor.

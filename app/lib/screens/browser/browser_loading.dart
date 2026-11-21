@@ -8,7 +8,7 @@ import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/util/cloud_stats.dart';
 import 'package:dufs_client/util/filter_sort.dart';
 import 'package:dufs_client/widgets/filter_sheet.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Connecting, listing, the whole-cloud index, filtering and back handling.
 mixin BrowserLoading on BrowserSelection {
@@ -124,27 +124,25 @@ mixin BrowserLoading on BrowserSelection {
   /// Shows the filter and sort sheet.
   void openFilterSheet() {
     unawaited(ensureIndex());
-    unawaited(
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => StatefulBuilder(
-          builder: (_, setSheet) => FilterSheet(
-            filter: filter,
-            sort: sort,
-            extensions: availableExtensions(scoped),
-            sizeValues: sizeValues(scoped),
-            durationValues: durationValues(scoped, metaIndex),
-            resolutionValues: resolutionValues(scoped, metaIndex),
-            onFilter: (f) {
-              setFilter(f);
-              setSheet(() {});
-            },
-            onSort: (s) {
-              setState(() => sort = s);
-              setSheet(() {});
-            },
-          ),
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(
+        builder: (_, setSheet) => FilterSheet(
+          filter: filter,
+          sort: sort,
+          extensions: availableExtensions(scoped),
+          sizeValues: sizeValues(scoped),
+          durationValues: durationValues(scoped, metaIndex),
+          resolutionValues: resolutionValues(scoped, metaIndex),
+          onFilter: (f) {
+            setFilter(f);
+            setSheet(() {});
+          },
+          onSort: (s) {
+            setState(() => sort = s);
+            setSheet(() {});
+          },
         ),
       ),
     );

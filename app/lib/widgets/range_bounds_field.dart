@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Bytes in a megabyte, matching `BYTES_PER_MB` in the web
 /// `size-range.tsx`.
@@ -121,18 +121,18 @@ class _RangeBoundsFieldState extends State<RangeBoundsField> {
   }
 
   void _emit() => widget.onChanged(
-        parseBound(_lo.text, widget.perUnit),
-        parseBound(_hi.text, widget.perUnit),
-      );
+    parseBound(_lo.text, widget.perUnit),
+    parseBound(_hi.text, widget.perUnit),
+  );
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(child: _field(_lo, Icons.vertical_align_bottom, 'min')),
-          const SizedBox(width: 12),
-          Expanded(child: _field(_hi, Icons.vertical_align_top, 'max')),
-        ],
-      );
+    children: [
+      Expanded(child: _field(_lo, Icons.vertical_align_bottom, 'min')),
+      const SizedBox(width: 12),
+      Expanded(child: _field(_hi, Icons.vertical_align_top, 'max')),
+    ],
+  );
 
   // Floor/ceiling glyph instead of "min"/"max"; the unit symbol stays as a
   // suffix (a unit next to a number is content, not chrome).
@@ -145,9 +145,7 @@ class _RangeBoundsFieldState extends State<RangeBoundsField> {
     child: TextField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
-      ],
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[0-9.]'))],
       decoration: InputDecoration(
         prefixIcon: Icon(icon),
         suffixText: widget.unit,

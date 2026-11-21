@@ -1,13 +1,17 @@
 import 'package:dufs_client/screens/image_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
-  testWidgets('shows the title and a fallback icon when the image fails',
-      (tester) async {
-    final client =
-        DufsClient(baseUrl: 'https://host', username: 'u', password: 'p');
+  testWidgets('shows the title and a fallback icon when the image fails', (
+    tester,
+  ) async {
+    final client = DufsClient(
+      baseUrl: 'https://host',
+      username: 'u',
+      password: 'p',
+    );
     addTearDown(client.close);
     await tester.pumpWidget(
       MaterialApp(

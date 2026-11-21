@@ -7,14 +7,13 @@ SubtitleTrackInfo _t(
   String title = '',
   bool isDefault = false,
   bool isForced = false,
-}) =>
-    SubtitleTrackInfo(
-      id: id,
-      language: language,
-      title: title,
-      isDefault: isDefault,
-      isForced: isForced,
-    );
+}) => SubtitleTrackInfo(
+  id: id,
+  language: language,
+  title: title,
+  isDefault: isDefault,
+  isForced: isForced,
+);
 
 void main() {
   group('isEnglish', () {
@@ -47,10 +46,14 @@ void main() {
 
   group('subtitleLabel', () {
     test('expands known language tags', () {
-      expect(subtitleLabel(_t('2', language: 'pol', title: 'NF')),
-          'Polish — NF');
-      expect(subtitleLabel(_t('5', language: 'jpn', title: '日本語')),
-          'Japanese — 日本語');
+      expect(
+        subtitleLabel(_t('2', language: 'pol', title: 'NF')),
+        'Polish — NF',
+      );
+      expect(
+        subtitleLabel(_t('5', language: 'jpn', title: '日本語')),
+        'Japanese — 日本語',
+      );
     });
 
     test('falls back to the raw tag when unknown', () {
@@ -66,8 +69,10 @@ void main() {
     });
 
     test('does not repeat a title identical to the language name', () {
-      expect(subtitleLabel(_t('2', language: 'eng', title: 'English')),
-          'English');
+      expect(
+        subtitleLabel(_t('2', language: 'eng', title: 'English')),
+        'English',
+      );
     });
 
     test('marks forced tracks', () {
@@ -98,14 +103,16 @@ void main() {
       expect(pickDefaultSubtitle(tracks)?.id, '3');
     });
 
-    test('prefers a default-flagged English track over another English one',
-        () {
-      final tracks = [
-        _t('8', language: 'eng', title: 'Commentary'),
-        _t('3', language: 'eng', title: 'Foxtrot', isDefault: true),
-      ];
-      expect(pickDefaultSubtitle(tracks)?.id, '3');
-    });
+    test(
+      'prefers a default-flagged English track over another English one',
+      () {
+        final tracks = [
+          _t('8', language: 'eng', title: 'Commentary'),
+          _t('3', language: 'eng', title: 'Foxtrot', isDefault: true),
+        ];
+        expect(pickDefaultSubtitle(tracks)?.id, '3');
+      },
+    );
 
     test('takes the first English track when none is flagged', () {
       final tracks = [
@@ -143,11 +150,13 @@ void main() {
 
     test('ignores a forced track even when it is the only default', () {
       final tracks = [
-        _t('4',
-            language: 'jpn',
-            title: 'forced',
-            isDefault: true,
-            isForced: true),
+        _t(
+          '4',
+          language: 'jpn',
+          title: 'forced',
+          isDefault: true,
+          isForced: true,
+        ),
       ];
       expect(pickDefaultSubtitle(tracks), isNull);
     });

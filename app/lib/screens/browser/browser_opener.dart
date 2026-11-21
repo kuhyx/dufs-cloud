@@ -5,7 +5,7 @@ import 'package:dufs_client/screens/image_screen.dart';
 import 'package:dufs_client/screens/pdf_screen.dart';
 import 'package:dufs_client/screens/text_editor_screen.dart';
 import 'package:dufs_client/screens/video_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Opening an entry in the viewer that matches its type.
 mixin BrowserOpener on BrowserBatch {

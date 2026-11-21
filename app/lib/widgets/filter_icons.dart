@@ -1,5 +1,5 @@
 import 'package:dufs_client/util/filter_sort.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Glyph + spoken label for each type filter (the label is never painted).
 (IconData, String) typeGlyph(TypeFilter t) => switch (t) {

@@ -1,4 +1,3 @@
-
 import 'package:dufs_client/services/device_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,9 +10,9 @@ void main() {
   void handle(Future<Object?> Function(MethodCall call) handler) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) {
-      calls.add(call);
-      return handler(call);
-    });
+          calls.add(call);
+          return handler(call);
+        });
   }
 
   setUp(calls.clear);
@@ -75,8 +74,7 @@ void main() {
     expect(DevicePicker().chunkSize, DevicePicker.defaultChunkSize);
   });
 
-  test('a null chunk ends the stream and the reader is still closed',
-      () async {
+  test('a null chunk ends the stream and the reader is still closed', () async {
     handle((call) async {
       switch (call.method) {
         case 'pickFiles':

@@ -1,6 +1,6 @@
 import 'package:dufs_client/models/dir_entry.dart';
 import 'package:dufs_client/util/cloud_stats.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Search results grouped by folder: a collapsible header per group with that
 /// group's tiles (from [groupGrid]) underneath.

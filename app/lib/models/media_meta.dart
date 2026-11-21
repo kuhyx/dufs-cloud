@@ -16,14 +16,14 @@ class MediaMeta {
   /// Builds a [MediaMeta] from one index entry's JSON map (tolerant of missing
   /// or wrongly-typed fields, which become null).
   factory MediaMeta.fromJson(Map<String, Object?> json) => MediaMeta(
-        width: _asInt(json['width']),
-        height: _asInt(json['height']),
-        durationMs: _asInt(json['durationMs']),
-        createdMs: _asInt(json['createdMs']),
-        uploadedMs: _asInt(json['uploadedMs']),
-        proxyPath: _asString(json['proxyPath']),
-        appProxyPath: _asString(json['appProxyPath']),
-      );
+    width: _asInt(json['width']),
+    height: _asInt(json['height']),
+    durationMs: _asInt(json['durationMs']),
+    createdMs: _asInt(json['createdMs']),
+    uploadedMs: _asInt(json['uploadedMs']),
+    proxyPath: _asString(json['proxyPath']),
+    appProxyPath: _asString(json['appProxyPath']),
+  );
 
   /// Pixel width (images and videos), or null.
   final int? width;

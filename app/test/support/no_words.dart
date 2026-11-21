@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Two or more letters in a row: a word. Numbers, a number's unit symbol
 /// ("12 KB", see `_measure`) and other symbols are not words.

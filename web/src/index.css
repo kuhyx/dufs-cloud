@@ -60,6 +60,10 @@ button {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
+.topbar kuhy-credit {
+  --kuhy-credit-size: 2.25rem;
+  flex: 0 0 auto;
+}
 .crumbs {
   flex: 1 1 auto;
   min-width: 0;

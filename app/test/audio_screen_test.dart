@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:dufs_client/screens/audio_screen.dart';
 import 'package:dufs_client/services/dufs_client.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_app_player.dart';
 import 'support/finders.dart';
@@ -12,11 +12,11 @@ DufsClient _client() =>
     DufsClient(baseUrl: 'https://host', username: 'u', password: 'p');
 
 AudioScreen _screen(FakeAppPlayer player) => AudioScreen(
-      client: _client(),
-      path: '/song.mp3',
-      title: 'song.mp3',
-      playerFactory: () => player,
-    );
+  client: _client(),
+  path: '/song.mp3',
+  title: 'song.mp3',
+  playerFactory: () => player,
+);
 
 /// Pumps the screen and lets the player report that it is playing a 10s track.
 Future<FakeAppPlayer> _ready(WidgetTester tester) async {
@@ -32,8 +32,9 @@ Future<FakeAppPlayer> _ready(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('shows a spinner, then the controls once playing',
-      (tester) async {
+  testWidgets('shows a spinner, then the controls once playing', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -86,8 +87,9 @@ void main() {
     expect(player.seeks, isNotEmpty);
   });
 
-  testWidgets('an unknown duration still gives a usable slider',
-      (tester) async {
+  testWidgets('an unknown duration still gives a usable slider', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     await tester.pumpAndSettle();
@@ -97,8 +99,9 @@ void main() {
     expect(player.seeks, isEmpty);
   });
 
-  testWidgets('a position past the reported duration is clamped',
-      (tester) async {
+  testWidgets('a position past the reported duration is clamped', (
+    tester,
+  ) async {
     final player = FakeAppPlayer();
     await tester.pumpWidget(MaterialApp(home: _screen(player)));
     await tester.pumpAndSettle();

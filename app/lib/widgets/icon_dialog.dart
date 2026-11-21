@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The two dialog buttons: an outlined close (cancel) and a filled [confirm]
 /// glyph. Labels are spoken only.

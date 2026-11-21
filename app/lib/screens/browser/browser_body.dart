@@ -10,7 +10,7 @@ import 'package:dufs_client/widgets/entry_tile.dart';
 import 'package:dufs_client/widgets/folder_group_list.dart';
 import 'package:dufs_client/widgets/indexing_view.dart';
 import 'package:dufs_client/widgets/listing_skeleton.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 // Height under each preview square for the name and size lines (16px + 12px
 // text plus the tile's padding).

@@ -1,6 +1,6 @@
 import 'package:dufs_client/widgets/quantile_range_slider.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   final uniform = [for (var i = 0; i <= 100; i++) i];
@@ -9,29 +9,33 @@ void main() {
     required void Function(int?, int?) onChanged,
     int? lo,
     int? hi,
-  }) =>
-      MaterialApp(
-        home: Scaffold(
-          body: QuantileRangeSlider(
-            values: uniform,
-            lo: lo,
-            hi: hi,
-            onChanged: onChanged,
-            labelOf: (v) => '$v',
-          ),
-        ),
-      );
+  }) => MaterialApp(
+    home: Scaffold(
+      body: QuantileRangeSlider(
+        values: uniform,
+        lo: lo,
+        hi: hi,
+        onChanged: onChanged,
+        labelOf: (v) => '$v',
+      ),
+    ),
+  );
 
-  testWidgets('maps fractions to bounds and clears at the extremes',
-      (tester) async {
+  testWidgets('maps fractions to bounds and clears at the extremes', (
+    tester,
+  ) async {
     int? capturedLo;
     int? capturedHi;
     var calls = 0;
-    await tester.pumpWidget(host(onChanged: (lo, hi) {
-      capturedLo = lo;
-      capturedHi = hi;
-      calls++;
-    }));
+    await tester.pumpWidget(
+      host(
+        onChanged: (lo, hi) {
+          capturedLo = lo;
+          capturedHi = hi;
+          calls++;
+        },
+      ),
+    );
     // Defaulted range label (lo/hi null → min/max).
     expect(find.text('0 – 100'), findsOneWidget);
     final slider = tester.widget<RangeSlider>(find.byType(RangeSlider));

@@ -65,7 +65,9 @@ export class GalleryTopbar extends HTMLElement {
 
   connectedCallback(): void {
     if (this.firstChild === null) {
-      this.append(h("header", { class: "topbar" }, this.#nav, this.#tools));
+      this.append(
+        h("header", { class: "topbar" }, this.#nav, this.#tools, h("kuhy-credit", { placement: "below" })),
+      );
     }
     this.#render();
   }

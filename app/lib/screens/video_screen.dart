@@ -5,7 +5,7 @@ import 'package:dufs_client/services/dufs_client.dart';
 import 'package:dufs_client/ui/theme.dart';
 import 'package:dufs_client/util/subtitle_track.dart';
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Full-screen video player streaming over authenticated HTTP (with seeking
 /// via HTTP Range).
@@ -164,8 +164,8 @@ class _VideoScreenState extends State<VideoScreen> {
         child: _error != null
             ? ErrorState(spoken: 'Could not play: $_error')
             : player == null
-                ? const CircularProgressIndicator()
-                : player.buildSurface(),
+            ? const CircularProgressIndicator()
+            : player.buildSurface(),
       ),
     );
   }

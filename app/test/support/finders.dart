@@ -1,6 +1,6 @@
 import 'package:dufs_client/widgets/cue.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The glyph whose spoken (screen-reader) label is exactly [label]: the
 /// text-free UI keeps the old wording there, never on screen.

@@ -1,4 +1,3 @@
-
 import 'package:dufs_client/models/upload_source.dart';
 import 'package:flutter/services.dart';
 

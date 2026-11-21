@@ -1,5 +1,5 @@
 import 'package:dufs_client/services/cloud_index.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The index walk's honest progress: counts of what has been listed so far
 /// (never a fraction: the total is unknown) and a way out.
